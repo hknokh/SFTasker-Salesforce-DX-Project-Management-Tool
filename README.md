@@ -255,6 +255,7 @@ This project utilizes several dependencies and libraries to provide functionalit
 - **[fast-xml-parser](https://www.npmjs.com/package/fast-xml-parser)**: A high-performance XML parser and validator that converts XML data to JSON and vice versa. This is used to efficiently process Salesforce metadata files.
 - **[object-path](https://www.npmjs.com/package/object-path)**: A utility library that allows manipulation of deeply nested objects, making it easier to access, modify, and work with large metadata structures in the Salesforce environment.
 - **[unzipper](https://www.npmjs.com/package/unzipper)**: A library used for extracting files from ZIP archives, which is often needed when handling compressed Salesforce metadata files.
+- **[husky](https://www.npmjs.com/package/husky)**: A tool for managing Git hooks, enabling you to enforce pre-commit and pre-push checks such as linting, testing, or formatting automatically before committing code.
 
 ### Development Dependencies
 
