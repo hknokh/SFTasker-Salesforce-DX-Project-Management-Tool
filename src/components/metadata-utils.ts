@@ -27,7 +27,7 @@ export class MetadataUtils<T> {
    * @param command  The command object used to retrieve metadata
    * @param outputDir  The output directory for the retrieved metadata
    */
-  public constructor(private command: SFtaskerCommand<T>, private outputDir: string) {}
+  public constructor(private command: SFtaskerCommand<T>, private outputDir: string) { }
 
   // Public static methods ----------------------------------------------------------
 
@@ -88,6 +88,65 @@ export class MetadataUtils<T> {
     };
     let propIndex = -1;
 
+    // Get the key value for a section from an array of properties by the given section name and key name
+    // Key is a combination of section name, key name, and key value
+    const getSectionKeyValue = (sectionArray: any[], sectionName: string, keyName: string): XmlSectionKey => {
+      const keyArrayObject: any = sectionArray.find((item) => item[keyName]);
+      if (keyArrayObject) {
+        const keyArray: any[] = keyArrayObject[keyName];
+        if (keyArray) {
+          const keyObject = keyArray.find((item) => item['#text']);
+          if (keyObject) {
+            return {
+              key: `${sectionName}_${keyName}_${keyObject['#text']}`,
+              isSectionExist: true,
+              sectionName,
+              keyName,
+              keyValue: keyObject['#text'],
+            };
+          }
+        }
+      } else if (keyName === '') {
+        return {
+          key: `${sectionName}`,
+          isSectionExist: true,
+          sectionName,
+          keyName: '',
+          keyValue: '',
+        };
+      }
+      return {
+        key: '',
+        isSectionExist: true,
+        sectionName,
+      };
+    };
+
+    const updateSectionKeyValue = (sectionArray: any[], sectionName: string, keyName: string, sectionKeyToUpdate: XmlSectionKey): XmlSectionKey => {
+      if (!sectionKeyToUpdate.key) {
+        return sectionKeyToUpdate;
+      }
+      const keyArrayObject: any = sectionArray.find((item) => item[keyName]);
+      if (keyArrayObject) {
+        const keyArray: any[] = keyArrayObject[keyName];
+        if (keyArray) {
+          const keyObject = keyArray.find((item) => item['#text']);
+          if (keyObject) {
+            const keyName2 = `${sectionKeyToUpdate.keyName}#${keyName}`;
+            const keyValue2 = `${sectionKeyToUpdate.keyValue}#${keyObject['#text']}`;
+            return {
+              key: `${sectionName}_${keyName2}_${keyValue2}`,
+              isSectionExist: true,
+              sectionName,
+              keyName: keyName2,
+              keyValue: keyValue2,
+            };
+          }
+        }
+      }
+      return sectionKeyToUpdate;
+    };
+
     // Go thru each property in the section object and look for the property with contains the section
     for (const sectionName of Object.keys(sectionObject)) {
       propIndex++;
@@ -107,43 +166,13 @@ export class MetadataUtils<T> {
           continue;
         }
 
-        const keyArrayObject: any = sectionArray.find((item) => item[keyName]);
-        if (keyArrayObject) {
-          const keyArray: any[] = keyArrayObject[keyName];
-          if (keyArray) {
-            const keyObject = keyArray.find((item) => item['#text']);
-            if (keyObject) {
-              // Key name and key value found => key is the section name, key name, and key value, this section is updated
-              keyValue = {
-                key: `${sectionName}_${keyName}_${keyObject['#text']}`,
-                isSectionExist: true,
-                sectionName,
-                keyName,
-                keyValue: keyObject['#text'],
-              };
-              break;
-            }
-          }
-        } else if (keyName === '') {
-          // Key name not found, but it should be empty => key is the section name, this section is updated
-          // Example <userLicense>Salesforce</userLicense> in Profile metadata
-          keyValue = {
-            key: `${sectionName}`,
-            isSectionExist: true,
-            sectionName,
-            keyName: '',
-            keyValue: '',
-          };
-          break;
-        } else {
-          // Key name not found, but it shouldn't be empty, consider the section as unknown => no key, this section will NOT be updated
-          keyValue = {
-            key: '',
-            isSectionExist: true,
-            sectionName,
-          };
-          break;
+        // Get the key value for the section
+        const keyNames = keyName.split(',');
+        keyValue = getSectionKeyValue(sectionArray, sectionName, keyNames[0]);
+        for (let i = 1; i < keyNames.length; i++) {
+          keyValue = updateSectionKeyValue(sectionArray, sectionName, keyNames[i], keyValue);
         }
+        break;
       }
     }
     return keyValue;
@@ -565,10 +594,10 @@ export class MetadataUtils<T> {
     const filePath =
       !rootFolder || !path.isAbsolute(rootFolder)
         ? path.join(
-            process.cwd(),
-            sfdxMainDefaultPath,
-            Constants.PACKAGE_XML_METADATA_NAME_TO_SFDX_PROJECT_FOLDER_MAPPING[metadataTypeName]
-          )
+          process.cwd(),
+          sfdxMainDefaultPath,
+          Constants.PACKAGE_XML_METADATA_NAME_TO_SFDX_PROJECT_FOLDER_MAPPING[metadataTypeName]
+        )
         : path.join(rootFolder, Constants.PACKAGE_XML_METADATA_NAME_TO_SFDX_PROJECT_FOLDER_MAPPING[metadataTypeName]);
     return filePath;
   }

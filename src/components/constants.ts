@@ -54,7 +54,7 @@ export class Constants {
       externalDataSourceAccesses: 'externalDataSource',
       fieldPermissions: 'field',
       flowAccesses: 'flow',
-      layoutAssignments: 'layout',
+      layoutAssignments: 'layout,recordType',
       loginHours: '',
       loginIpRanges: '',
       objectPermissions: 'object',
@@ -178,19 +178,19 @@ export class Constants {
     string,
     FilenameRegexpReplacement
   > = {
-    Profile: {
-      regexp: new RegExp('^(.*)$', 'i'),
-      replace: '$1-meta.xml',
-    },
-    CustomLabels: {
-      regexp: new RegExp('^(.*)$', 'i'),
-      replace: '$1-meta.xml',
-    },
-    Translations: {
-      regexp: new RegExp('^(.*)$', 'i'),
-      replace: '$1-meta.xml',
-    },
-  };
+      Profile: {
+        regexp: new RegExp('^(.*)$', 'i'),
+        replace: '$1-meta.xml',
+      },
+      CustomLabels: {
+        regexp: new RegExp('^(.*)$', 'i'),
+        replace: '$1-meta.xml',
+      },
+      Translations: {
+        regexp: new RegExp('^(.*)$', 'i'),
+        replace: '$1-meta.xml',
+      },
+    };
 
   /**
    * The mapping between the metadata type names in the package.xml file and the flags used in the sftasker command.
@@ -199,22 +199,22 @@ export class Constants {
     AvailableMetadataTypes,
     SftaskerCommandFlags
   > = {
-    Profile: {
-      type: 'Profile',
-      dedup: true,
-      'merge-props': true,
-    },
-    CustomLabels: {
-      type: 'CustomLabels',
-      dedup: false,
-      'merge-props': false,
-    },
-    Translations: {
-      type: 'Translations',
-      dedup: false,
-      'merge-props': false,
-    },
-  };
+      Profile: {
+        type: 'Profile',
+        dedup: true,
+        'merge-props': true,
+      },
+      CustomLabels: {
+        type: 'CustomLabels',
+        dedup: false,
+        'merge-props': false,
+      },
+      Translations: {
+        type: 'Translations',
+        dedup: false,
+        'merge-props': false,
+      },
+    };
 
   /**
    * The default path to the force-app project main default folder.
