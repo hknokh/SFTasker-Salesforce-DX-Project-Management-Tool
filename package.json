@@ -1,7 +1,7 @@
 {
   "name": "sftasker",
   "description": "The powerful toolkit streamlines Salesforce DX project management with essential automation commands. For example, its smart, loseless metadata merging (Profiles, Translations, CustomLabels) updates only changed components without overwriting data. Perfect for Git integration, making it easy to track and manage changes.",
-  "version": "1.0.0",
+  "version": "1.0.11",
   "author": "Haim Knokh",
   "copyright": "Copyright (c) 2024 Haim Knokh",
   "dependencies": {
@@ -10,6 +10,7 @@
     "@salesforce/sf-plugins-core": "^10.0.0",
     "@types/object-path": "^0.11.4",
     "fast-xml-parser": "^4.5.0",
+    "husky": "^9.1.6",
     "object-path": "^0.11.8",
     "unzipper": "^0.12.3"
   },
@@ -68,7 +69,7 @@
     "format": "wireit",
     "link-check": "wireit",
     "lint": "wireit",
-    "postinstall": "yarn husky install",
+    "postinstall": "node -e \"try { require('husky').install(); } catch (e) { console.log('husky not installed, skipping husky install'); }\"",
     "postpack": "sf-clean --ignore-signing-artifacts",
     "prepack": "sf-prepack",
     "test": "wireit",

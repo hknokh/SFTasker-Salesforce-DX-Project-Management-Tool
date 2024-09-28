@@ -14,11 +14,13 @@ const componentsMessages = Messages.loadMessages('sftasker', 'components');
 
 export type SftaskerMergeMetaResult = Record<string, never>;
 
+// eslint-disable-next-line sf-plugin/only-extend-SfCommand
 export default class SftaskerMergeMeta extends SFtaskerCommand<SftaskerMergeMetaResult> {
   public static readonly summary = messages.getMessage('summary');
   public static readonly description = messages.getMessage('description');
   public static readonly examples = messages.getMessages('examples');
 
+  // eslint-disable-next-line sf-plugin/spread-base-flags
   public static readonly flags = {
     'target-org': Flags.requiredOrg(),
     apiversion: Flags.orgApiVersion(),
