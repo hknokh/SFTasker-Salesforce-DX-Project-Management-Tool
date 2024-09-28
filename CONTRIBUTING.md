@@ -118,13 +118,13 @@ When you're ready to submit your changes:
 2. Create a new branch for your feature or bug fix:
 
    ```bash
-   git checkout -b my-feature
+   git checkout -b feature/my-feature
    ```
 
 3. After making your changes, push them to your fork:
 
    ```bash
-   git push origin my-feature
+   git push origin feature/my-feature
    ```
 
 4. Open a pull request against the main repository from your fork.
