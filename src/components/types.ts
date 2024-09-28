@@ -1,0 +1,145 @@
+import { Connection } from '@salesforce/core';
+
+// ------ Command Types ------
+
+/**
+ * Represents the avaliable metadata types for the sf tasker command.
+ */
+export type AvailableMetadataTypes = 'Profile' | 'CustomLabels' | 'Translations';
+
+/**
+ * Represents a Salesforce organization.
+ * Provides methods to get connection details and the organization ID.
+ */
+export type SfOrg = {
+  /**
+   * Gets a connection object to the Salesforce org using the specified API version.
+   * @param {string} apiVersion - The API version to use for the connection.
+   * @returns {Connection} - The connection object.
+   */
+  getConnection: (apiVersion: string) => Connection;
+
+  /**
+   * Retrieves the Salesforce organization ID.
+   * @returns {string} - The organization ID.
+   */
+  getOrgId: () => string;
+};
+
+/**
+ * Represents the flags used in Sftasker commands.
+ * Includes the target Salesforce org and the API version.
+ */
+export type SftaskerCommandFlags = {
+  /**
+   * The target Salesforce organization.
+   * @type {SfOrg | undefined}
+   */
+  'target-org'?: SfOrg;
+
+  /**
+   * The API version to use for the command.
+   * @type {string | undefined}
+   */
+  apiversion?: string;
+
+  /**
+   * The path to the root folder of the metadata for the force-app project.
+   * @type {string | undefined}
+   */
+  'metadata-root-folder'?: string;
+
+  /**
+   * A flag indicating whether to deduplicate the metadata components keeping only the version with the most inner properties.
+   */
+  dedup?: boolean;
+
+  /**
+   *  A flag indicating whether to merge the properties of the source and target sections when constructing the final section metadata.
+   */
+  'merge-props'?: boolean;
+
+  /**
+   * The type of metadata to merge.
+   */
+  type: AvailableMetadataTypes;
+};
+
+/**
+ *  Represents a type entity in the package.xml file.
+ */
+export type PackageXmlType = {
+  /**
+   *  The name of the metadata type.
+   */
+  members: string[];
+
+  /**
+   * The name of the metadata type.
+   */
+  name: string;
+};
+
+/**
+ * Represents package.xml file contents.
+ */
+export type PackageXmlContent = {
+  /**
+   * The package types defined in the package.xml file.
+   */
+  Package?: {
+    /**
+     * The types defined in the package.xml file.
+     */
+    types?: PackageXmlType[];
+    /**
+     * The API version defined in the package.xml file.
+     */
+    version?: string;
+  };
+};
+
+// ------ Utils Types ------
+
+/**
+ * Represents the matching files in two directories.
+ */
+export type MatchingFiles = {
+  dir1Path: string;
+  dir2Path: string;
+};
+
+/**
+ * Represents the result of finding matching files in two directories.
+ */
+export type FindMatchingFilesResult = {
+  matchingFiles: MatchingFiles[];
+  missingFiles: string[];
+};
+
+/**
+ * Represents the replacement of a file name using a regular expression.
+ */
+export type FilenameRegexpReplacement = {
+  regexp: RegExp;
+  replace: string;
+};
+
+// ------ Third-party Module Types ------
+/**
+ * Represents the module 'object-path' for accessing nested properties in objects by path.
+ */
+export type ObjectPath = {
+  /**
+   * Gets the value of a nested property in an object using a dot-delimited path.
+   * @param {Record<string, any>} obj - The object to search.
+   * @param {string} path - The dot-delimited path to the property.
+   * @returns {any} - The value at the given path, or undefined if not found.
+   */
+  get: (obj: Record<string, any>, path: string) => any;
+};
+
+/**
+ * Represents the module 'fast-deep-equal' for deep comparison of objects.
+ */
+export type FastDeepEqual = (obj1: Record<string, any>, obj2: Record<string, any>) => boolean;
