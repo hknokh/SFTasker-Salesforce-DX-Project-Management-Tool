@@ -12,7 +12,7 @@ To install `sftasker`, run:
 sf plugins install sftasker
 ```
 
-Because this plugin is **not signed**, you may see a warning during installation. Proceed by confirming with `y` (yes) to continue.
+Because this plugin is not signed, you may see a warning during installation. Proceed by confirming with `y` (yes) to continue.
 
 To update the plugin:
 
