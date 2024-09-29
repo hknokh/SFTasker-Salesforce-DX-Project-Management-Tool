@@ -103,13 +103,14 @@ Here's how `merge-meta` helps:
 - **Prevents Overwriting**: It prevents the retrieved partial metadata from overwriting your entire local file by intelligently merging new data with the existing components.
 - **Maintains Order**: It preserves the original order of components in your local files, avoiding unnecessary reordering and reducing noise in version control diffs.
 
+#### How to Run the Command
 Below is how to run the `merge-meta` command using the Console.
 
 ```bash
 $ sf sftasker merge-meta -o <value> -t Profile|CustomLabels|Translations [--json] [--manifest <value>] [--apiversion <value>] [-r <value>]
 ```
 
-##### Flags
+#### Flags
 
 - **`-o, --target-org=<value>`**: The alias or username of the target Salesforce org. **Note**: The `-o` flag can be omitted if you run the command from within a Salesforce DX project where the default org is already set.
 
