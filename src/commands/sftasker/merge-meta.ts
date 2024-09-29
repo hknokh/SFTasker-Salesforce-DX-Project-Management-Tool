@@ -72,61 +72,64 @@ export default class SftaskerMergeMeta extends SFtaskerCommand<SftaskerMergeMeta
     const metadataUtils = new MetadataUtils(this, tempPath);
 
     // Set the metadata root folder
-    const metadataTargetRootFolder = metadataUtils.getMetadataRootFolder(flags.type);
-    CommandUtils.logCommandMessage(this, 'command.progress.metadata-root-folder', metadataTargetRootFolder);
+    const forceAppProjectRootFolder = metadataUtils.getMetadataRootFolder(flags.type);
+    CommandUtils.logCommandMessage(this, 'command.progress.metadata-root-folder', forceAppProjectRootFolder);
 
     // Retrieve the metadata from the manifest file
     const manifestTempFolder = await metadataUtils.retrievePackageMetadataAsync(flags.manifest);
     CommandUtils.logCommandMessage(this, 'command.progress.manifest-temp-folder', manifestTempFolder);
 
-    // List metadata files of Profile type in the manifest
-    const manifestProfileFiles = metadataUtils.listMetadataFiles(flags.type, manifestTempFolder);
+    // List metadata files in the manifest
+    const manifestMetadataFiles = metadataUtils.listMetadataFiles(flags.type, manifestTempFolder);
 
-    // List metadata files of Profile type in the force-app project
-    const forceAppProfileFiles = metadataUtils.listMetadataFiles(flags.type);
-    CommandUtils.logCommandMessage(this, 'command.progress.found-local-files', forceAppProfileFiles.length.toString());
+    // List metadata files in the force-app project
+    const forceAppMetadataFiles = metadataUtils.listMetadataFiles(flags.type);
+    CommandUtils.logCommandMessage(this, 'command.progress.found-local-files', forceAppMetadataFiles.length.toString());
 
-    // Find matching profile files in the manifest and force-app project
+    // Find matching metadata files in the manifest and force-app project
     CommandUtils.logCommandMessage(this, 'command.progress.finding-matching-files');
-
-    const matchingProfileFiles: FindMatchingFilesResult = Utils.findMatchingFiles(
-      manifestProfileFiles,
-      forceAppProfileFiles,
+    const matchingManifest2ForceAppMetadataFiles: FindMatchingFilesResult = Utils.findMatchingFiles(
+      manifestMetadataFiles,
+      forceAppMetadataFiles,
       Constants.PACKAGE_XML_METADATA_NAME_TO_FILE_REGEX_REPLACE_MAPPING[flags.type]
     );
 
-    if (matchingProfileFiles.matchingFiles.length === 0 && matchingProfileFiles.missingFiles.length === 0) {
+    // Missing files are those that are in the manifest but not in the force-app project
+    if (
+      matchingManifest2ForceAppMetadataFiles.matchingFiles.length === 0 &&
+      matchingManifest2ForceAppMetadataFiles.missingFiles.length === 0
+    ) {
       CommandUtils.logCommandMessage(this, 'command.result.no-components-to-merge');
       return {};
     }
 
-    // Processing each matching profile file
+    // Merge each of the matching metadata files and put them in the force-app project folder
     CommandUtils.logCommandMessage(
       this,
       'command.progress.processing-matching-files',
-      matchingProfileFiles.matchingFiles.length.toString()
+      matchingManifest2ForceAppMetadataFiles.matchingFiles.length.toString()
     );
-    for (const profileFile of matchingProfileFiles.matchingFiles) {
+    for (const matchingFile of matchingManifest2ForceAppMetadataFiles.matchingFiles) {
       metadataUtils.mergeMetadataXml(
-        profileFile.dir1Path,
-        profileFile.dir2Path,
-        profileFile.dir2Path,
+        matchingFile.dir1Path,
+        matchingFile.dir2Path,
+        matchingFile.dir2Path,
         Constants.PACKAGE_XML_METADATA_NAME_TO_XNL_METADATA_FILE_ROOT_TAG_MAPPING[flags.type],
         Constants.METADATA_SECTION_KEY_MAPPING[flags.type]
       );
     }
 
-    if (matchingProfileFiles.missingFiles.length > 0) {
-      // Copy missing profile files to the force-app project
+    // Copy missing metadata files to the force-app project
+    if (matchingManifest2ForceAppMetadataFiles.missingFiles.length > 0) {
       CommandUtils.logCommandMessage(
         this,
         'command.progress.copying-missing-files',
-        matchingProfileFiles.missingFiles.length.toString()
+        matchingManifest2ForceAppMetadataFiles.missingFiles.length.toString()
       );
 
       Utils.copyFiles(
-        matchingProfileFiles.missingFiles,
-        metadataTargetRootFolder,
+        matchingManifest2ForceAppMetadataFiles.missingFiles,
+        forceAppProjectRootFolder,
         Constants.PACKAGE_XML_METADATA_NAME_TO_FILE_REGEX_REPLACE_MAPPING[flags.type]
       );
     }

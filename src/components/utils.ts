@@ -109,13 +109,17 @@ export class Utils {
 
   /**
    *  Copy files to a destination folder.
-   * @param files  The list of files to copy.
+   * @param sourceFiles  The list of full paths to the source files.
    * @param destFolder  The destination folder path.
    * @param fileReplaceRegexp  The regular expression to replace in the file names before copying.
    * @param replace  The string to replace the matched regular expression in the file names.
    */
-  public static copyFiles(files: string[], destFolder: string, fileReplacement?: FilenameRegexpReplacement): void {
-    for (const file of files) {
+  public static copyFiles(
+    sourceFiles: string[],
+    destFolder: string,
+    fileReplacement?: FilenameRegexpReplacement
+  ): void {
+    for (const file of sourceFiles) {
       const fileName = path.basename(file).replace(fileReplacement?.regexp ?? '', fileReplacement?.replace ?? '');
       fs.copyFileSync(file, path.join(destFolder, fileName));
     }

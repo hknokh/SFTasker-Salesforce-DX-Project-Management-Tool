@@ -105,7 +105,13 @@ export type PackageXmlContent = {
  * Represents the matching files in two directories.
  */
 export type MatchingFiles = {
+  /**
+   * The path of the file in the first directory.
+   */
   dir1Path: string;
+  /**
+   * The path of the file in the second directory.
+   */
   dir2Path: string;
 };
 
@@ -113,7 +119,13 @@ export type MatchingFiles = {
  * Represents the result of finding matching files in two directories.
  */
 export type FindMatchingFilesResult = {
+  /**
+   * The matching files in the two directories.
+   */
   matchingFiles: MatchingFiles[];
+  /**
+   * The files that are missing in one of the directories.
+   */
   missingFiles: string[];
 };
 
@@ -121,7 +133,13 @@ export type FindMatchingFilesResult = {
  * Represents the replacement of a file name using a regular expression.
  */
 export type FilenameRegexpReplacement = {
+  /**
+   * The regular expression to match the file name.
+   */
   regexp: RegExp;
+  /**
+   * The replacement string for the file name.
+   */
   replace: string;
 };
 
