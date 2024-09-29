@@ -27,7 +27,7 @@ export class MetadataUtils<T> {
    * @param command  The command object used to retrieve metadata
    * @param outputDir  The output directory for the retrieved metadata
    */
-  public constructor(private command: SFtaskerCommand<T>, private outputDir: string) { }
+  public constructor(private command: SFtaskerCommand<T>, private outputDir: string) {}
 
   // Public static methods ----------------------------------------------------------
 
@@ -122,7 +122,12 @@ export class MetadataUtils<T> {
       };
     };
 
-    const updateSectionKeyValue = (sectionArray: any[], sectionName: string, keyName: string, sectionKeyToUpdate: XmlSectionKey): XmlSectionKey => {
+    const updateSectionKeyValue = (
+      sectionArray: any[],
+      sectionName: string,
+      keyName: string,
+      sectionKeyToUpdate: XmlSectionKey
+    ): XmlSectionKey => {
       if (!sectionKeyToUpdate.key) {
         return sectionKeyToUpdate;
       }
@@ -535,6 +540,10 @@ export class MetadataUtils<T> {
         const pattern = /(<(\w+)>)(\s*\n\s*)(<!--[\s\S]*?-->)(\s*\n\s*)(<\/\2>)/g;
         updatedXml = updatedXml.replace(pattern, '$1$4$6');
 
+        // Additional code to replace empty tags with self-closing tags
+        const emptyTagPattern = /<(\w+)>\s*<\/\1>/g;
+        updatedXml = updatedXml.replace(emptyTagPattern, '<$1/>');
+
         // Write the merged XML to the output file synchronously
         fs.writeFileSync(outputFilePath, updatedXml);
 
@@ -594,10 +603,10 @@ export class MetadataUtils<T> {
     const filePath =
       !rootFolder || !path.isAbsolute(rootFolder)
         ? path.join(
-          process.cwd(),
-          sfdxMainDefaultPath,
-          Constants.PACKAGE_XML_METADATA_NAME_TO_SFDX_PROJECT_FOLDER_MAPPING[metadataTypeName]
-        )
+            process.cwd(),
+            sfdxMainDefaultPath,
+            Constants.PACKAGE_XML_METADATA_NAME_TO_SFDX_PROJECT_FOLDER_MAPPING[metadataTypeName]
+          )
         : path.join(rootFolder, Constants.PACKAGE_XML_METADATA_NAME_TO_SFDX_PROJECT_FOLDER_MAPPING[metadataTypeName]);
     return filePath;
   }
