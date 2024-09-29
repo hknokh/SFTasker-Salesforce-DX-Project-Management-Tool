@@ -146,9 +146,7 @@ sf sftasker merge-meta -t Profile
 
 This command will use the `manifest/package.xml` to retrieve the metadata and the default `force-app/main/default` folder to merge the metadata into. The currently selected default SFDX org is used for connection.
 
-##### Running the Plugin Outside the S
-
-FDX Project Root
+##### Running the Plugin Outside the SFDX Project Root
 
 When running the plugin **outside the SFDX project root**, you will need to explicitly specify the `-r` flag to point to the root folder of the metadata, the `-m` flag to provide the path to the `package.xml` file, and `-o` to define the Salesforce org connection to retrieve the metadata from, as the plugin cannot automatically detect these settings.
 
