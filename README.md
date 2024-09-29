@@ -321,9 +321,7 @@ This project utilizes several dependencies and libraries to provide functionalit
 - **[@oclif/plugin-command-snapshot](https://www.npmjs.com/package/@oclif/plugin-command-snapshot)**: A plugin used to create and verify command snapshots during testing, ensuring CLI commands function as expected across updates.
 - **[@salesforce/cli-plugins-testkit](https://www.npmjs.com/package/@salesforce/cli-plugins-testkit)**: Provides a set of tools and helpers to test Salesforce CLI plugins, ensuring they work correctly in different environments.
 - **[@salesforce/dev-scripts](https://www.npmjs.com/package/@salesforce/dev-scripts)**: A set of scripts and configuration files used to automate common development tasks, such as building, testing, and linting the project.
-- \*\*[@types/unzipper](https://www.npmjs.com
-
-/package/@types/unzipper)\*\*: TypeScript type definitions for the `unzipper` library, ensuring that ZIP file extraction operations are properly typed and safe.
+- **[@types/unzipper](https://www.npmjs.com/package/@types/unzipper)**: TypeScript type definitions for the `unzipper` library, ensuring that ZIP file extraction operations are properly typed and safe.
 
 - **[eslint-plugin-sf-plugin](https://www.npmjs.com/package/eslint-plugin-sf-plugin)**: An ESLint plugin providing rules and configurations specifically for Salesforce CLI plugins, helping to maintain consistent code quality and style.
 - **[oclif](https://www.npmjs.com/package/oclif)**: The Oclif framework is used for building the CLI tool, providing the foundation for command parsing, help generation, and other core features.
