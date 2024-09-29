@@ -18,10 +18,11 @@ sf plugins install sftasker
 
 Because this plugin is not signed, you may see a warning during installation. Proceed by confirming with `y` (yes) to continue.
 
-To update the plugin:
+To update the plugin, uninstall it and then reinstall it:
 
 ```bash
-sf plugins update sftasker
+sf plugins uninstall sftasker
+sf plugins install sftasker
 ```
 
 ### Running the Plugin from Source Code
