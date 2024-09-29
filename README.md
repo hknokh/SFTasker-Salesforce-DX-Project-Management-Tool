@@ -1,10 +1,14 @@
 # SFTasker: Salesforce DX Project Management Tool
 
+[TOC]
+
 `sftasker` is a powerful SF CLI plugin designed for Salesforce Developers and Administrators. It contains a set of useful commands that streamline Salesforce DX project management, addressing tasks like metadata merging for Profiles, Translations, and CustomLabels. These automation tools help reduce manual effort, prevent data loss, and improve overall workflow efficiency, making it easier to manage complex Salesforce projects.
 
 ⚠ **Note:** This is an unofficial Salesforce plugin and is not endorsed or supported by Salesforce. Please test thoroughly before using in production environments.
 
 ## Installation
+
+### Installing the Plugin for Salesforce CLI
 
 To install `sftasker`, run:
 
@@ -19,6 +23,61 @@ To update the plugin:
 ```bash
 sf plugins update sftasker
 ```
+
+### Running the Plugin from Source Code
+
+If you prefer to run `sftasker` directly from source without installing it as a plugin, follow these steps:
+
+1. **Clone the repository:**
+
+   ```bash
+   git clone https://github.com/hknokh/sftasker.git
+   cd sftasker
+   ```
+
+2. **Install dependencies:**
+
+   Run the following command to install all the required dependencies:
+
+   ```bash
+   npm install
+   ```
+
+3. **Run the plugin commands locally:**
+
+   After installing dependencies, you can execute any of the plugin's commands using the following format:
+
+   ```bash
+   ./bin/dev sftasker <command> [options]
+   ```
+
+   For example, to run the `merge-meta` command, you can use:
+
+   ```bash
+   ./bin/dev sftasker merge-meta -o <orgAlias> -t Profile -m "path/to/package.xml" -r "path/to/metadata-root"
+   ```
+
+   This allows you to test and use the plugin's commands without installing it via `sf plugins install`.
+
+4. **Linking the plugin locally using `sf plugins link`:**
+
+   To use the plugin source code locally as a linked plugin and avoid running it from the development directory each time, you can link the plugin to your local Salesforce CLI with the following command:
+
+   ```bash
+   sf plugins link
+   ```
+
+   This will link the local plugin to your Salesforce CLI, making it available globally like a normally installed plugin. Once linked, you can run the plugin commands directly from any directory without having to use `./bin/dev`.
+
+   For example:
+
+   ```bash
+   sf sftasker merge-meta -o <orgAlias> -t Profile -m "path/to/package.xml" -r "path/to/metadata-root"
+   ```
+
+5. **Debugging:**
+
+   To debug the plugin, follow the instructions in the [Debugging](#debugging) section below using Visual Studio Code or another debugging tool.
 
 ## `merge-meta` Command
 
