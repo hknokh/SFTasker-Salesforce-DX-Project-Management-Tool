@@ -78,7 +78,7 @@ If you prefer to run `sftasker` directly from source without installing it as a 
 
 5. **Debugging:**
 
-   To debug the plugin, follow the instructions in the [Debugging](#debugging) section below using Visual Studio Code or another debugging tool.
+   To debug the plugin, follow the instructions in the [Debugging](#debugging) section below using Visual Studio Code.
 
 ## `merge-meta` Command
 
