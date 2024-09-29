@@ -1,4 +1,4 @@
-# `sftasker`
+# SFTasker: Salesforce DX Project Management Toolkit
 
 `sftasker` is a modern toolset designed to simplify Salesforce project management and automation. It streamlines complex workflows such as metadata merging and project component management, ensuring no critical configurations are lost or overwritten. The first command available, `merge-meta`, intelligently handles metadata merging.
 
