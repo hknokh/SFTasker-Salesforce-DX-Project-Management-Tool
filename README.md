@@ -2,8 +2,6 @@
 
 `sftasker` is a powerful SF CLI plugin designed for Salesforce Developers and Administrators. It helps streamline Salesforce DX project management by providing tools for tasks such as metadata merging for Profiles, Translations, and CustomLabels. These automation tools reduce manual effort, prevent data loss, and enhance workflow efficiency, making it easier to manage complex Salesforce projects.
 
-The plugin is built using the latest [**Salesforce CLI custom plugin template**](https://github.com/salesforcecli/cli/wiki/Quick-Introduction-to-Developing-sf-Plugins) and follows **best practices** in Salesforce CLI plugin development to ensure optimal performance and reliability.
-
 ⚠ **Note:** This is an unofficial Salesforce plugin and is not endorsed or supported by Salesforce. Please test thoroughly before using in production environments.
 
 ## Installation
