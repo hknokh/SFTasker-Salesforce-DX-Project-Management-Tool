@@ -143,9 +143,7 @@ When running the plugin **outside the SFDX project root**, you will need to expl
 
 #### Notes
 
-- **Use Version Control**: It is
-
-recommended to use version control (e.g., Git) to store your Salesforce DX project. This allows you to easily track changes made by the plugin and provides a safety net if unintended changes occur.
+- **Use Version Control**: It is recommended to use version control (e.g., Git) to store your Salesforce DX project. This allows you to easily track changes made by the plugin and provides a safety net if unintended changes occur.
 
 - **Overrides Target Directory**: The `merge-meta` command overrides the metadata in the target directory specified by the `-r` flag. Ensure that the correct path is provided to avoid unintentional modifications.
 - **Metadata Retrieval Timeout**: The command has a maximum metadata retrieval timeout of 5 minutes. Avoid using overly large `package.xml` files; instead, prefer smaller packages with only necessary components to ensure successful retrieval.
