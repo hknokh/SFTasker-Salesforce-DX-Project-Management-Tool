@@ -1,6 +1,6 @@
 # SFTasker: Salesforce DX Project Management Tool
 
-`sftasker` is a powerful SF CLI plugin designed for Salesforce Developers and Administrators. It helps streamline Salesforce DX project management by providing tools for tasks such as metadata merging for Profiles, Translations, and CustomLabels. These automation tools reduce manual effort, prevent data loss, and enhance workflow efficiency, making it easier to manage complex Salesforce projects.
+`sftasker` is a powerful SF CLI plugin designed for Salesforce Developers and Administrators. It contains a set of useful commands that streamline Salesforce DX project management, addressing tasks like metadata merging for Profiles, Translations, and CustomLabels. These automation tools help reduce manual effort, prevent data loss, and improve overall workflow efficiency, making it easier to manage complex Salesforce projects.
 
 ⚠ **Note:** This is an unofficial Salesforce plugin and is not endorsed or supported by Salesforce. Please test thoroughly before using in production environments.
 
