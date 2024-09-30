@@ -242,6 +242,9 @@ export class MetadataUtils<T> {
 
       // Unzip and process files
       return await new Promise<string>((resolve) => {
+        let pendingWrites = 0; // Counter for pending write streams
+        let unzipFinished = false; // Flag to indicate if unzip has finished
+
         zipStream
           .pipe(unzipper.Parse())
           .on('entry', (entry: unzipper.Entry) => {
@@ -253,6 +256,8 @@ export class MetadataUtils<T> {
 
             // If entry is a file, write it to the output directory
             if (entry.type === 'File') {
+              pendingWrites++; // Increment pending writes counter
+
               const writeStream = fs.createWriteStream(filePath);
 
               // Pipe the entry to the write stream
@@ -261,6 +266,18 @@ export class MetadataUtils<T> {
               // Ensure the write stream is properly closed after writing
               writeStream.on('finish', () => {
                 writeStream.close();
+                pendingWrites--; // Decrement pending writes counter
+
+                // If unzip is finished and no pending writes, resolve the promise
+                if (unzipFinished && pendingWrites === 0) {
+                  CommandUtils.spinnerwithComponentMessage(
+                    this.command,
+                    'stop',
+                    'success.retrieving-metadata',
+                    metadataTypeName
+                  );
+                  resolve(tempOutputDir);
+                }
               });
             } else {
               entry.autodrain(); // Skip directories
@@ -270,14 +287,18 @@ export class MetadataUtils<T> {
             CommandUtils.throwWithErrorMessage(this.command, err, 'error.retrieving-metadata', metadataTypeName);
           })
           .on('close', () => {
-            // Wait until all streams have closed
-            CommandUtils.spinnerwithComponentMessage(
-              this.command,
-              'stop',
-              'success.retrieving-metadata',
-              metadataTypeName
-            );
-            resolve(tempOutputDir);
+            unzipFinished = true; // Set unzip finished flag
+
+            // If no pending writes, resolve the promise
+            if (pendingWrites === 0) {
+              CommandUtils.spinnerwithComponentMessage(
+                this.command,
+                'stop',
+                'success.retrieving-metadata',
+                metadataTypeName
+              );
+              resolve(tempOutputDir);
+            }
           });
       });
     } catch (err) {
@@ -336,6 +357,9 @@ export class MetadataUtils<T> {
       // Unzip and process the retrieved package
       let componentCount = 0;
       return await new Promise<string>((resolve) => {
+        let pendingWrites = 0; // Counter for pending write streams
+        let unzipFinished = false; // Flag to indicate if unzip has finished
+
         zipStream
           .pipe(unzipper.Parse())
           .on('entry', (entry: unzipper.Entry) => {
@@ -349,6 +373,7 @@ export class MetadataUtils<T> {
             // If it's a file, write it to the directory
             if (entry.type === 'File') {
               componentCount++;
+              pendingWrites++; // Increment pending writes counter
 
               const writeStream = fs.createWriteStream(filePath);
               entry.pipe(writeStream);
@@ -356,6 +381,19 @@ export class MetadataUtils<T> {
               // Ensure the write stream is properly closed after writing
               writeStream.on('finish', () => {
                 writeStream.close();
+                pendingWrites--; // Decrement pending writes counter
+
+                // If unzip is finished and no pending writes, resolve the promise
+                if (unzipFinished && pendingWrites === 0) {
+                  CommandUtils.spinnerwithComponentMessage(
+                    this.command,
+                    'stop',
+                    'success.retrieving-package',
+                    packagePath,
+                    componentCount.toString()
+                  );
+                  resolve(tempOutputDir);
+                }
               });
             } else {
               entry.autodrain(); // Skip directories
@@ -365,14 +403,18 @@ export class MetadataUtils<T> {
             CommandUtils.throwWithErrorMessage(this.command, err, 'error.retrieving-package', packagePath);
           })
           .on('close', () => {
-            CommandUtils.spinnerwithComponentMessage(
-              this.command,
-              'stop',
-              'success.retrieving-package',
-              packagePath,
-              componentCount.toString()
-            );
-            resolve(tempOutputDir);
+            unzipFinished = true; // Set unzip finished flag
+            // If no pending writes, resolve the promise
+            if (pendingWrites === 0) {
+              CommandUtils.spinnerwithComponentMessage(
+                this.command,
+                'stop',
+                'success.retrieving-package',
+                packagePath,
+                componentCount.toString()
+              );
+              resolve(tempOutputDir);
+            }
           });
       });
     } catch (err) {

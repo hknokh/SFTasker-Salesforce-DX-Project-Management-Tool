@@ -61,7 +61,7 @@ export class CommandUtils {
         fs.rmSync(tempDir, { recursive: true, force: true });
       }
     } catch (error) {
-      //this.throwWithErrorMessage(command, error as Error, 'errors.deleting-temp-dir', tempDir);
+      this.throwWithErrorMessage(command, error as Error, 'errors.deleting-temp-dir', tempDir);
     }
   }
 
