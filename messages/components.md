@@ -38,6 +38,10 @@ Missing root tag in metadata xml file '%s'.
 
 Missing section '%s' in metadata xml file '%s'.
 
+# errors.deleting-temp-dir
+
+An error occurred while deleting temporary directory '%s'. %s. %s.
+
 # progress.merging-metadata-xml
 
 Trying to merge metadata xml files: '%s', '%s'...

@@ -39,6 +39,10 @@ Merges properties from source and target sections in the output metadata XML, co
 
 The type of metadata to merge.
 
+# flags.keep-temp-dirs.summary
+
+Prevents automatic deletion of temporary directories created during command execution, useful for debugging or inspection of intermediate files.
+
 # command.progress.metadata-root-folder
 
 Target metadata root folder: %s

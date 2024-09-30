@@ -63,6 +63,11 @@ export type SftaskerCommandFlags = {
    * The type of metadata to merge.
    */
   type: AvailableMetadataTypes;
+
+  /**
+   * A flag indicating whether to keep the temporary directories created during the command execution.
+   */
+  'keep-temp-dirs'?: boolean;
 };
 
 /**

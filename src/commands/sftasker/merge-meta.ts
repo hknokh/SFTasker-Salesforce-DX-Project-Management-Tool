@@ -55,6 +55,11 @@ export default class SftaskerMergeMeta extends SFtaskerCommand<SftaskerMergeMeta
       required: true,
       options: ['Profile', 'CustomLabels', 'Translations'] as const,
     })(),
+
+    'keep-temp-dirs': Flags.boolean({
+      summary: messages.getMessage('flags.keep-temp-dirs.summary'),
+      char: 'k',
+    }),
   };
 
   public async run(): Promise<SftaskerMergeMetaResult> {
@@ -132,6 +137,11 @@ export default class SftaskerMergeMeta extends SFtaskerCommand<SftaskerMergeMeta
         forceAppProjectRootFolder,
         Constants.PACKAGE_XML_METADATA_NAME_TO_FILE_REGEX_REPLACE_MAPPING[flags.type]
       );
+    }
+
+    if (!flags['keep-temp-dirs']) {
+      // Delete the temporary directory
+      CommandUtils.deleteTempDirectory(this, manifestTempFolder);
     }
 
     // Log the command completion message

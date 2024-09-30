@@ -51,6 +51,21 @@ export class CommandUtils {
   }
 
   /**
+   *  Deletes the temporary directory created for the command execution.
+   * @param command  The command object for which the directory is being deleted
+   * @param tempDir  The path of the temporary directory to be deleted
+   */
+  public static deleteTempDirectory<T>(command: SFtaskerCommand<T>, tempDir: string): void {
+    try {
+      if (fs.existsSync(tempDir)) {
+        fs.rmSync(tempDir, { recursive: true, force: true });
+      }
+    } catch (error) {
+      //this.throwWithErrorMessage(command, error as Error, 'errors.deleting-temp-dir', tempDir);
+    }
+  }
+
+  /**
    * Throws an error with a detailed error message, including the stack trace.
    * @template T - The type used in the SFtaskerCommand.
    * @param {SFtaskerCommand<T>} command - The command object where the error is thrown.
