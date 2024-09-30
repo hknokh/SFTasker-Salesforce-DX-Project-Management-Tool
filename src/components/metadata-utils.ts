@@ -222,7 +222,7 @@ export class MetadataUtils<T> {
       // Log the progress of the metadata retrieval
       CommandUtils.spinnerwithComponentMessage(this.command, 'start', 'progress.retrieving-metadata', metadataTypeName);
 
-      const tempOutputDir = fs.mkdtempSync(path.join(this.outputDir, metadataTypeName + '-'));
+      const tempOutputDir = fs.mkdtempSync(path.join(this.outputDir, `${metadataTypeName}-`));
       const zipStream = this.command.connection.metadata
         .retrieve({
           apiVersion: Number(Constants.DEFAULT_API_VERSION),
@@ -253,7 +253,15 @@ export class MetadataUtils<T> {
 
             // If entry is a file, write it to the output directory
             if (entry.type === 'File') {
-              entry.pipe(fs.createWriteStream(filePath));
+              const writeStream = fs.createWriteStream(filePath);
+
+              // Pipe the entry to the write stream
+              entry.pipe(writeStream);
+
+              // Ensure the write stream is properly closed after writing
+              writeStream.on('finish', () => {
+                writeStream.close();
+              });
             } else {
               entry.autodrain(); // Skip directories
             }
@@ -261,7 +269,8 @@ export class MetadataUtils<T> {
           .on('error', (err: Error) => {
             CommandUtils.throwWithErrorMessage(this.command, err, 'error.retrieving-metadata', metadataTypeName);
           })
-          .on('finish', () => {
+          .on('close', () => {
+            // Wait until all streams have closed
             CommandUtils.spinnerwithComponentMessage(
               this.command,
               'stop',
@@ -340,7 +349,14 @@ export class MetadataUtils<T> {
             // If it's a file, write it to the directory
             if (entry.type === 'File') {
               componentCount++;
-              entry.pipe(fs.createWriteStream(filePath));
+
+              const writeStream = fs.createWriteStream(filePath);
+              entry.pipe(writeStream);
+
+              // Ensure the write stream is properly closed after writing
+              writeStream.on('finish', () => {
+                writeStream.close();
+              });
             } else {
               entry.autodrain(); // Skip directories
             }
@@ -348,7 +364,7 @@ export class MetadataUtils<T> {
           .on('error', (err: Error) => {
             CommandUtils.throwWithErrorMessage(this.command, err, 'error.retrieving-package', packagePath);
           })
-          .on('finish', () => {
+          .on('close', () => {
             CommandUtils.spinnerwithComponentMessage(
               this.command,
               'stop',
