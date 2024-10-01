@@ -16,4 +16,4 @@ This release includes several features and bug fixes.
 
 ### Summary
 
-- This is the initial release of the plugin.
+This is the initial release of the plugin.
