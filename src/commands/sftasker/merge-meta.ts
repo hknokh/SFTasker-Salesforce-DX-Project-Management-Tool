@@ -1,4 +1,3 @@
-import { Messages } from '@salesforce/core';
 import { Flags } from '@salesforce/sf-plugins-core';
 import { CommandUtils } from '../../components/command-utils.js';
 import { Constants } from '../../components/constants.js';
@@ -7,18 +6,16 @@ import { SFtaskerCommand } from '../../components/models.js';
 import { FindMatchingFilesResult } from '../../components/types.js';
 import { Utils } from '../../components/utils.js';
 
-Messages.importMessagesDirectoryFromMetaUrl(import.meta.url);
-
-const messages = Messages.loadMessages('sftasker', 'merge-meta');
-const componentsMessages = Messages.loadMessages('sftasker', 'components');
-
 export type SftaskerMergeMetaResult = Record<string, never>;
+
+// Set up the command messages
+const messages = CommandUtils.setupCommandMessages('sftasker', 'merge-meta');
 
 // eslint-disable-next-line sf-plugin/only-extend-SfCommand
 export default class SftaskerMergeMeta extends SFtaskerCommand<SftaskerMergeMetaResult> {
-  public static readonly summary = messages.getMessage('summary');
-  public static readonly description = messages.getMessage('description');
-  public static readonly examples = messages.getMessages('examples');
+  public static readonly summary = messages.commandMessages.getMessage('summary');
+  public static readonly description = messages.commandMessages.getMessage('description');
+  public static readonly examples = messages.commandMessages.getMessages('examples');
 
   // eslint-disable-next-line sf-plugin/spread-base-flags
   public static readonly flags = {
@@ -26,38 +23,38 @@ export default class SftaskerMergeMeta extends SFtaskerCommand<SftaskerMergeMeta
     apiversion: Flags.orgApiVersion(),
 
     manifest: Flags.string({
-      summary: messages.getMessage('flags.manifest.summary'),
+      summary: messages.commandMessages.getMessage('flags.manifest.summary'),
       char: 'm',
       default: Constants.DEFAULT_MANIFEST_PATH,
     }),
 
     'metadata-root-folder': Flags.string({
-      summary: messages.getMessage('flags.metadata-root-folder.summary'),
+      summary: messages.commandMessages.getMessage('flags.metadata-root-folder.summary'),
       char: 'r',
       required: false,
     }),
 
     dedup: Flags.boolean({
-      summary: messages.getMessage('flags.dedup.summary'),
+      summary: messages.commandMessages.getMessage('flags.dedup.summary'),
       char: 'd',
       hidden: true, // This flag is managed internally
     }),
 
     'merge-props': Flags.boolean({
-      summary: messages.getMessage('flags.merge-props.summary'),
+      summary: messages.commandMessages.getMessage('flags.merge-props.summary'),
       char: 'e',
       hidden: true, // This flag is managed internally
     }),
 
     type: Flags.option({
-      summary: messages.getMessage('flags.type.summary'),
+      summary: messages.commandMessages.getMessage('flags.type.summary'),
       char: 't',
       required: true,
       options: ['Profile', 'CustomLabels', 'Translations'] as const,
     })(),
 
     'keep-temp-dirs': Flags.boolean({
-      summary: messages.getMessage('flags.keep-temp-dirs.summary'),
+      summary: messages.commandMessages.getMessage('flags.keep-temp-dirs.summary'),
       char: 'k',
     }),
   };
@@ -66,9 +63,10 @@ export default class SftaskerMergeMeta extends SFtaskerCommand<SftaskerMergeMeta
     const { flags } = await this.parse(SftaskerMergeMeta);
 
     // Set up the command with the necessary properties
-    CommandUtils.setupCommand(this, messages, componentsMessages, flags);
+    CommandUtils.setupCommandInstance(this, messages, flags);
 
-    CommandUtils.logCommandMessage(this, 'command.start', this.id as string);
+    // Log the command start message
+    CommandUtils.logCommandStartMessage(this);
 
     // Create a temporary directory for the command execution
     const tempPath = CommandUtils.createTempDirectory(this);
@@ -145,7 +143,7 @@ export default class SftaskerMergeMeta extends SFtaskerCommand<SftaskerMergeMeta
     }
 
     // Log the command completion message
-    CommandUtils.logCommandMessage(this, 'command.end', this.id as string);
+    CommandUtils.logCommandEndMessage(this);
 
     return {};
   }

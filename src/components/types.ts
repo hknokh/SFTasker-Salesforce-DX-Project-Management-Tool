@@ -1,4 +1,4 @@
-import { Connection } from '@salesforce/core';
+import { Connection, Messages } from '@salesforce/core';
 
 // ------ Command Types ------
 
@@ -28,7 +28,7 @@ export type SfOrg = {
 
 /**
  * Represents the flags used in Sftasker commands.
- * Includes the target Salesforce org and the API version.
+ * Includes the target Salesforce org, source Salesforce org, API version, and various metadata and configuration options.
  */
 export type SftaskerCommandFlags = {
   /**
@@ -38,10 +38,34 @@ export type SftaskerCommandFlags = {
   'target-org'?: SfOrg;
 
   /**
+   * The source Salesforce organization.
+   * @type {SfOrg | undefined}
+   */
+  'source-org'?: SfOrg;
+
+  /**
+   * A flag indicating whether to use a CSV file as the source.
+   * @type {boolean | undefined}
+   */
+  'csv-source'?: boolean;
+
+  /**
+   * A flag indicating whether to use a CSV file as the target.
+   * @type {boolean | undefined}
+   */
+  'csv-target'?: boolean;
+
+  /**
    * The API version to use for the command.
    * @type {string | undefined}
    */
   apiversion?: string;
+
+  /**
+   * The path to the configuration file.
+   * @type {string | undefined}
+   */
+  'config-path'?: string;
 
   /**
    * The path to the root folder of the metadata for the force-app project.
@@ -50,24 +74,36 @@ export type SftaskerCommandFlags = {
   'metadata-root-folder'?: string;
 
   /**
-   * A flag indicating whether to deduplicate the metadata components keeping only the version with the most inner properties.
+   * A flag indicating whether to deduplicate the metadata components, keeping only the version with the most inner properties.
+   * @type {boolean | undefined}
    */
   dedup?: boolean;
 
   /**
-   *  A flag indicating whether to merge the properties of the source and target sections when constructing the final section metadata.
+   * A flag indicating whether to merge the properties of the source and target sections when constructing the final section metadata.
+   * @type {boolean | undefined}
    */
   'merge-props'?: boolean;
 
   /**
    * The type of metadata to merge.
+   * @type {AvailableMetadataTypes | undefined}
    */
-  type: AvailableMetadataTypes;
+  type?: AvailableMetadataTypes;
 
   /**
    * A flag indicating whether to keep the temporary directories created during the command execution.
+   * @type {boolean | undefined}
    */
   'keep-temp-dirs'?: boolean;
+};
+
+/**
+ * Represents the messages for the Sftasker command.
+ */
+export type SftaskerCommandMessages = {
+  commandMessages: Messages<string>;
+  componentsMessages: Messages<string>;
 };
 
 /**

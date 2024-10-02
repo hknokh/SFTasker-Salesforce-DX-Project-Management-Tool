@@ -15,6 +15,12 @@ export class SFtaskerCommand<T> extends SfCommand<T> {
   public orgId!: string;
 
   /**
+   * The Salesforce organization username.
+   * @type {string}
+   */
+  public orgUsername!: string;
+
+  /**
    * Messages related to the command execution.
    * @type {Messages<string>}
    */
@@ -41,7 +47,10 @@ export class SFtaskerCommand<T> extends SfCommand<T> {
 
   public set connection(value: Connection) {
     this._connection = value;
-    this._connection.metadata.pollTimeout = Constants.POLL_TIMEOUT as number;
+    if (this._connection) {
+      this._connection.metadata.pollTimeout = Constants.POLL_TIMEOUT as number;
+      this.orgUsername = this._connection.getUsername() as string;
+    }
   }
 
   /**

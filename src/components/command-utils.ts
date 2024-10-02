@@ -3,32 +3,55 @@ import path from 'node:path';
 import { Connection, Messages } from '@salesforce/core';
 import { Constants } from './constants.js';
 import { SFtaskerCommand } from './models.js';
-import { SftaskerCommandFlags } from './types.js';
+import { AvailableMetadataTypes, SftaskerCommandFlags, SftaskerCommandMessages } from './types.js';
 
 /**
  * Utility class for command-related operations.
  */
 export class CommandUtils {
   /**
-   *  Sets up the command with the necessary properties.
+   * Sets up the command messages for the command.
+   * @param bundleName  The name of the bundle containing the command
+   * @param commandName  The name of the command
+   * @returns The command messages object
+   */
+  public static setupCommandMessages(bundleName: string, commandName: string): SftaskerCommandMessages {
+    Messages.importMessagesDirectoryFromMetaUrl(import.meta.url);
+    const commandIds: string[] = [bundleName, commandName];
+
+    const messages = Messages.loadMessages(commandIds[0], commandIds[1]);
+    const commandMessages = Messages.loadMessages(commandIds[0], 'commands');
+    const componentsMessages = Messages.loadMessages(commandIds[0], 'components');
+
+    return {
+      commandMessages: new Messages(
+        bundleName,
+        commandName,
+        new Map([...messages.messages.entries(), ...commandMessages.messages.entries()])
+      ),
+      componentsMessages,
+    };
+  }
+
+  /**
+   *  Sets up the command instance with the messages, components messages, and flags.
    * @param command  The command object to be set up
    * @param messages  The messages object for the command
    * @param componentsMessages  The messages object for the components used in the command
    * @param flags  The flags object for the command
    */
-  public static setupCommand<T>(
+  public static setupCommandInstance<T>(
     command: SFtaskerCommand<T>,
-    messages: Messages<string>,
-    componentsMessages: Messages<string>,
+    messages: SftaskerCommandMessages,
     flags: SftaskerCommandFlags
   ): void {
     const updatedCommand = command;
-    updatedCommand.messages = messages;
-    updatedCommand.componentsMessages = componentsMessages;
+    updatedCommand.messages = messages.commandMessages;
+    updatedCommand.componentsMessages = messages.componentsMessages;
     updatedCommand.flags = flags;
     // Internally manage some of the flags
-    Object.assign(flags, Constants.PACKAGE_XML_METADATA_NAME_TO_FLAG_MAPPING[flags.type]);
     if (flags) {
+      Object.assign(flags, Constants.PACKAGE_XML_METADATA_NAME_TO_FLAG_MAPPING[flags.type as AvailableMetadataTypes]);
       updatedCommand.connection = flags['target-org']?.getConnection(flags.apiversion as string) as Connection;
       updatedCommand.orgId = flags['target-org']?.getOrgId() as string;
     }
@@ -120,6 +143,22 @@ export class CommandUtils {
    */
   public static logCommandMessage<T>(command: SFtaskerCommand<T>, messageKey: string, ...messageArgs: string[]): void {
     command.log('[COMMAND INFO] ' + command.messages.getMessage(messageKey, messageArgs));
+  }
+
+  /**
+   *  Logs a command start message in the command.
+   * @param command  The command object in which the message is logged
+   */
+  public static logCommandStartMessage<T>(command: SFtaskerCommand<T>): void {
+    this.logCommandMessage(command, 'command.start', command.id as string);
+  }
+
+  /**
+   *  Logs a command end message in the command.
+   * @param command  The command object in which the message is logged
+   */
+  public static logCommandEndMessage<T>(command: SFtaskerCommand<T>): void {
+    this.logCommandMessage(command, 'command.end', command.id as string);
   }
 
   /**
