@@ -18,7 +18,7 @@ Metadata files such as **Profiles**, **Translations**, and **Custom Labels** con
 
 When you retrieve only a specific component (e.g., `objectPermissions` for the `Account` object), the **Salesforce CLI** typically **overwrites the entire file** with just the retrieved section. This can result in losing other sections that weren't part of the current operation.
 
-##### Example
+#### Example
 
 Here's an example of a `package.xml` manifest file that retrieves only the `MyAdmin` custom Profile and the `Account` custom object:
 
@@ -39,7 +39,7 @@ Here's an example of a `package.xml` manifest file that retrieves only the `MyAd
 
 This `package.xml` will only retrieve the **objectPermissions** for the `Account` object within the `MyAdmin` Profile.
 
-**Initial Profile File Content:**
+##### **Initial Profile File Content:**
 
 Below is an example of a Profile metadata file (`MyAdmin.profile-meta.xml`) that contains both `objectPermissions` and `fieldPermissions` sections:
 
@@ -66,7 +66,7 @@ Below is an example of a Profile metadata file (`MyAdmin.profile-meta.xml`) that
 </Profile>
 ```
 
-**Changes in the Salesforce Org:**
+##### **Changes in the Salesforce Org:**
 
 Now, suppose permissions for the `Account` object in the `MyAdmin` profile have been updated to restrict the ability to delete and edit `Account` records. You want to retrieve these changes and store them in your local Salesforce DX project.
 
@@ -76,7 +76,7 @@ Using the standard Salesforce CLI to retrieve the updated permissions from the O
 $ sf project retrieve start -x manifest/package.xml
 ```
 
-**After Retrieval:**
+##### **After Retrieval:**
 
 The new content of the `MyAdmin.profile-meta.xml` file after retrieval will look like this:
 
@@ -110,7 +110,7 @@ Running the same retrieval with `sftasker merge-meta`:
 $ sf sftasker merge-meta -t Profile -x manifest/package.xml
 ```
 
-**After Retrieval:**
+##### **After Retrieval:**
 
 The resulting `MyAdmin.profile-meta.xml` file will contain all sections, with only the `allowDelete` and `allowEdit` permissions updated for the `Account` object:
 
@@ -144,7 +144,7 @@ All sections remain intact, and only the necessary changes were made:
 <allowEdit>false</allowEdit>
 ```
 
-**Using `merge-meta` for Translations and Custom Labels**
+#### **Using `merge-meta` for Translations and Custom Labels**
 
 Additionally, you can use the `merge-meta` command to manage other metadata types, such as **Translations** and **Custom Labels**, ensuring that unretrieved sections are preserved and not overwritten during the process.
 
