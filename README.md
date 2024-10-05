@@ -77,6 +77,10 @@ If you retrieve only the `objectPermissions` for the `Account` object, the CLI m
 ```xml
 <?xml version="1.0" encoding="UTF-8"?>
 <Profile xmlns="http://soap.sforce.com/2006/04/metadata">
+    <userPermissions>
+        <enabled>true</enabled>
+        <name>ViewAllData</name>
+    </userPermissions>
     <objectPermissions>
         <object>Account</object>
         <allowCreate>true</allowCreate>
@@ -88,7 +92,7 @@ If you retrieve only the `objectPermissions` for the `Account` object, the CLI m
 </Profile>
 ```
 
-As you can see, only the `objectPermissions` section for `Account` exists, but the `fieldPermissions` and `userPermissions` sections **are missing** after the retrieval, even though they weren't part of the operation.
+As you can see, only the `objectPermissions` section for `Account` exists, but the `fieldPermissions` section **is missing** after the retrieval, even though they weren't part of the operation.
 
 #### How `merge-meta` Solves This
 
