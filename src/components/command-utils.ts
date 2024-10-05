@@ -29,7 +29,7 @@ export class CommandUtils {
     // Internally manage some of the flags
     Object.assign(flags, Constants.PACKAGE_XML_METADATA_NAME_TO_FLAG_MAPPING[flags.type]);
     if (flags) {
-      updatedCommand.connection = flags['target-org']?.getConnection(flags.apiversion as string) as Connection;
+      updatedCommand.connection = flags['target-org']?.getConnection(flags['api-version'] as string) as Connection;
       updatedCommand.orgId = flags['target-org']?.getOrgId() as string;
     }
   }
