@@ -10,23 +10,23 @@
 
 #### Use Case
 
-The `merge-meta` command addresses a common issue when working with Salesforce metadata, such as Profiles, Custom Labels, or Translations. In Salesforce DX projects, metadata files often contain multiple sections that represent different settings, such as permissions, labels, and translations. When retrieving metadata, only certain sections may be pulled, causing other sections in the file to be lost.
+The `merge-meta` command addresses a common issue in Salesforce metadata management, especially for Profiles, Custom Labels, or Translations. In Salesforce DX projects, metadata files often contain multiple sections representing different settings, such as permissions, labels, and translations. When retrieving metadata using tools like Salesforce CLI, only certain sections may be pulled, potentially causing other sections to be lost.
 
 #### The Problem with Partial Metadata Retrieval
 
-Metadata files like **Profiles**, **Translations**, and **Custom Labels** consist of multiple sections that define settings for all permissions, labels, or translations. For example, a Profile file might include sections for object permissions, field-level security, user permissions, and other settings. The same issue occurs for **Custom Labels** and **Translations**, as these metadata types also have multiple sections in a single file. Retrieving only part of the file can result in the loss of other sections.
+Metadata files such as **Profiles**, **Translations**, and **Custom Labels** consist of multiple sections defining various settings. For example, a **Profile** file might contain sections for object permissions, field-level security, user permissions, and more.
 
-When you retrieve only a specific component (e.g., `objectPermissions` for the `Account` object), the Salesforce CLI overwrites the entire file with just the retrieved section. This results in other sections, such as `fieldPermissions`, being lost from the file, even though they weren't part of the current operation.
+When you retrieve only a specific component (e.g., `objectPermissions` for the `Account` object), the **Salesforce CLI** typically **overwrites the entire file** with just the retrieved section. This can result in losing other sections that weren't part of the current operation.
 
-##### Example:
+##### Example
 
-Here is an example of a `package.xml` manifest file that retrieves only the `Admin` Profile and the `Account` custom object:
+Here's an example of a `package.xml` manifest file that retrieves only the `MyAdmin` custom Profile and the `Account` custom object:
 
 ```xml
 <?xml version="1.0" encoding="UTF-8"?>
 <Package xmlns="http://soap.sforce.com/2006/04/metadata">
     <types>
-        <members>Admin</members>
+        <members>MyAdmin</members>
         <name>Profile</name>
     </types>
     <types>
@@ -37,11 +37,11 @@ Here is an example of a `package.xml` manifest file that retrieves only the `Adm
 </Package>
 ```
 
-This `package.xml` will retrieve the `objectPermissions` for the `Account` object as part of the `Admin` Profile. However, since the Salesforce CLI pulls only the specified components, it might overwrite the Profile metadata file (`Admin.profile-meta.xml`), causing sections like `fieldPermissions`, `userPermissions`, and others to be lost.
+This `package.xml` will only retrieve the **objectPermissions** for the `Account` object within the `MyAdmin` Profile.
 
-**Initial Profile file content:**
+**Initial Profile File Content:**
 
-Below is an example of a Profile metadata file (`Admin.profile-meta.xml`) that contains both `objectPermissions` and `fieldPermissions` sections:
+Below is an example of a Profile metadata file (`MyAdmin.profile-meta.xml`) that contains both `objectPermissions` and `fieldPermissions` sections:
 
 ```xml
 <?xml version="1.0" encoding="UTF-8"?>
@@ -66,13 +66,19 @@ Below is an example of a Profile metadata file (`Admin.profile-meta.xml`) that c
 </Profile>
 ```
 
-**Changes made in the Salesforce Org**
+**Changes in the Salesforce Org:**
 
-Let's say we changed the `viewAllRecords` permission for the Account object within the `Admin` profile to `false` and want to pull these changes from the Org to our local Salesforce DX project to store them in the Git repository. We use the standard Salesforce CLI to retrieve the content of the above `package.xml`, which contains only the permissions for the Account object that were actually changed in the Salesforce Org.
+Now, suppose permissions for the `Account` object in the `MyAdmin` profile have been updated to restrict the ability to delete and edit `Account` records. You want to retrieve these changes and store them in your local Salesforce DX project.
 
-**After retrieval:**
+Using the standard Salesforce CLI to retrieve the updated permissions from the Org:
 
-If you retrieve only the `objectPermissions` for the `Account` object, the CLI might overwrite the entire file with just this section, causing the `fieldPermissions` section to be lost:
+```bash
+$ sf project retrieve start -x manifest/package.xml
+```
+
+**After Retrieval:**
+
+The new content of the `MyAdmin.profile-meta.xml` file after retrieval will look like this:
 
 ```xml
 <?xml version="1.0" encoding="UTF-8"?>
@@ -84,21 +90,29 @@ If you retrieve only the `objectPermissions` for the `Account` object, the CLI m
     <objectPermissions>
         <object>Account</object>
         <allowCreate>true</allowCreate>
-        <allowDelete>true</allowDelete>
-        <allowEdit>true</allowEdit>
+        <allowDelete>false</allowDelete>
+        <allowEdit>false</allowEdit>
         <allowRead>true</allowRead>
-        <viewAllRecords>false</viewAllRecords>
+        <viewAllRecords>true</viewAllRecords>
     </objectPermissions>
 </Profile>
 ```
 
-As you can see, only the `objectPermissions` section for `Account` exists, but the `fieldPermissions` section **is missing** after the retrieval, even though they weren't part of the operation.
+As you can see, only the `objectPermissions` section for `Account` remains, and the `fieldPermissions` section is missing, even though it wasn't part of the retrieval operation. If your profile contains many other sections, overwriting or reordering them can become more problematic and undesirable.
 
 #### How `merge-meta` Solves This
 
-The `merge-meta` command **prevents such data loss** by **intelligently merging** the newly retrieved metadata sections with the existing ones in the file, ensuring that no settings are lost during the retrieval process. For example, when you retrieve the `objectPermissions` section, the command will merge it with the existing `fieldPermissions` and other sections in the file, rather than overwriting the entire file.
+The `merge-meta` command prevents data loss by intelligently merging newly retrieved metadata sections with existing ones. Instead of overwriting the entire file, the command retains sections that were not part of the current retrieval.
 
-The resulting `Admin.profile-meta.xml` after retrieving the `package.xml` content using the `merge-meta`:
+Running the same retrieval with `sftasker merge-meta`:
+
+```bash
+$ sf sftasker merge-meta -t Profile -x manifest/package.xml
+```
+
+**After Retrieval:**
+
+The resulting `MyAdmin.profile-meta.xml` file will contain all sections, with only the `allowDelete` and `allowEdit` permissions updated for the `Account` object:
 
 ```xml
 <?xml version="1.0" encoding="UTF-8"?>
@@ -112,42 +126,43 @@ The resulting `Admin.profile-meta.xml` after retrieving the `package.xml` conten
         <readable>true</readable>
         <editable>true</editable>
     </fieldPermissions>
-   <objectPermissions>
+    <objectPermissions>
         <object>Account</object>
         <allowCreate>true</allowCreate>
-        <allowDelete>true</allowDelete>
-        <allowEdit>true</allowEdit>
+        <allowDelete>false</allowDelete>
+        <allowEdit>false</allowEdit>
         <allowRead>true</allowRead>
-        <viewAllRecords>false</viewAllRecords>
+        <viewAllRecords>true</viewAllRecords>
     </objectPermissions>
 </Profile>
 ```
 
-You can see that now all sections and their order remain unchanged, and the `viewAllRecords` for Account is set to `false`:
+All sections remain intact, and only the necessary changes were made:
 
 ```xml
-...
-<viewAllRecords>false</viewAllRecords>
-...
+<allowDelete>false</allowDelete>
+<allowEdit>false</allowEdit>
 ```
 
-You can also use the `merge-meta` command to intelligently merge **Translations** and **CustomLabels** metadata, which face the same issue of overriding unretrieved sections in the same way.
+**Using `merge-meta` for Translations and Custom Labels**
+
+Additionally, you can use the `merge-meta` command to manage other metadata types, such as **Translations** and **Custom Labels**, ensuring that unretrieved sections are preserved and not overwritten during the process.
 
 #### Running the `merge-meta` Command
 
 Below is the full format to run the `merge-meta` command using the console:
 
 ```bash
-$ sf sftasker merge-meta -o <value> -t Profile|CustomLabels|Translations [--json] [--manifest <value>] [--apiversion <value>] [-r <value>]
+$ sf sftasker merge-meta -o <value> -t Profile|CustomLabels|Translations [--json] [--flags-dir <value>] [-a <value>] [-x <value>] [-r <value>] [-k]
 ```
 
 ##### Flags
 
 - **`-o, --target-org=<value>`**: The alias or username of the target Salesforce org. **Note**: The `-o` flag can be omitted if you run the command from within a Salesforce DX project where the default org is already set.
-- **`-m, --manifest=<value>`**: Path to the `package.xml` file for metadata retrieval. **Note**: This flag is mandatory when the plugin is run from **outside** the Salesforce DX project directory. However, it is optional when running from inside the project, as it defaults to the standard `manifest/package.xml` location.
+- **`-x, --manifest=<value>`**: Path to the `package.xml` file for metadata retrieval. **Note**: This flag is mandatory when the plugin is run from **outside** the Salesforce DX project directory. However, it is optional when running from inside the project, as it defaults to the standard `manifest/package.xml` location.
 - **`-t, --type=<Profile|CustomLabels|Translations>`** (required): The type of metadata to merge. **Note**: The `package.xml` can include other metadata types, but the plugin will only focus on the metadata type specified by the `--type` flag.
 - **`-r, --metadata-root-folder=<value>`**: Local folder where metadata is stored. **Note**: When running the command **outside** the SFDX project root, you need to specify the `-r` flag explicitly to locate and access the project's metadata. However, when running inside the SFDX project root, the plugin automatically uses the default metadata path specified in the `sfdx-project.json` file. This means the `-r` flag can be omitted if the plugin runs within the SFDX project root and the correct path is defined in `sfdx-project.json`.
-- **`--apiversion=<value>`**: Override the API version used for Salesforce requests.
+- **`-a, --api-version=<value>`**: Override the API version used for Salesforce requests.
 - **`--json`**: Formats the output as JSON. When the command succeeds, it returns an empty result with a `'status': 0` response, as shown below:
 
   ```json
