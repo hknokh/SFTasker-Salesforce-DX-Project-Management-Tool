@@ -18,9 +18,9 @@ Indicates that the data target is a CSV file instead of a Salesforce organizatio
 
 Absolute or relative path to the package.xml file containing the profiles to retrieve from the org.
 
-# flags.metadata-root-folder.summary
+# flags.source-dir.summary
 
-Absolute or relative path to the root folder of the Salesforce DX project where the profiles are stored. Defaults to the path specified in the sfdx-project.json manifest file when run inside an SFDX project.
+Absolute or relative path to the root folder of the metadata within the Salesforce DX project (for example, 'force-app'). Defaults to the path specified in the sfdx-project.json manifest file when run inside an SFDX project.
 
 # flags.config-path.summary
 

@@ -623,7 +623,10 @@ export class MetadataUtils<T> {
    */
   public getMetadataRootFolder(metadataTypeName: string, metadataRootFolder?: string): string {
     const sfdxMainDefaultPath = MetadataUtils.getForceAppProjectMainDefaultPath();
-    const rootFolder = metadataRootFolder ?? this.command.flags['metadata-root-folder'];
+    const flagMetaRootFolder = this.command.flags['source-dir']
+      ? path.join(this.command.flags['source-dir'], Constants.FORCE_APP_MAIN_DEFAULT_PATH)
+      : '';
+    const rootFolder = metadataRootFolder ?? flagMetaRootFolder;
     const filePath =
       !rootFolder || !path.isAbsolute(rootFolder)
         ? path.join(

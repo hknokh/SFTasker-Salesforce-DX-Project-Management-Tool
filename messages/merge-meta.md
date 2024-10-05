@@ -17,7 +17,8 @@ Key Features:
 # examples
 
 - <%= config.bin %> <%= command.id %> -t CustomLabels
-- <%= config.bin %> <%= command.id %> -t Profile -o ORG-ALIAS -m path/to/manifest/package.xml -r force-app/main/default
+- <%= config.bin %> <%= command.id %> -t CustomLabels -p force-app
+- <%= config.bin %> <%= command.id %> -t Profile -o ORG-ALIAS -x absolute/path/to/force/project/manifest/package.xml -p absolute/path/to/force/project/force-app
 
 # command.progress.metadata-root-folder
 
