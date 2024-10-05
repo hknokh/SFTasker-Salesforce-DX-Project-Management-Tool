@@ -1,8 +1,8 @@
 # SFTasker: Salesforce DX Project Management Tool
 
-`sftasker` is a powerful **SF CLI plugin** designed for Salesforce developers and administrators. It contains a set of useful commands that streamline Salesforce DX project management, addressing tasks like metadata merging for Profiles, Translations, and CustomLabels. These automation tools help reduce manual effort, prevent data loss, and improve overall workflow efficiency, making it easier to manage complex Salesforce projects.
+`sftasker` is a powerful **Salesforce CLI plugin** designed for Salesforce developers and administrators. It includes a set of commands that simplify Salesforce DX project management, addressing specific tasks like metadata merging for Profiles, Translations, and Custom Labels. These automation tools help reduce manual effort, prevent data loss, and improve workflow efficiency, making it easier to manage complex Salesforce projects.
 
-⚠ **Note:** This is an unofficial Salesforce plugin and is not endorsed or supported by Salesforce. Please test thoroughly before using it in production environments.
+⚠ **Note:** This is an unofficial Salesforce plugin and is not endorsed or supported by Salesforce. Be sure to thoroughly test it before using it in production environments.
 
 ## Available Commands
 
@@ -10,118 +10,103 @@
 
 #### Use Case
 
-The `merge-meta` command is designed to solve a common problem when working with Salesforce metadata, such as `Profiles`, `CustomLabels`, or `Translations`. This command is typically used to manage metadata in Salesforce DX projects.
+The `merge-meta` command addresses a common issue when working with Salesforce metadata, such as Profiles, Custom Labels, or Translations. In Salesforce DX projects, metadata files often contain multiple sections that represent different settings, such as permissions, labels, and translations. When retrieving metadata, only certain sections may be pulled, causing other sections in the file to be lost.
 
 #### The Problem with Partial Metadata Retrieval
 
-When pulling metadata from a Salesforce org, such as **Profiles**, **Translations**, or **Custom Labels**, the default behavior of most tools (including the Salesforce CLI) is to retrieve only the specified components. However, when using a partial `package.xml` (one that includes only certain components), the retrieved metadata files may contain only a subset of the data. This creates several problems:
+Metadata files like **Profiles**, **Translations**, and **Custom Labels** consist of multiple sections that define settings for all permissions, labels, or translations. For example, a Profile file might include sections for object permissions, field-level security, user permissions, and other settings. The same issue occurs for **Custom Labels** and **Translations**, as these metadata types also have multiple sections in a single file. Retrieving only a part of the file can result in the loss of other sections.
 
-1. **Incomplete Data**: Only a subset of the profile, translation, or custom labels is retrieved. The local metadata files may lose sections that were not included in the retrieval process, causing important metadata to be lost in your local project.
-2. **Overwriting Local Files**: The retrieved metadata files can overwrite existing local files, replacing them with incomplete data that includes only the components specified in the `package.xml`.
-3. **Reordering of Sections**: When pulling _all components_ (using a wildcard `*` in the `package.xml`), tools often reorder sections in the profile or custom labels files. This makes it difficult to track and review changes in version control, as the reordering creates unnecessary noise in the Git diff, even if no actual changes were made.
+When you retrieve only a specific component (e.g., `objectPermissions` for the `Account` object), the Salesforce CLI overwrites the entire file with just the retrieved section. This results in other sections, such as `fieldPermissions`, being lost from the file, even though they weren't part of the current operation.
 
-#### Examples of the Problem
+##### Example:
 
-##### Partial `package.xml` for **Profiles**
-
-Suppose you have profiles with permissions for multiple objects and fields, but you want to retrieve changes only for a specific custom object, `CustomObject__c`. Your `package.xml` might look like this:
+Here is an example of a `package.xml` manifest file that retrieves only the `Admin` Profile and the `Account` custom object:
 
 ```xml
 <?xml version="1.0" encoding="UTF-8"?>
 <Package xmlns="http://soap.sforce.com/2006/04/metadata">
-  <!-- Include the custom object -->
-  <types>
-    <members>CustomObject__c</members>
-    <name>CustomObject</name>
-  </types>
-  <!-- Include the profiles -->
-  <types>
-    <members>YourProfileName</members>
-    <name>Profile</name>
-  </types>
-  <version>56.0</version>
+    <types>
+        <members>Admin</members>
+        <name>Profile</name>
+    </types>
+    <types>
+        <members>Account</members>
+        <name>CustomObject</name>
+    </types>
+    <version>57.0</version>
 </Package>
 ```
 
-When you run the standard retrieve command, the retrieved profile file `YourProfileName.profile-meta.xml` will contain permissions **only** for `CustomObject__c`. This will **overwrite your local profile file**, potentially removing permissions for all other objects, fields, and settings not included in the retrieval.
+This `package.xml` will retrieve the `objectPermissions` for the `Account` object as part of the `Admin` Profile. However, since the Salesforce CLI pulls only the specified components, it might overwrite the Profile metadata file (`Admin.profile-meta.xml`), causing sections like `fieldPermissions`, `userPermissions`, and others to be lost.
 
-##### Partial `package.xml` for **Custom Labels**
+**Before retrieval:**
 
-Assume you want to retrieve only a few custom labels. Your `package.xml` might look like this:
+Below is an example of a Profile metadata file (`Admin.profile-meta.xml`) that contains both `objectPermissions` and `fieldPermissions` sections:
 
 ```xml
 <?xml version="1.0" encoding="UTF-8"?>
-<Package xmlns="http://soap.sforce.com/2006/04/metadata">
-  <types>
-    <members>LabelOne</members>
-    <members>LabelTwo</members>
-    <name>CustomLabel</name>
-  </types>
-  <version>56.0</version>
-</Package>
+<Profile xmlns="http://soap.sforce.com/2006/04/metadata">
+    <userPermissions>
+        <enabled>true</enabled>
+        <name>ViewAllData</name>
+    </userPermissions>
+    <fieldPermissions>
+        <field>Account.Name</field>
+        <readable>true</readable>
+        <editable>true</editable>
+    </fieldPermissions>
+    <objectPermissions>
+        <object>Account</object>
+        <allowCreate>true</allowCreate>
+        <allowDelete>true</allowDelete>
+        <allowEdit>true</allowEdit>
+        <allowRead>true</allowRead>
+        <viewAllRecords>false</viewAllRecords>
+    </objectPermissions>
+</Profile>
 ```
 
-When you retrieve these labels, your `CustomLabels.labels-meta.xml` file will be replaced with only `LabelOne` and `LabelTwo`. **All other labels in the file will be lost**.
+**After retrieval:**
 
-##### Partial `package.xml` for **Translations**
-
-Suppose you have multiple translations set up for various components in your org, but you want to retrieve translations only for specific custom labels, such as `LabelOne` and `LabelTwo`. Your `package.xml` might look like this:
+If you retrieve only the `objectPermissions` for the `Account` object, the CLI might overwrite the entire file with just this section, causing the `fieldPermissions` section to be lost:
 
 ```xml
 <?xml version="1.0" encoding="UTF-8"?>
-<Package xmlns="http://soap.sforce.com/2006/04/metadata">
-  <!-- Specify the language of the translations -->
-  <types>
-    <members>en_US</members>
-    <name>Translations</name>
-  </types>
-  <!-- Include the specific custom labels -->
-  <types>
-    <members>LabelOne</members>
-    <members>LabelTwo</members>
-    <name>CustomLabel</name>
-  </types>
-  <version>56.0</version>
-</Package>
+<Profile xmlns="http://soap.sforce.com/2006/04/metadata">
+    <objectPermissions>
+        <object>Account</object>
+        <allowCreate>true</allowCreate>
+        <allowDelete>true</allowDelete>
+        <allowEdit>true</allowEdit>
+        <allowRead>true</allowRead>
+        <viewAllRecords>false</viewAllRecords>
+    </objectPermissions>
+</Profile>
 ```
 
-When you run the standard retrieve command, the retrieved translation file `en_US.translation-meta.xml` will contain translations **only** for `LabelOne` and `LabelTwo`. **All other translations in the file will be lost**, potentially removing translations for other custom labels, custom objects, and other components.
+As you can see, the `fieldPermissions` and `userPermissions` sections are missing after the retrieval, even though it wasn’t part of the operation.
 
-##### Why This Happens
+#### How `merge-meta` Solves This
 
-Salesforce's Metadata API treats certain metadata types, like **Profile**, **CustomLabels**, and **Translations**, as single files that contain multiple components. When you retrieve a subset of these components, the API returns a file containing only those components. If you overwrite your existing local file with this partial file, you lose any components that were not included in the retrieval.
+The `merge-meta` command prevents such data loss by intelligently merging the newly retrieved metadata sections with the existing ones in the file, ensuring that no settings are lost during the retrieval process. For example, when you retrieve the `objectPermissions` section, the command will merge it with the existing `fieldPermissions` and other sections in the file, rather than overwriting the entire file.
 
-#### The Solution: Using `merge-meta`
-
-To prevent the loss of data when retrieving partial metadata, you can use the `merge-meta` command. This command retrieves the metadata specified in the `package.xml` file, just like the Salesforce CLI does, but with an additional smart merging capability. It merges the retrieved components with your existing local files, updating only the metadata specified without removing others.
-
-Unlike standard retrieval methods, `merge-meta` focuses on the metadata type specified by the `-t` flag. This means that it updates only the components of that specific type (e.g., **Profile**, **CustomLabels**, or **Translations**) while leaving other types of metadata in your project untouched.
-
-Here's how `merge-meta` helps:
-
-- **Preserves Existing Data**: It adds or updates only the specified components in your local metadata files, leaving other components of the same type untouched.
-- **Prevents Overwriting**: It prevents the retrieved partial metadata from overwriting your entire local file by intelligently merging new data with the existing components.
-- **Maintains Order**: It preserves the original order of components in your local files, avoiding unnecessary reordering and reducing noise in version control diffs.
+This approach preserves all the sections that were not part of the current retrieval, allowing developers and administrators to work more efficiently and confidently without the risk of losing important metadata. This applies to **Custom Labels** and **Translations** as well, where multiple components are stored in one file, and partial retrieval can also result in data loss if not properly merged.
 
 #### Running the `merge-meta` Command
 
 Below is the full format to run the `merge-meta` command using the console:
 
 ```bash
-sf sftasker merge-meta -o <value> -t Profile|CustomLabels|Translations [--json] [--manifest <value>] [--apiversion <value>] [-r <value>]
+$ sf sftasker merge-meta -o <value> -t Profile|CustomLabels|Translations [--json] [--manifest <value>] [--apiversion <value>] [-r <value>]
 ```
 
-#### Flags
+##### Flags
 
 - **`-o, --target-org=<value>`**: The alias or username of the target Salesforce org. **Note**: The `-o` flag can be omitted if you run the command from within a Salesforce DX project where the default org is already set.
 - **`-m, --manifest=<value>`**: Path to the `package.xml` file for metadata retrieval. **Note**: This flag is mandatory when the plugin is run from **outside** the Salesforce DX project directory. However, it is optional when running from inside the project, as it defaults to the standard `manifest/package.xml` location.
-
 - **`-t, --type=<Profile|CustomLabels|Translations>`** (required): The type of metadata to merge. **Note**: The `package.xml` can include other metadata types, but the plugin will only focus on the metadata type specified by the `--type` flag.
-
 - **`-r, --metadata-root-folder=<value>`**: Local folder where metadata is stored. **Note**: When running the command **outside** the SFDX project root, you need to specify the `-r` flag explicitly to locate and access the project's metadata. However, when running inside the SFDX project root, the plugin automatically uses the default metadata path specified in the `sfdx-project.json` file. This means the `-r` flag can be omitted if the plugin runs within the SFDX project root and the correct path is defined in `sfdx-project.json`.
-
 - **`--apiversion=<value>`**: Override the API version used for Salesforce requests.
-
 - **`--json`**: Formats the output as JSON. When the command succeeds, it returns an empty result with a `'status': 0` response, as shown below:
 
   ```json
@@ -134,78 +119,65 @@ sf sftasker merge-meta -o <value> -t Profile|CustomLabels|Translations [--json] 
 
   **Note**: When the `--json` flag is provided, it suppresses all other standard output (stdout) log messages.
 
-##### Running the Plugin from the SFDX Project Root
+##### Option 1: Running the Plugin from the SFDX Project Root
 
-It is recommended to run the plugin from the **root of the SFDX project**. By doing so, the plugin can use the default project settings, such as the default org and the standard `manifest/package.xml` location, reducing the need to explicitly specify certain flags.
-
-- **Minimal example:**
+It is recommended to run the plugin from the **root of the SFDX project**. By doing so, the plugin can use the default project settings, such as the default org and the standard `manifest/package.xml` location, reducing the need to explicitly specify certain flags:
 
 ```bash
-sf sftasker merge-meta -t Profile
+$ sf sftasker merge-meta -t Profile
 ```
 
-This command will use the `manifest/package.xml` to retrieve the metadata and the default `force-app/main/default` folder to merge the metadata into. The currently selected default SFDX org is used for connection.
+##### Option 2: Running the Plugin Outside the SFDX Project Root
 
-##### Running the Plugin Outside the SFDX Project Root
-
-When running the plugin **outside the SFDX project root**, you will need to explicitly specify the `-r` flag to point to the root folder of the metadata, the `-m` flag to provide the path to the `package.xml` file, and `-o` to define the Salesforce org connection to retrieve the metadata from, as the plugin cannot automatically detect these settings.
-
-- **Minimal example**:
+When running the plugin **outside the SFDX project root**, you will need to explicitly specify the `-r` flag to point to the root folder of the metadata, the `-m` flag to provide the path to the `package.xml` file, and `-o` to define the Salesforce org connection to retrieve the metadata from, as the plugin cannot automatically detect these settings:
 
 ```bash
-sf sftasker merge-meta -o MY-ORG -t Profile -m "path/to/sfdx/root/manifest/profiles.xml" -r "path/to/sfdx/root/force-app/main/default"
+$ sf sftasker merge-meta -o MY-ORG -t Profile -m "path/to/sfdx/root/manifest/profiles.xml" -r "path/to/sfdx/root/force-app/main/default"
 ```
 
 #### Notes
 
 - **Use Version Control**: It is recommended to use version control (e.g., Git) to store your Salesforce DX project. This allows you to easily track changes made by the plugin and provides a safety net if unintended changes occur.
-
 - **Overrides Target Directory**: The `merge-meta` command overrides the metadata in the target directory specified by the `-r` flag. Ensure that the correct path is provided to avoid unintentional modifications.
-
 - **Metadata Retrieval Timeout**: The command has a maximum metadata retrieval timeout of 5 minutes. Avoid using overly large `package.xml` files; instead, prefer smaller packages with only necessary components to ensure successful retrieval.
-
 - **Temporary Data Storage**: The command stores downloaded resources in a temporary directory located at `./tmp/sftasker/[orgId]/[random dir name]`. A new random directory is created with each command execution.
-
 - **Avoid Including StaticResources**: Do not include `StaticResource` in the `package.xml` for `merge-meta`, as it may cause retrieval issues and incomplete merges. Handle StaticResources separately to avoid conflicts.
-
 - **Working with Multiple Profiles**: When using the `-t Profile` flag, the plugin can handle multiple profile files in a single call, including using a wildcard (`*`) to select all profiles.
 
-## Installation and Running the `sftasker` Plugin
+## Installation of the `sftasker` Plugin
 
-### Running the Plugin for Salesforce CLI
+### Installation for the Salesforce CLI
 
-1. **Install the Plugin**:
+1. **Fresh installation of the Plugin**.
+
+   Run the following command in the Terminal:
 
 ```bash
-sf plugins install sftasker
+$ sf plugins install sftasker
 ```
 
 Because this plugin is not signed, you may see a warning during installation. Proceed by confirming with `y` (yes) to continue.
 
-2. **Run the plugin commands**:
+2. **Update the Plugin**.
+
+   To update the Plugin, you should uninstall and install it again.
+
+   Run the following commands in the Terminal:
 
 ```bash
-sf sftasker merge-meta -o MY-ORG -t Profile -m "manifest/profiles.xml"
+$ sf plugins uninstall sftasker
+$ sf plugins install sftasker
 ```
 
-This example runs the `merge-meta` command from within the Salesforce DX project root.
-
-3. **To update the plugin, uninstall it and then reinstall it**:
-
-```bash
-sf plugins uninstall sftasker
-sf plugins install sftasker
-```
-
-### Running the Plugin from Source Code
+### Installation and Running from Source Code
 
 If you prefer to run `sftasker` directly from the source without installing it as a plugin via `sf plugins install`, follow these steps:
 
 1. **Clone the repository**:
 
    ```bash
-   git clone https://github.com/hknokh/sftasker.git
-   cd sftasker
+   $ git clone https://github.com/hknokh/sftasker.git
+   $ cd sftasker
    ```
 
 2. **Install dependencies**:
@@ -213,38 +185,29 @@ If you prefer to run `sftasker` directly from the source without installing it a
    Run the following command to install all the required dependencies:
 
    ```bash
-   npm install
+   $ npm install
    ```
 
 3. **Run the plugin commands locally**:
 
-   For example, to run the `merge-meta` command, you can use:
+   After installing the source code, for example, to run the `merge-meta` command, you can use:
 
    ```bash
-   ./bin/dev sftasker merge-meta -o MY-ORG -t Profile -m "path/to/sfdx/root/manifest/profiles.xml" -r "path/to/sfdx/root/force-app/main/default"
+   $ ./bin/dev sftasker merge-meta -o MY-ORG -t Profile -m "path/to/sfdx/root/manifest/profiles.xml" -r "path/to/sfdx/root/force-app/main/default"
    ```
 
 4. **Linking the plugin locally using `sf plugins link`**:
 
-   To use the plugin source code locally as a linked plugin and avoid running it from the development directory each time, you can link the plugin to your local Salesforce CLI with the following command:
+   To use the plugin source code as a normal SF CLI Plugin, you can link the plugin to your local Salesforce CLI with the following command:
 
    ```bash
-   sf plugins link
+   $ sf plugins link
    ```
 
-   This will link the local plugin to your Salesforce CLI, making it available globally like a normally installed plugin.
-   Once linked, you can run the plugin commands directly from any directory without having to use `./bin/dev`.
-
-   For example:
+   Once linked, you can run the plugin commands as a normal SF CLI Plugin. For example, to run from the Salesforce DX project root:
 
    ```bash
-   sf sftasker merge-meta -o MY-ORG -t Profile -m "path/to/sfdx/root/manifest/profiles.xml" -r "path/to/sfdx/root/force-app/main/default"
-   ```
-
-   Or even from the Salesforce DX project root, the same as a regular Salesforce CLI Plugin:
-
-   ```bash
-   sf sftasker merge-meta -o MY-ORG -t Profile -m "manifest/profiles.xml"
+   $ sf sftasker merge-meta -t Profile
    ```
 
 ## Debugging
@@ -256,8 +219,8 @@ To debug the `sftasker` plugin using **Visual Studio Code**, follow these steps:
    First, clone the `sftasker` repository from GitHub:
 
    ```bash
-   git clone https://github.com/hknokh/sftasker
-   cd sftasker
+   $ git clone https://github.com/hknokh/sftasker
+   $ cd sftasker
    ```
 
 2. **Install dependencies**:
@@ -265,13 +228,13 @@ To debug the `sftasker` plugin using **Visual Studio Code**, follow these steps:
    Run the following command to install all required dependencies:
 
    ```bash
-   npm install
+   $ npm install
    ```
 
    If you encounter any dependency issues, you can run the following command to automatically fix them:
 
    ```bash
-   npm audit fix
+   $ npm audit fix
    ```
 
 3. **Set breakpoints in Visual Studio Code**:
@@ -285,7 +248,7 @@ To debug the `sftasker` plugin using **Visual Studio Code**, follow these steps:
    Open the **terminal** in VS Code and run the following command (`merge-meta` or whichever command you are debugging):
 
    ```bash
-   ./bin/debug sftasker merge-meta -t Translations -o DEMO-SOURCE -m "C:\path\to\sfdx-project\manifest\package.xml" -r "C:\path\to\sfdx-project\force-app\main\default"
+   $ ./bin/debug sftasker merge-meta -t Translations -o DEMO-SOURCE -m "C:\path\to\sfdx-project\manifest\package.xml" -r "C:\path\to\sfdx-project\force-app\main\default"
    ```
 
 5. **Attach the Debugger**:
