@@ -20,11 +20,13 @@ export default class SftaskerMergeMeta extends SFtaskerCommand<SftaskerMergeMeta
   // eslint-disable-next-line sf-plugin/spread-base-flags
   public static readonly flags = {
     'target-org': Flags.requiredOrg(),
-    apiversion: Flags.orgApiVersion(),
+    'api-version': Flags.orgApiVersion({
+      char: 'a',
+    }),
 
     manifest: Flags.string({
       summary: messages.commandMessages.getMessage('flags.manifest.summary'),
-      char: 'm',
+      char: 'x',
       default: Constants.DEFAULT_MANIFEST_PATH,
     }),
 

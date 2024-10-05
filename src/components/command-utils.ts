@@ -56,7 +56,7 @@ export class CommandUtils<T> {
     // Internally manage some of the flags
     if (flags) {
       Object.assign(flags, Constants.PACKAGE_XML_METADATA_NAME_TO_FLAG_MAPPING[flags.type as AvailableMetadataTypes]);
-      this.command.connection = flags['target-org']?.getConnection(flags.apiversion as string) as Connection;
+      this.command.connection = flags['target-org']?.getConnection(flags['api-version'] as string) as Connection;
       this.command.orgId = flags['target-org']?.getOrgId() as string;
     }
   }

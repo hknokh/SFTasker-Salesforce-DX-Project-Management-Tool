@@ -59,7 +59,7 @@ export type SftaskerCommandFlags = {
    * The API version to use for the command.
    * @type {string | undefined}
    */
-  apiversion?: string;
+  'api-version'?: string;
 
   /**
    * The path to the configuration file.

@@ -21,7 +21,9 @@ export default class SftaskerDataMove extends SFtaskerCommand<SftaskerDataMoveRe
       summary: messages.commandMessages.getMessage('flags.target-org.summary'),
       char: 'o',
     }),
-    apiversion: Flags.orgApiVersion(),
+    'api-version': Flags.orgApiVersion({
+      char: 'a',
+    }),
 
     'source-org': Flags.optionalOrg({
       summary: messages.commandMessages.getMessage('flags.source-org.summary'),
