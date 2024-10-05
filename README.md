@@ -185,10 +185,10 @@ $ sf sftasker merge-meta -t Profile
 
 ##### Option 2: Running the Plugin Outside the SFDX Project Root
 
-When running the plugin **outside the SFDX project root**, you will need to explicitly specify the `-r` flag to point to the root folder of the metadata, the `-m` flag to provide the path to the `package.xml` file, and `-o` to define the Salesforce org connection to retrieve the metadata from, as the plugin cannot automatically detect these settings:
+When running the plugin **outside the SFDX project root**, you will need to explicitly specify the `-r` flag to point to the root folder of the metadata, the `-x` flag to provide the path to the `package.xml` file, and `-o` to define the Salesforce org connection to retrieve the metadata from, as the plugin cannot automatically detect these settings:
 
 ```bash
-$ sf sftasker merge-meta -o MY-ORG -t Profile -m "path/to/sfdx/root/manifest/profiles.xml" -r "path/to/sfdx/root/force-app/main/default"
+$ sf sftasker merge-meta -o MY-ORG -t Profile -x "path/to/sfdx/root/manifest/profiles.xml" -r "path/to/sfdx/root/force-app/main/default"
 ```
 
 #### Notes
@@ -249,7 +249,7 @@ If you prefer to run `sftasker` directly from the source without installing it a
    After installing the source code, for example, to run the `merge-meta` command, you can use:
 
    ```bash
-   $ ./bin/dev sftasker merge-meta -o MY-ORG -t Profile -m "path/to/sfdx/root/manifest/profiles.xml" -r "path/to/sfdx/root/force-app/main/default"
+   $ ./bin/dev sftasker merge-meta -o MY-ORG -t Profile -x "path/to/sfdx/root/manifest/profiles.xml" -r "path/to/sfdx/root/force-app/main/default"
    ```
 
 4. **Linking the plugin locally using `sf plugins link`**:
@@ -304,7 +304,7 @@ To debug the `sftasker` plugin using **Visual Studio Code**, follow these steps:
    Open the **terminal** in VS Code and run the following command (`merge-meta` or whichever command you are debugging):
 
    ```bash
-   $ ./bin/debug sftasker merge-meta -t Translations -o DEMO-SOURCE -m "C:\path\to\sfdx-project\manifest\package.xml" -r "C:\path\to\sfdx-project\force-app\main\default"
+   $ ./bin/debug sftasker merge-meta -t Translations -o DEMO-SOURCE -x "C:\path\to\sfdx-project\manifest\package.xml" -r "C:\path\to\sfdx-project\force-app\main\default"
    ```
 
 5. **Attach the Debugger**:
