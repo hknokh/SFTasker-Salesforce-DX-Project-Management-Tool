@@ -1,6 +1,8 @@
 import { Flags } from '@salesforce/sf-plugins-core';
 import { CommandUtils } from '../../components/command-utils.js';
 import { SFtaskerCommand } from '../../components/models.js';
+import { Constants } from '../../components/constants.js';
+import { DataMoveUtils } from '../../components/data-move/data-move-utils.js';
 
 export type SftaskerDataMoveResult = Record<string, never>;
 
@@ -39,20 +41,30 @@ export default class SftaskerDataMove extends SFtaskerCommand<SftaskerDataMoveRe
     'config-path': Flags.string({
       summary: messages.commandMessages.getMessage('flags.config-path.summary'),
       char: 'p',
+      default: Constants.DATA_MOVE_CONSTANTS.DEFAULT_CONFIG_PATH,
     }),
   };
 
   public async run(): Promise<SftaskerDataMoveResult> {
     const { flags } = await this.parse(SftaskerDataMove);
 
+    // Set up the command utils
+    const commandUtils = new CommandUtils(this);
+
     // Set up the command with the necessary properties
-    CommandUtils.setupCommandInstance(this, messages, flags);
+    commandUtils.setupCommandInstance(messages, flags);
+
+    const dataMoveUtils = new DataMoveUtils(this);
+
+    this.log(`Config path: ${dataMoveUtils.configDir}`);
 
     // Log the command start message
-    CommandUtils.logCommandStartMessage(this);
+    commandUtils.logCommandStartMessage();
+
+    // Command logic goes here...
 
     // Log the command end message
-    CommandUtils.logCommandEndMessage(this);
+    commandUtils.logCommandEndMessage();
 
     return {};
   }

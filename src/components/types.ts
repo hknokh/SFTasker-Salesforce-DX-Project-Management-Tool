@@ -106,6 +106,18 @@ export type SftaskerCommandMessages = {
   componentsMessages: Messages<string>;
 };
 
+export type SfTaskerConfigPaths = {
+  /**
+   * The path to the configuration file.
+   */
+  configFilePath?: string;
+
+  /**
+   * The path to the configuration directory.
+   */
+  configDirPath?: string;
+};
+
 /**
  *  Represents a type entity in the package.xml file.
  */

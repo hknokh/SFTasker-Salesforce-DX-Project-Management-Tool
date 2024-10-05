@@ -217,10 +217,11 @@ export class MetadataUtils<T> {
    * @param metadataTypeName Name of the metadata type to retrieve, for example, `Profile`.
    * @param members  List of metadata members to retrieve, default to `*` if not provided.
    */
-  public async retrieveSingleMetadataAsync(metadataTypeName: string, members?: string[]): Promise<string> {
+  public async retrieveSingleMetadataAsync(metadataTypeName: string, members?: string[]): Promise<string | undefined> {
+    const utils = new CommandUtils(this.command);
     try {
       // Log the progress of the metadata retrieval
-      CommandUtils.spinnerwithComponentMessage(this.command, 'start', 'progress.retrieving-metadata', metadataTypeName);
+      utils.spinnerwithComponentMessage('start', 'progress.retrieving-metadata', metadataTypeName);
 
       const tempOutputDir = fs.mkdtempSync(path.join(this.outputDir, `${metadataTypeName}-`));
       const zipStream = this.command.connection.metadata
@@ -270,12 +271,7 @@ export class MetadataUtils<T> {
 
                 // If unzip is finished and no pending writes, resolve the promise
                 if (unzipFinished && pendingWrites === 0) {
-                  CommandUtils.spinnerwithComponentMessage(
-                    this.command,
-                    'stop',
-                    'success.retrieving-metadata',
-                    metadataTypeName
-                  );
+                  utils.spinnerwithComponentMessage('stop', 'success.retrieving-metadata', metadataTypeName);
                   resolve(tempOutputDir);
                 }
               });
@@ -284,25 +280,20 @@ export class MetadataUtils<T> {
             }
           })
           .on('error', (err: Error) => {
-            CommandUtils.throwWithErrorMessage(this.command, err, 'error.retrieving-metadata', metadataTypeName);
+            utils.throwWithErrorMessage(err, 'error.retrieving-metadata', metadataTypeName);
           })
           .on('close', () => {
             unzipFinished = true; // Set unzip finished flag
 
             // If no pending writes, resolve the promise
             if (pendingWrites === 0) {
-              CommandUtils.spinnerwithComponentMessage(
-                this.command,
-                'stop',
-                'success.retrieving-metadata',
-                metadataTypeName
-              );
+              utils.spinnerwithComponentMessage('stop', 'success.retrieving-metadata', metadataTypeName);
               resolve(tempOutputDir);
             }
           });
       });
     } catch (err) {
-      CommandUtils.throwWithErrorMessage(this.command, err as Error, 'error.retrieving-metadata', metadataTypeName);
+      utils.throwWithErrorMessage(err as Error, 'error.retrieving-metadata', metadataTypeName);
     }
   }
 
@@ -310,10 +301,11 @@ export class MetadataUtils<T> {
    * Retrieve package metadata and extract to a temporary directory.
    * @param packagePath The path of the package to retrieve.
    */
-  public async retrievePackageMetadataAsync(packagePath: string): Promise<string> {
+  public async retrievePackageMetadataAsync(packagePath: string): Promise<string | undefined> {
+    const utils = new CommandUtils(this.command);
     try {
       // Log the progress of the metadata retrieval
-      CommandUtils.spinnerwithComponentMessage(this.command, 'start', 'progress.retrieving-metadata', packagePath);
+      utils.spinnerwithComponentMessage('start', 'progress.retrieving-metadata', packagePath);
 
       // Read and parse the package.xml file
       const packageManifest = (await Utils.loadXmlAsJsonAsync(packagePath)) as PackageXmlContent;
@@ -324,11 +316,11 @@ export class MetadataUtils<T> {
       }
 
       if (!packageManifest.Package?.types?.length) {
-        CommandUtils.throwError(this.command, 'error.retrieving-package.no-package-tag');
+        utils.throwError('error.retrieving-package.no-package-tag');
       }
 
       // Normalize the structure of packageManifest.Package.types
-      let types = packageManifest.Package.types ?? [];
+      let types = packageManifest?.Package?.types ?? [];
       if (!Array.isArray(types)) {
         types = [types];
       }
@@ -385,8 +377,7 @@ export class MetadataUtils<T> {
 
                 // If unzip is finished and no pending writes, resolve the promise
                 if (unzipFinished && pendingWrites === 0) {
-                  CommandUtils.spinnerwithComponentMessage(
-                    this.command,
+                  utils.spinnerwithComponentMessage(
                     'stop',
                     'success.retrieving-package',
                     packagePath,
@@ -400,14 +391,13 @@ export class MetadataUtils<T> {
             }
           })
           .on('error', (err: Error) => {
-            CommandUtils.throwWithErrorMessage(this.command, err, 'error.retrieving-package', packagePath);
+            utils.throwWithErrorMessage(err, 'error.retrieving-package', packagePath);
           })
           .on('close', () => {
             unzipFinished = true; // Set unzip finished flag
             // If no pending writes, resolve the promise
             if (pendingWrites === 0) {
-              CommandUtils.spinnerwithComponentMessage(
-                this.command,
+              utils.spinnerwithComponentMessage(
                 'stop',
                 'success.retrieving-package',
                 packagePath,
@@ -418,7 +408,7 @@ export class MetadataUtils<T> {
           });
       });
     } catch (err) {
-      CommandUtils.throwWithErrorMessage(this.command, err as Error, 'error.retrieving-package', packagePath);
+      utils.throwWithErrorMessage(err as Error, 'error.retrieving-package', packagePath);
     }
   }
 
@@ -444,16 +434,10 @@ export class MetadataUtils<T> {
     const logSourcefilePath = Utils.shortenFilePath(sourceFilePath, 60);
     const logTargetFilePath = Utils.shortenFilePath(targetFilePath, 60);
     const logOutputFilePath = Utils.shortenFilePath(outputFilePath, 60);
-
+    const utils = new CommandUtils(this.command);
     try {
       // Log the progress of the metadata merge
-      CommandUtils.spinnerwithComponentMessage(
-        this.command,
-        'start',
-        'progress.merging-metadata-xml',
-        logSourcefilePath,
-        logTargetFilePath
-      );
+      utils.spinnerwithComponentMessage('start', 'progress.merging-metadata-xml', logSourcefilePath, logTargetFilePath);
 
       // Read the XML files synchronously
       const sourceXml = fs.readFileSync(sourceFilePath, 'utf8');
@@ -468,7 +452,7 @@ export class MetadataUtils<T> {
       const targetSectionArray: any[] = targetData.find((obj) => obj[rootTag])[rootTag];
 
       if (!sourceSectionArray || !targetSectionArray) {
-        CommandUtils.throwError(this.command, 'error.merging-metadata-xml.no-root-tag', rootTag);
+        utils.throwError('error.merging-metadata-xml.no-root-tag', rootTag);
       }
 
       let modified = false;
@@ -534,12 +518,7 @@ export class MetadataUtils<T> {
         if (sectionKey.key) {
           targetSectionMap[sectionKey.key] = targetObject;
         } else if (!sectionKey.isSectionExist) {
-          CommandUtils.throwError(
-            this.command,
-            'error.merging-metadata-xml.no-section',
-            JSON.stringify(targetObject),
-            logTargetFilePath
-          );
+          utils.throwError('error.merging-metadata-xml.no-section', JSON.stringify(targetObject), logTargetFilePath);
         }
         lastSectionPoisitionMap[sectionKey.sectionName ?? ''] =
           lastSectionPoisitionMap[sectionKey.sectionName ?? ''] || sectionIndex;
@@ -548,12 +527,7 @@ export class MetadataUtils<T> {
       sourceSectionArray.forEach((sourceObject) => {
         const sectionKey = MetadataUtils._extractSectionKey(sourceObject, sectionKeyMapping);
         if (!sectionKey.isSectionExist) {
-          CommandUtils.throwError(
-            this.command,
-            'error.merging-metadata-xml.no-section',
-            JSON.stringify(sourceObject),
-            logSourcefilePath
-          );
+          utils.throwError('error.merging-metadata-xml.no-section', JSON.stringify(sourceObject), logSourcefilePath);
         }
         const targetObject = targetSectionMap[sectionKey.key];
         if (targetObject) {
@@ -605,8 +579,7 @@ export class MetadataUtils<T> {
         // Write the merged XML to the output file synchronously
         fs.writeFileSync(outputFilePath, updatedXml);
 
-        CommandUtils.spinnerwithComponentMessage(
-          this.command,
+        utils.spinnerwithComponentMessage(
           'stop',
           'success.merging-metadata-xml',
           logSourcefilePath,
@@ -614,8 +587,7 @@ export class MetadataUtils<T> {
           logOutputFilePath
         );
       } else {
-        CommandUtils.spinnerwithComponentMessage(
-          this.command,
+        utils.spinnerwithComponentMessage(
           'stop',
           'success.merging-metadata-xml.no-changes',
           logSourcefilePath,
@@ -623,13 +595,7 @@ export class MetadataUtils<T> {
         );
       }
     } catch (err) {
-      CommandUtils.throwWithErrorMessage(
-        this.command,
-        err as Error,
-        'error.merging-metadata-xml',
-        logSourcefilePath,
-        logTargetFilePath
-      );
+      utils.throwWithErrorMessage(err as Error, 'error.merging-metadata-xml', logSourcefilePath, logTargetFilePath);
     }
   }
 

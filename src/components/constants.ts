@@ -255,4 +255,22 @@ export class Constants {
    * @memberof Constants
    */
   public static readonly FORCE_APP_SFDX_PROJECT_JSON = 'sfdx-project.json';
+
+  /**
+   * The constants used in the data-move command.
+   *
+   * @static
+   * @memberof Constants
+   */
+  public static readonly DATA_MOVE_CONSTANTS = {
+    /**
+     * The default relative path to the configuration file.
+     *
+     * @static
+     * @memberof Constants
+     */
+    DEFAULT_CONFIG_PATH: './export.json',
+    CSV_SOURCE_SUB_DIRECTORY: 'source',
+    CSV_TARGET_SUB_DIRECTORY: 'target',
+  };
 }

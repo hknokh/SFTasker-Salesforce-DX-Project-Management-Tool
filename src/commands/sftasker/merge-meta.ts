@@ -62,35 +62,38 @@ export default class SftaskerMergeMeta extends SFtaskerCommand<SftaskerMergeMeta
   public async run(): Promise<SftaskerMergeMetaResult> {
     const { flags } = await this.parse(SftaskerMergeMeta);
 
+    // Set up the command utils
+    const commandUtils = new CommandUtils(this);
+
     // Set up the command with the necessary properties
-    CommandUtils.setupCommandInstance(this, messages, flags);
+    commandUtils.setupCommandInstance(messages, flags);
 
     // Log the command start message
-    CommandUtils.logCommandStartMessage(this);
+    commandUtils.logCommandStartMessage();
 
     // Create a temporary directory for the command execution
-    const tempPath = CommandUtils.createTempDirectory(this);
+    const tempPath = commandUtils.createTempDirectory();
 
     // Create an instance of the MetadataUtils class
     const metadataUtils = new MetadataUtils(this, tempPath);
 
     // Set the metadata root folder
     const forceAppProjectRootFolder = metadataUtils.getMetadataRootFolder(flags.type);
-    CommandUtils.logCommandMessage(this, 'command.progress.metadata-root-folder', forceAppProjectRootFolder);
+    commandUtils.logCommandMessage('command.progress.metadata-root-folder', forceAppProjectRootFolder);
 
     // Retrieve the metadata from the manifest file
-    const manifestTempFolder = await metadataUtils.retrievePackageMetadataAsync(flags.manifest);
-    CommandUtils.logCommandMessage(this, 'command.progress.manifest-temp-folder', manifestTempFolder);
+    const manifestTempFolder = (await metadataUtils.retrievePackageMetadataAsync(flags.manifest)) as string;
+    commandUtils.logCommandMessage('command.progress.manifest-temp-folder', manifestTempFolder);
 
     // List metadata files in the manifest
     const manifestMetadataFiles = metadataUtils.listMetadataFiles(flags.type, manifestTempFolder);
 
     // List metadata files in the force-app project
     const forceAppMetadataFiles = metadataUtils.listMetadataFiles(flags.type);
-    CommandUtils.logCommandMessage(this, 'command.progress.found-local-files', forceAppMetadataFiles.length.toString());
+    commandUtils.logCommandMessage('command.progress.found-local-files', forceAppMetadataFiles.length.toString());
 
     // Find matching metadata files in the manifest and force-app project
-    CommandUtils.logCommandMessage(this, 'command.progress.finding-matching-files');
+    commandUtils.logCommandMessage('command.progress.finding-matching-files');
     const matchingManifest2ForceAppMetadataFiles: FindMatchingFilesResult = Utils.findMatchingFiles(
       manifestMetadataFiles,
       forceAppMetadataFiles,
@@ -102,13 +105,12 @@ export default class SftaskerMergeMeta extends SFtaskerCommand<SftaskerMergeMeta
       matchingManifest2ForceAppMetadataFiles.matchingFiles.length === 0 &&
       matchingManifest2ForceAppMetadataFiles.missingFiles.length === 0
     ) {
-      CommandUtils.logCommandMessage(this, 'command.result.no-components-to-merge');
+      commandUtils.logCommandMessage('command.result.no-components-to-merge');
       return {};
     }
 
     // Merge each of the matching metadata files and put them in the force-app project folder
-    CommandUtils.logCommandMessage(
-      this,
+    commandUtils.logCommandMessage(
       'command.progress.processing-matching-files',
       matchingManifest2ForceAppMetadataFiles.matchingFiles.length.toString()
     );
@@ -124,8 +126,7 @@ export default class SftaskerMergeMeta extends SFtaskerCommand<SftaskerMergeMeta
 
     // Copy missing metadata files to the force-app project
     if (matchingManifest2ForceAppMetadataFiles.missingFiles.length > 0) {
-      CommandUtils.logCommandMessage(
-        this,
+      commandUtils.logCommandMessage(
         'command.progress.copying-missing-files',
         matchingManifest2ForceAppMetadataFiles.missingFiles.length.toString()
       );
@@ -139,11 +140,11 @@ export default class SftaskerMergeMeta extends SFtaskerCommand<SftaskerMergeMeta
 
     if (!flags['keep-temp-dirs']) {
       // Delete the temporary directory
-      CommandUtils.deleteTempDirectory(this, manifestTempFolder);
+      commandUtils.deleteTempDirectory(manifestTempFolder);
     }
 
     // Log the command completion message
-    CommandUtils.logCommandEndMessage(this);
+    commandUtils.logCommandEndMessage();
 
     return {};
   }

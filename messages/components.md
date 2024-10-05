@@ -42,6 +42,14 @@ Missing section '%s' in metadata xml file '%s'.
 
 An error occurred while deleting temporary directory '%s'. %s. %s.
 
+# error.unexpected-error
+
+An unexpected error occurred. %s.
+
+# error.config-file-not-found
+
+The configuration file specified by the `--config-path` flag was not found: %s.
+
 # progress.merging-metadata-xml
 
 Trying to merge metadata xml files: '%s', '%s'...
