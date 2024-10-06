@@ -245,9 +245,7 @@ export class Constants {
    * @static
    * @memberof Constants
    */
-  public static readonly FORCE_APP_PROJECT_ROOT_MAIN_DEFAULT_PATH =
-    'force-app/' + Constants.FORCE_APP_MAIN_DEFAULT_PATH;
-
+  public static readonly FORCE_APP_PROJECT_ROOT_MAIN_DEFAULT_PATH = 'force-app';
   /**
    * The name of the sfdx-project.json file.
    *
