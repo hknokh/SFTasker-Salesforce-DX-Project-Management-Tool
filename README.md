@@ -153,7 +153,7 @@ Additionally, you can use the `merge-meta` command to manage other metadata type
 Below is the full format to run the `merge-meta` command using the console:
 
 ```bash
-$ sf sftasker merge-meta -o <value> -t Profile|CustomLabels|Translations [--json] [--flags-dir <value>] [-a <value>] [-x <value>] [-r <value>] [-k]
+$ sf sftasker merge-meta -o <value> -t Profile|CustomLabels|Translations [--json] [--flags-dir <value>] [-a <value>] [-x <value>] [-p <value>] [-k]
 ```
 
 ##### Flags
@@ -161,7 +161,7 @@ $ sf sftasker merge-meta -o <value> -t Profile|CustomLabels|Translations [--json
 - **`-o, --target-org=<value>`**: The alias or username of the target Salesforce org. **Note**: The `-o` flag can be omitted if you run the command from within a Salesforce DX project where the default org is already set.
 - **`-x, --manifest=<value>`**: Path to the `package.xml` file for metadata retrieval. **Note**: This flag is mandatory when the plugin is run from **outside** the Salesforce DX project directory. However, it is optional when running from inside the project, as it defaults to the standard `manifest/package.xml` location.
 - **`-t, --type=<Profile|CustomLabels|Translations>`** (required): The type of metadata to merge. **Note**: The `package.xml` can include other metadata types, but the plugin will only focus on the metadata type specified by the `--type` flag.
-- **`-p, --source-dir=<value>`**: Local folder where metadata is stored. **Note**: When running the command **outside** the SFDX project root, you need to specify the `-r` flag explicitly to locate and access the project's metadata. However, when running inside the SFDX project root, the plugin automatically uses the default metadata path specified in the `sfdx-project.json` file. This means the `-r` flag can be omitted if the plugin runs within the SFDX project root and the correct path is defined in `sfdx-project.json`.
+- **`-p, --source-dir=<value>`**: Relative or absolute path to local folder where project metadata is stored. Typically it's the `force-app` folder within the Salesforce DX project root. **Note**: When running the command **outside** the SFDX project root, you need to provide absolute path to the `force-app` directory to locate and access the project's metadata. However, when running inside the SFDX project root, the plugin automatically uses the default metadata path specified in the `sfdx-project.json` file. This means the `-r` flag can be omitted if the plugin runs within the SFDX project root and the correct path is defined in `sfdx-project.json`.
 - **`--apiversion=<value>`**: Override the API version used for Salesforce requests.
 - **`--json`**: Formats the output as JSON. When the command succeeds, it returns an empty result with a `'status': 0` response, as shown below:
 
@@ -188,7 +188,7 @@ $ sf sftasker merge-meta -t Profile
 When running the plugin **outside the SFDX project root**, you will need to explicitly specify the `-r` flag to point to the root folder of the metadata, the `-x` flag to provide the path to the `package.xml` file, and `-o` to define the Salesforce org connection to retrieve the metadata from, as the plugin cannot automatically detect these settings:
 
 ```bash
-$ sf sftasker merge-meta -o MY-ORG -t Profile -x "path/to/sfdx/root/manifest/profiles.xml" -r "path/to/sfdx/root/force-app/main/default"
+$ sf sftasker merge-meta -o MY-ORG -t Profile -x "path/to/sfdx/root/manifest/package.xml" -p "path/to/sfdx/root/force-app"
 ```
 
 #### Notes
@@ -249,7 +249,7 @@ If you prefer to run `sftasker` directly from the source without installing it a
    After installing the source code, for example, to run the `merge-meta` command, you can use:
 
    ```bash
-   $ ./bin/dev sftasker merge-meta -o MY-ORG -t Profile -x "path/to/sfdx/root/manifest/profiles.xml" -r "path/to/sfdx/root/force-app/main/default"
+   $ ./bin/dev sftasker merge-meta -o MY-ORG -t Profile -x "path/to/sfdx/root/manifest/package.xml" -p "path/to/sfdx/root/force-app"
    ```
 
 4. **Linking the plugin locally using `sf plugins link`**:
@@ -304,7 +304,7 @@ To debug the `sftasker` plugin using **Visual Studio Code**, follow these steps:
    Open the **terminal** in VS Code and run the following command (`merge-meta` or whichever command you are debugging):
 
    ```bash
-   $ ./bin/debug sftasker merge-meta -t Translations -o DEMO-SOURCE -x "C:\path\to\sfdx-project\manifest\package.xml" -r "C:\path\to\sfdx-project\force-app\main\default"
+   $ ./bin/debug sftasker merge-meta -o MY-ORG -t Profile -x "path/to/sfdx/root/manifest/package.xml" -p "path/to/sfdx/root/force-app"
    ```
 
 5. **Attach the Debugger**:
