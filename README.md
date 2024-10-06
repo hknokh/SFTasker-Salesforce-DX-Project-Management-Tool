@@ -10,7 +10,7 @@
 
 #### Use Case: The Problem with Partial Metadata Retrieval
 
-The `merge-meta` command addresses a common issue in Salesforce metadata management for Profiles, Custom Labels, and Translations. In Salesforce DX projects, these metadata files often contain multiple sections representing different settings, such as permissions, labels, and translations for various components. For example, a **single Profile** file might include sections for object permissions, field-level security, user permissions, and more. 
+The `merge-meta` command addresses a common issue in Salesforce metadata management for Profiles, Custom Labels, and Translations. In Salesforce DX projects, these metadata files often contain multiple sections representing different settings, such as permissions, labels, and translations for various components. For example, a **single Profile** file might include sections for object permissions, field-level security, user permissions, and more.
 
 When retrieving metadata using tools like Salesforce CLI, only certain sections may be pulled, potentially causing other sections to be lost.
 
@@ -29,7 +29,7 @@ Here's an example of a `package.xml` manifest file that retrieves only the `MyAd
         <members>Account</members>
         <name>CustomObject</name>
     </types>
-    <version>57.0</version>
+    <version>61.0</version>
 </Package>
 ```
 
@@ -144,7 +144,59 @@ All sections remain intact, and only the necessary changes were made:
 
 Additionally, you can use the `merge-meta` command to manage other metadata types, such as **Translations** and **Custom Labels**, ensuring that unretrieved sections are preserved and not overwritten during the process.
 
-#### Running the `merge-meta` Command
+**Example to Retrieve Partial Custom Labels:**
+
+Below is an example of a `package.xml` to modify the `CustomLabels.labels-meta.xml` file to retrieve only `LabelOne` and `LabelTwo`, leaving other labels inside this file intact:
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<Package xmlns="http://soap.sforce.com/2006/04/metadata">
+    <types>
+        <members>LabelOne</members>
+        <members>LabelTwo</members>
+        <name>CustomLabel</name>
+    </types>
+    <types>
+        <members>iw</members>
+        <name>Translations</name>
+    </types>
+    <version>61.0</version>
+</Package>
+```
+
+To retrieve the `CustomLabels` metadata using `merge-meta`, use the following command within your Salesforce DX root folder:
+
+```bash
+$ sf sftasker merge-meta -t CustomLabels -x manifest/package.xml
+```
+
+**Example to Retrieve Partial Translations:**
+
+To retrieve translations for `LabelOne` and `LabelTwo` only, you can use the same `package.xml` as above:
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<Package xmlns="http://soap.sforce.com/2006/04/metadata">
+    <types>
+        <members>LabelOne</members>
+        <members>LabelTwo</members>
+        <name>CustomLabel</name>
+    </types>
+    <types>
+        <members>iw</members>
+        <name>Translations</name>
+    </types>
+    <version>61.0</version>
+</Package>
+```
+
+To retrieve the `Translations` metadata using `merge-meta`, use the following command within your Salesforce DX root folder:
+
+```bash
+$ sf sftasker merge-meta -t Translations -x manifest/package.xml
+```
+
+#### Full `merge-meta` Command Format
 
 Below is the full format to run the `merge-meta` command using the console:
 
@@ -157,7 +209,10 @@ $ sf sftasker merge-meta -o <value> -t Profile|CustomLabels|Translations [--json
 - **`-o, --target-org=<value>`**: The alias or username of the target Salesforce org. **Note**: The `-o` flag can be omitted if you run the command from within a Salesforce DX project where the default org is already set.
 - **`-x, --manifest=<value>`**: Path to the `package.xml` file for metadata retrieval. **Note**: This flag is mandatory when the plugin is run from **outside** the Salesforce DX project directory. However, it is optional when running from inside the project, as it defaults to the standard `manifest/package.xml` location.
 - **`-t, --type=<Profile|CustomLabels|Translations>`** (required): The type of metadata to merge. **Note**: The `package.xml` can include other metadata types, but the plugin will only focus on the metadata type specified by the `--type` flag.
-- **`-p, --source-dir=<value>`**: Relative or absolute path to local folder where project metadata is stored. Typically it's the `force-app` folder within the Salesforce DX project root. **Note**: When running the command **outside** the SFDX project root, you need to provide absolute path to the `force-app` directory to locate and access the project's metadata. However, when running inside the SFDX project root, the plugin automatically uses the default metadata path specified in the `sfdx-project.json` file. This means the `-r` flag can be omitted if the plugin runs within the SFDX project root and the correct path is defined in `sfdx-project.json`.
+- **`-p, --source-dir=<value>`**: Relative or absolute path to the local folder where project metadata is stored. Typically it's the `force-app` folder within the Salesforce DX project root. **Note**: When running the command **outside** the S
+
+FDX project root, you need to provide an absolute path to the `force-app` directory to locate and access the project's metadata. However, when running inside the SFDX project root, the plugin automatically uses the default metadata path specified in the `sfdx-project.json` file. This means the `-p` flag can be omitted if the plugin runs within the SFDX project root and the correct path is defined in `sfdx-project.json`.
+
 - **`--apiversion=<value>`**: Override the API version used for Salesforce requests.
 - **`--json`**: Formats the output as JSON. When the command succeeds, it returns an empty result with a `'status': 0` response, as shown below:
 
@@ -181,7 +236,7 @@ $ sf sftasker merge-meta -t Profile
 
 ##### Option 2: Running the Plugin Outside the SFDX Project Root
 
-When running the plugin **outside the SFDX project root**, you will need to explicitly specify the `-r` flag to point to the root folder of the metadata, the `-x` flag to provide the path to the `package.xml` file, and `-o` to define the Salesforce org connection to retrieve the metadata from, as the plugin cannot automatically detect these settings:
+When running the plugin **outside the SFDX project root**, you will need to explicitly specify the `-p` flag to point to the root folder of the metadata, the `-x` flag to provide the path to the `package.xml` file, and `-o` to define the Salesforce org connection to retrieve the metadata from, as the plugin cannot automatically detect these settings:
 
 ```bash
 $ sf sftasker merge-meta -o MY-ORG -t Profile -x "path/to/sfdx/root/manifest/package.xml" -p "path/to/sfdx/root/force-app"
@@ -190,13 +245,13 @@ $ sf sftasker merge-meta -o MY-ORG -t Profile -x "path/to/sfdx/root/manifest/pac
 #### Notes
 
 - **Use Version Control**: It is recommended to use version control (e.g., Git) to store your Salesforce DX project. This allows you to easily track changes made by the plugin and provides a safety net if unintended changes occur.
-- **Overrides Target Directory**: The `merge-meta` command overrides the metadata in the target directory specified by the `-r` flag. Ensure that the correct path is provided to avoid unintentional modifications.
+- **Overrides Target Directory**: The `merge-meta` command overrides the metadata in the target directory specified by the `-p` flag. Ensure that the correct path is provided to avoid unintentional modifications.
 - **Metadata Retrieval Timeout**: The command has a maximum metadata retrieval timeout of 5 minutes. Avoid using overly large `package.xml` files; instead, prefer smaller packages with only necessary components to ensure successful retrieval.
 - **Temporary Data Storage**: The command stores downloaded resources in a temporary directory located at `./tmp/sftasker/[orgId]/[random dir name]`. A new random directory is created with each command execution.
 - **Avoid Including StaticResources**: Do not include `StaticResource` in the `package.xml` for `merge-meta`, as it may cause retrieval issues and incomplete merges. Handle StaticResources separately to avoid conflicts.
 - **Working with Multiple Profiles**: When using the `-t Profile` flag, the plugin can handle multiple profile files in a single call, including using a wildcard (`*`) to select all profiles.
 
-## Installation of the `sftasker` Plugin
+## Full Guide of Installation and Running the `sftasker` Plugin
 
 ### Installation for the Salesforce CLI
 
@@ -337,7 +392,6 @@ This project utilizes several dependencies and libraries to provide functionalit
 - **[@salesforce/cli-plugins-testkit](https://www.npmjs.com/package/@salesforce/cli-plugins-testkit)**: Provides a set of tools and helpers to test Salesforce CLI plugins, ensuring they work correctly in different environments.
 - **[@salesforce/dev-scripts](https://www.npmjs.com/package/@salesforce/dev-scripts)**: A set of scripts and configuration files used to automate common development tasks, such as building, testing, and linting the project.
 - **[@types/unzipper](https://www.npmjs.com/package/@types/unzipper)**: TypeScript type definitions for the `unzipper` library, ensuring that ZIP file extraction operations are properly typed and safe.
-
 - **[eslint-plugin-sf-plugin](https://www.npmjs.com/package/eslint-plugin-sf-plugin)**: An ESLint plugin providing rules and configurations specifically for Salesforce CLI plugins, helping to maintain consistent code quality and style.
 - **[oclif](https://www.npmjs.com/package/oclif)**: The Oclif framework is used for building the CLI tool, providing the foundation for command parsing, help generation, and other core features.
 - **[ts-node](https://www.npmjs.com/package/ts-node)**: A utility that enables TypeScript to be directly executed in a Node.js environment, without needing to compile the TypeScript code into JavaScript first.
