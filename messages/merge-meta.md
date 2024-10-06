@@ -1,18 +1,10 @@
 # summary
 
-Merges Salesforce profiles from the org with local profiles, intelligently adding or updating components without deleting existing configurations.
+Merges Salesforce Profiles, Translations, or Custom Labels from the org with local metadata, intelligently adding or updating components while preserving existing configurations.
 
 # description
 
-The `merge-profile` command merges profiles retrieved from a Salesforce org with local profile files in the current SFDX project. It ensures components are added or updated without deleting existing configurations, providing a non-destructive, smart merge process.
-
-Key Features:
-
-- Smart Merge: Automatically updates or adds components without overwriting existing settings.
-- Non-destructive: Ensures no deletions during the merge process.
-- Profile Component Handling: Supports merging of field-level security, object settings, tab visibility, and more.
-- Multiple Profile Support: Merge multiple profiles at once for efficient synchronization.
-- Conflict Resolution: Handles conflicts to ensure accurate updates without losing customizations.
+The `merge-meta` command addresses a common issue in Salesforce metadata management, especially for Profiles, Custom Labels, or Translations. In Salesforce DX projects, metadata files often contain multiple sections representing different settings, such as permissions, labels, and translations. When retrieving metadata using tools like Salesforce CLI, only certain sections may be pulled, potentially causing other sections to be lost.
 
 # examples
 
