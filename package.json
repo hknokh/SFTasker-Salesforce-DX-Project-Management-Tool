@@ -1,7 +1,7 @@
 {
   "name": "sftasker",
   "description": "The powerful toolkit streamlines Salesforce DX project management with essential automation commands. For example, its smart, loseless metadata merging (Profiles, Translations, CustomLabels) updates only changed components without overwriting data. Perfect for Git integration, making it easy to track and manage changes.",
-  "version": "1.3.0",
+  "version": "1.3.1",
   "author": "Haim Knokh",
   "bugs": "https://github.com/hknokh/sftasker/issues",
   "homepage": "https://github.com/hknokh/sftasker",
