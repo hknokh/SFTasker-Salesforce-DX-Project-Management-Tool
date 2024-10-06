@@ -3,10 +3,10 @@ import * as path from 'node:path';
 import * as unzipper from 'unzipper';
 import { XMLParser, XMLBuilder } from 'fast-xml-parser';
 import { Constants } from './constants.js';
-import { SFtaskerCommand } from './models.js';
+import { SFtaskerCommand, SObjectDescribe } from './models.js';
 import { CommandUtils } from './command-utils.js';
 import { Utils } from './utils.js';
-import { PackageXmlContent, PackageXmlType } from './types.js';
+import { DescribeSObjectResult, PackageXmlContent, PackageXmlType } from './types.js';
 
 type XmlSectionKey = {
   key: string;
@@ -633,5 +633,23 @@ export class MetadataUtils<T> {
       rootFolder,
       Constants.PACKAGE_XML_METADATA_NAME_TO_SFDX_PROJECT_FOLDER_MAPPING[metadataTypeName]
     );
+  }
+
+  /**
+   *  Retrieves the object metadata from the target org using the command's connection
+   * @param sobjectName  The name of the sObject to retrieve metadata for
+   * @param useSourceConnection  A flag indicating whether to use the source connection, target connection is used by default
+   * @returns  The object metadata
+   */
+  public async getSObjectMetadataAsync(sobjectName: string, useSourceConnection?: boolean): Promise<SObjectDescribe> {
+    const utils = new CommandUtils(this.command);
+    const connection = useSourceConnection ? this.command.sourceConnection : this.command.connection;
+    utils.logComponentMessage(
+      'progress.retrieving-sobject-metadata',
+      sobjectName,
+      useSourceConnection ? this.command.sourceConnectionLabel : this.command.targetConnectionLabel
+    );
+    const sobjectDescribe = (await connection.describe(sobjectName)) as DescribeSObjectResult;
+    return new SObjectDescribe(sobjectDescribe);
   }
 }

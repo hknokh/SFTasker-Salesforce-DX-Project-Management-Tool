@@ -1,8 +1,10 @@
 import path from 'node:path';
 import fs from 'node:fs';
-
 import { readFile } from 'node:fs/promises';
 import { createRequire } from 'node:module';
+import 'reflect-metadata';
+// eslint-disable-next-line import/no-extraneous-dependencies
+import { plainToClass } from 'class-transformer';
 import { XMLParser } from 'fast-xml-parser';
 import { FindMatchingFilesResult, MatchingFiles, FilenameRegexpReplacement, ObjectPath } from './types.js';
 
@@ -222,6 +224,44 @@ export class Utils {
         }
       }
     }
+  }
+
+  /**
+   * Converts a plain object to a class instance.
+   * @param cls The class to convert to.
+   * @param plain The plain object to convert.
+   * @returns The class instance.
+   */
+  public static plainToCLass<T>(cls: new () => T, plain: any): T {
+    return plainToClass(cls, plain);
+  }
+
+  /**
+   * Converts a class instance to a plain object.
+   * @param obj The class instance to convert.
+   * @returns The plain object.
+   */
+  public static classToPlain<T>(obj: T): any {
+    return JSON.parse(JSON.stringify(obj));
+  }
+
+  /**
+   * Removes duplicate elements from a string array.
+   * @param array The array to remove duplicates from.
+   * @returns The array with duplicates removed.
+   */
+  public static distinctStringArray(array: string[]): string[] {
+    return [...new Set(array)];
+  }
+
+  /**
+   * Removes duplicate elements from an array of objects by a specified key.
+   * @param array The array to remove duplicates from.
+   * @param key The key to compare objects by.
+   * @returns The array with duplicates removed.
+   */
+  public static distinctArrayBy(array: any[], key: string): any[] {
+    return array.filter((v, i, a) => a.findIndex((t) => t[key] === v[key]) === i);
   }
 
   // --- Private methods ---

@@ -61,3 +61,15 @@ Metadata xml files merged successfully: '%s', '%s' -> '%s'.
 # success.merging-metadata-xml.no-changes
 
 No changes detected in metadata xml files: '%s', '%s'.
+
+# progress.retrieving-sobject-metadata
+
+[%s : %s] Retrieving object metadata...
+
+# label.source-connection
+
+Source
+
+# label.target-connection
+
+Target

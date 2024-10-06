@@ -270,5 +270,20 @@ export class Constants {
     DEFAULT_CONFIG_PATH: './export.json',
     CSV_SOURCE_SUB_DIRECTORY: 'source',
     CSV_TARGET_SUB_DIRECTORY: 'target',
+    TEMP_DIRECTORY: 'temp',
+
+    COMPLEX_EXTERNAL_ID_SEPARATOR: ';',
+
+    /**
+     * The fields which need to be excluded from the data move.
+     */
+    EXCLUDED_FIELDS: new Map<string, string[]>([
+      ['Account', ['FirstName', 'LastName']], // since these fields are not available for business accounts
+    ]),
+
+    DEFAULT_EXTERNAL_IDS: new Map<string, string>([
+      ['EmailMessage', 'Subject'],
+      ['RecordType', 'DeveloperName;NamespacePrefix;SobjectType'],
+    ]),
   };
 }

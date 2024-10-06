@@ -32,12 +32,10 @@ export default class SftaskerDataMove extends SFtaskerCommand<SftaskerDataMoveRe
 
     'csv-source': Flags.boolean({
       summary: messages.commandMessages.getMessage('flags.csv-source.summary'),
-      char: 'c',
     }),
 
     'csv-target': Flags.boolean({
       summary: messages.commandMessages.getMessage('flags.csv-target.summary'),
-      char: 't',
     }),
 
     'config-path': Flags.string({
@@ -56,14 +54,15 @@ export default class SftaskerDataMove extends SFtaskerCommand<SftaskerDataMoveRe
     // Set up the command with the necessary properties
     commandUtils.setupCommandInstance(messages, flags);
 
-    const dataMoveUtils = new DataMoveUtils(this);
-
-    this.log(`Config path: ${dataMoveUtils.configDir}`);
-
     // Log the command start message
     commandUtils.logCommandStartMessage();
 
-    // Command logic goes here...
+    const dataMoveUtils = new DataMoveUtils(this);
+
+    for (const objectSet of dataMoveUtils.script.objectSets) {
+      // eslint-disable-next-line no-await-in-loop
+      await dataMoveUtils.describeSourceAndTargetSObjectsAsync(objectSet);
+    }
 
     // Log the command end message
     commandUtils.logCommandEndMessage();

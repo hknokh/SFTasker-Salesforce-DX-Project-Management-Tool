@@ -8,6 +8,14 @@ import { Connection, Messages } from '@salesforce/core';
 export type AvailableMetadataTypes = 'Profile' | 'CustomLabels' | 'Translations';
 
 /**
+ * Represents the data source type for the sf tasker command.
+ */
+export enum DataOriginType {
+  csvfile = 'csvfile',
+  org = 'org',
+}
+
+/**
  * Represents a Salesforce organization.
  * Provides methods to get connection details and the organization ID.
  */
@@ -214,3 +222,43 @@ export type ObjectPath = {
  * Represents the module 'fast-deep-equal' for deep comparison of objects.
  */
 export type FastDeepEqual = (obj1: Record<string, any>, obj2: Record<string, any>) => boolean;
+
+// Metadata Types ----------------------------------------------------------------
+/**
+ * Represents the properties of an SObject field.
+ */
+export type Field = {
+  name: string;
+  label: string;
+  type: string;
+  length?: number;
+  precision?: number;
+  scale?: number;
+  nillable: boolean;
+  defaultedOnCreate: boolean;
+  calculated: boolean;
+  filterable: boolean;
+  sortable: boolean;
+  updateable: boolean;
+  createable: boolean;
+  unique: boolean;
+  caseSensitive?: boolean;
+  restrictedPicklist?: boolean;
+  picklistValues?: any[];
+  referenceTo?: string[];
+  nameField?: boolean;
+  autoNumber?: boolean;
+  // Add other properties as needed
+};
+
+/**
+ * Represents the properties of an SObject.
+ */
+export type DescribeSObjectResult = {
+  name: string;
+  label: string;
+  custom: boolean;
+  keyPrefix: string;
+  fields: Field[];
+  // Add other properties as needed
+};

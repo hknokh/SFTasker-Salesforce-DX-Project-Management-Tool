@@ -3,7 +3,7 @@ import path from 'node:path';
 import { Connection, Messages } from '@salesforce/core';
 import { Constants } from './constants.js';
 import { SFtaskerCommand } from './models.js';
-import { AvailableMetadataTypes, SftaskerCommandFlags, SftaskerCommandMessages } from './types.js';
+import { AvailableMetadataTypes, SftaskerCommandFlags, SftaskerCommandMessages, DataOriginType } from './types.js';
 
 /**
  * Utility class for command-related operations.
@@ -53,11 +53,27 @@ export class CommandUtils<T> {
     this.command.messages = messages.commandMessages;
     this.command.componentsMessages = messages.componentsMessages;
     this.command.flags = flags;
+
     // Internally manage some of the flags
     if (flags) {
+      // Assign the flags to the command object
       Object.assign(flags, Constants.PACKAGE_XML_METADATA_NAME_TO_FLAG_MAPPING[flags.type as AvailableMetadataTypes]);
+
+      // Assign the target and source org connections and org IDs to the command object
       this.command.connection = flags['target-org']?.getConnection(flags['api-version'] as string) as Connection;
       this.command.orgId = flags['target-org']?.getOrgId() as string;
+      if (flags['csv-target']) {
+        this.command.targetDataOriginType = DataOriginType.csvfile;
+      }
+      this.command.sourceConnectionLabel = this.command.componentsMessages.getMessage('label.source-connection');
+
+      // Assign the source org connection and org ID to the command object
+      this.command.sourceConnection = flags['source-org']?.getConnection(flags['api-version'] as string) as Connection;
+      this.command.sourceOrgId = flags['source-org']?.getOrgId() as string;
+      if (flags['csv-source']) {
+        this.command.sourceDataOriginType = DataOriginType.csvfile;
+      }
+      this.command.targetConnectionLabel = this.command.componentsMessages.getMessage('label.target-connection');
     }
   }
 
@@ -180,7 +196,7 @@ export class CommandUtils<T> {
    * @param {string[]} messageArgs - Additional arguments to be included in the log message.
    */
   public logComponentMessage(messageKey: string, ...messageArgs: string[]): void {
-    this.command.log('[PROGRESS INFO] ' + this.command.componentsMessages.getMessage(messageKey, messageArgs));
+    this.command.log('[COMPONENT INFO] ' + this.command.componentsMessages.getMessage(messageKey, messageArgs));
   }
 
   /**
