@@ -33,9 +33,9 @@ export default class SftaskerMergeMeta extends SFtaskerCommand<SftaskerMergeMeta
       default: Constants.DEFAULT_MANIFEST_PATH,
     }),
 
-    'metadata-root-folder': Flags.string({
-      summary: messages.getMessage('flags.metadata-root-folder.summary'),
-      char: 'r',
+    'source-dir': Flags.string({
+      summary: messages.getMessage('flags.source-dir.summary'),
+      char: 'p',
       required: false,
     }),
 
@@ -79,8 +79,8 @@ export default class SftaskerMergeMeta extends SFtaskerCommand<SftaskerMergeMeta
     const metadataUtils = new MetadataUtils(this, tempPath);
 
     // Set the metadata root folder
-    const forceAppProjectRootFolder = metadataUtils.getMetadataRootFolder(flags.type);
-    CommandUtils.logCommandMessage(this, 'command.progress.metadata-root-folder', forceAppProjectRootFolder);
+    const forceAppMetadataRootFolder = metadataUtils.getMetadataRootFolder(flags.type);
+    CommandUtils.logCommandMessage(this, 'command.progress.metadata-root-folder', forceAppMetadataRootFolder);
 
     // Retrieve the metadata from the manifest file
     const manifestTempFolder = await metadataUtils.retrievePackageMetadataAsync(flags.manifest);
@@ -136,7 +136,7 @@ export default class SftaskerMergeMeta extends SFtaskerCommand<SftaskerMergeMeta
 
       Utils.copyFiles(
         matchingManifest2ForceAppMetadataFiles.missingFiles,
-        forceAppProjectRootFolder,
+        forceAppMetadataRootFolder,
         Constants.PACKAGE_XML_METADATA_NAME_TO_FILE_REGEX_REPLACE_MAPPING[flags.type]
       );
     }

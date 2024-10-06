@@ -17,15 +17,16 @@ Key Features:
 # examples
 
 - <%= config.bin %> <%= command.id %> -t CustomLabels
-- <%= config.bin %> <%= command.id %> -t Profile -o ORG-ALIAS -m path/to/manifest/package.xml -r force-app/main/default
+- <%= config.bin %> <%= command.id %> -t CustomLabels -p force-app
+- <%= config.bin %> <%= command.id %> -t Profile -o ORG-ALIAS -x absolute/path/to/force/project/manifest/package.xml -p absolute/path/to/force/project/force-app
 
 # flags.manifest.summary
 
 Absolute or relative path to the package.xml file containing the profiles to retrieve from the org.
 
-# flags.metadata-root-folder.summary
+# flags.source-dir.summary
 
-Absolute or relative path to the root folder of the Salesforce DX project where the profiles are stored. Defaults to the path specified in the sfdx-project.json manifest file when run inside an SFDX project.
+Absolute or relative path to the root folder of the metadata within the Salesforce DX project (for example, 'force-app'). Defaults to the path specified in the sfdx-project.json manifest file when run inside an SFDX project.
 
 # flags.dedup.summary
 

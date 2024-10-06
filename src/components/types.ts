@@ -47,7 +47,7 @@ export type SftaskerCommandFlags = {
    * The path to the root folder of the metadata for the force-app project.
    * @type {string | undefined}
    */
-  'metadata-root-folder'?: string;
+  'source-dir'?: string;
 
   /**
    * A flag indicating whether to deduplicate the metadata components keeping only the version with the most inner properties.

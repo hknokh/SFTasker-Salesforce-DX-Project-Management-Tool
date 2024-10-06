@@ -61,10 +61,7 @@ export class MetadataUtils<T> {
       );
       if (forceAppProjectMainDefaultPath) {
         // Cache the value and return it
-        MetadataUtils._forceAppProjectMainDefaultPath = path.join(
-          forceAppProjectMainDefaultPath.path,
-          Constants.FORCE_APP_MAIN_DEFAULT_PATH
-        );
+        MetadataUtils._forceAppProjectMainDefaultPath = forceAppProjectMainDefaultPath.path;
         return MetadataUtils._forceAppProjectMainDefaultPath;
       }
     }
@@ -656,16 +653,19 @@ export class MetadataUtils<T> {
    * @returns  The path to the root folder of the metadata
    */
   public getMetadataRootFolder(metadataTypeName: string, metadataRootFolder?: string): string {
+    if (metadataRootFolder) {
+      return path.join(
+        metadataRootFolder,
+        Constants.PACKAGE_XML_METADATA_NAME_TO_SFDX_PROJECT_FOLDER_MAPPING[metadataTypeName]
+      );
+    }
     const sfdxMainDefaultPath = MetadataUtils.getForceAppProjectMainDefaultPath();
-    const rootFolder = metadataRootFolder ?? this.command.flags['metadata-root-folder'];
-    const filePath =
-      !rootFolder || !path.isAbsolute(rootFolder)
-        ? path.join(
-            process.cwd(),
-            sfdxMainDefaultPath,
-            Constants.PACKAGE_XML_METADATA_NAME_TO_SFDX_PROJECT_FOLDER_MAPPING[metadataTypeName]
-          )
-        : path.join(rootFolder, Constants.PACKAGE_XML_METADATA_NAME_TO_SFDX_PROJECT_FOLDER_MAPPING[metadataTypeName]);
-    return filePath;
+    let rootFolder = (this.command.flags['source-dir'] as string) || sfdxMainDefaultPath;
+    rootFolder = path.join(rootFolder, Constants.FORCE_APP_MAIN_DEFAULT_PATH);
+    return path.join(
+      process.cwd(),
+      rootFolder,
+      Constants.PACKAGE_XML_METADATA_NAME_TO_SFDX_PROJECT_FOLDER_MAPPING[metadataTypeName]
+    );
   }
 }
