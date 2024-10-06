@@ -16,7 +16,7 @@ Indicates that the data target is a CSV file instead of a Salesforce organizatio
 
 # flags.manifest.summary
 
-Absolute or relative path to the package.xml file containing the profiles to retrieve from the org.
+Absolute or relative path to the package.xml file containing the metadata to retrieve from the org.
 
 # flags.source-dir.summary
 
