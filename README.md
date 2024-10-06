@@ -8,15 +8,11 @@
 
 ### `merge-meta` Command
 
-#### Use Case
+#### Use Case: The Problem with Partial Metadata Retrieval
 
-The `merge-meta` command addresses a common issue in Salesforce metadata management, especially for Profiles, Custom Labels, or Translations. In Salesforce DX projects, metadata files often contain multiple sections representing different settings, such as permissions, labels, and translations. When retrieving metadata using tools like Salesforce CLI, only certain sections may be pulled, potentially causing other sections to be lost.
+The `merge-meta` command addresses a common issue in Salesforce metadata management for Profiles, Custom Labels, and Translations. In Salesforce DX projects, these metadata files often contain multiple sections representing different settings, such as permissions, labels, and translations for various components. For example, a **single Profile** file might include sections for object permissions, field-level security, user permissions, and more. 
 
-#### The Problem with Partial Metadata Retrieval
-
-Metadata files such as **Profiles**, **Translations**, and **Custom Labels** consist of multiple sections defining various settings. For example, a **Profile** file might contain sections for object permissions, field-level security, user permissions, and more.
-
-When you retrieve only a specific component (e.g., `objectPermissions` for the `Account` object), the **Salesforce CLI** typically **overwrites the entire file** with just the retrieved section. This can result in losing other sections that weren't part of the current operation.
+When retrieving metadata using tools like Salesforce CLI, only certain sections may be pulled, potentially causing other sections to be lost.
 
 #### Example
 
