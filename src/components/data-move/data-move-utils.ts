@@ -207,6 +207,7 @@ export class DataMoveUtils<T> {
     // Set the target object name if it's mapped
     // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     object.targetParsedQuery.objectName =
+      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       object.fieldMapping.find((mapping) => mapping.targetObject)?.targetObject || object.parsedQuery.objectName;
   }
 
