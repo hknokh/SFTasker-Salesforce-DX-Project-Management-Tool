@@ -636,9 +636,9 @@ export class MetadataUtils<T> {
   }
 
   /**
-   *  Retrieves the object metadata from the target org using the command's connection
+   *  Retrieves metadata for an sObject from the target or source org.
    * @param sobjectName  The name of the sObject to retrieve metadata for
-   * @param useSourceConnection  A flag indicating whether to use the source connection, target connection is used by default
+   * @param useSourceConnection  A flag indicating whether to use the source connection
    * @returns  The object metadata
    */
   public async getSObjectMetadataAsync(
