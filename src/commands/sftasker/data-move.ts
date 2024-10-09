@@ -59,9 +59,11 @@ export default class SftaskerDataMove extends SFtaskerCommand<SftaskerDataMoveRe
 
     // Set up the data move utils
     const dataMoveUtils = new DataMoveUtils(this);
+    // eslint-disable-next-line @typescript-eslint/restrict-plus-operands, @typescript-eslint/no-base-to-string
+    this.info('DataMoveUtils' + dataMoveUtils);
 
     // Set up the script objects
-    await dataMoveUtils.setupAllObjectSetsAsync();
+    //await dataMoveUtils.setupAllObjectSetsAsync();
 
     // Log the command end message
     commandUtils.logCommandEndMessage();
