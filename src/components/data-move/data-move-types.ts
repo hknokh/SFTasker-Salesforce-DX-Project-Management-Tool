@@ -1,5 +1,8 @@
 // Enumerations ----------------------------------------------------------------
 
+import { SObjectFieldDescribe } from '../models.js';
+import { ScriptObject } from './data-move-models.js';
+
 /**
  * Enumeration of the types of operations that can be performed on a data
  */
@@ -11,26 +14,17 @@ export enum OPERATION {
   Delete = 'Delete',
 }
 
-// Types ----------------------------------------------------------------
-export type ParsedQuery = {
-  /**
-   * The fields to select in the query.
-   */
-  fields: string[];
-  /**
-   * The object name to query.
-   */
-  objectName: string;
-  /**
-   * The where clause of the query.
-   */
-  where: string;
-  /**
-   * The limit of the query.
-   */
-  limit: number;
-  /**
-   * The offset of the query.
-   */
-  offset: number;
+export type ReferencedField = {
+  field: string; // "Account__c"
+  __rField: string; // "Account__r.Name"
+  fieldDescribe: SObjectFieldDescribe; // describe of "Account__c"
+  referencedExternalId: string; // "Account__c.Name"
+  referencedObjectName?: string; // "Account__c"
+  referencedObject: ScriptObject; // Account__c
+};
+
+export type ReferenceFieldData = {
+  field: string; // "Account__c"
+  sourceReferenceField?: Partial<ReferencedField>; // "Account__c.Name"
+  targetReferenceField?: Partial<ReferencedField>; // "Account__r.Name"
 };

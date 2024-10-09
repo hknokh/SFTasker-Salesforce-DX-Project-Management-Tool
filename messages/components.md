@@ -66,6 +66,14 @@ No changes detected in metadata xml files: '%s', '%s'.
 
 [%s : %s] Retrieving object metadata...
 
+# error.retrieving-sobject-metadata
+
+[%s : %s] An error occurred while retrieving metadata. %s.
+
+# success.retrieving-sobject-metadata
+
+[%s : %s] Object metadata retrieved successfully.
+
 # label.source-connection
 
 Source

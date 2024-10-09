@@ -145,6 +145,8 @@ export class SObjectFieldDescribe {
   public isPolymorphic: boolean;
   public readonly: boolean = false;
   public isFormula: boolean = false;
+  public isLookup: boolean = false;
+  public cascadeDelete?: boolean = false;
 
   public constructor(fieldDescribe: Field) {
     this.name = fieldDescribe.name;
@@ -170,6 +172,19 @@ export class SObjectFieldDescribe {
     this.isPolymorphic = Array.isArray(fieldDescribe.referenceTo) && fieldDescribe.referenceTo.length > 1;
     this.readonly = !fieldDescribe.createable;
     this.isFormula = fieldDescribe.calculated;
+    this.isLookup = Array.isArray(fieldDescribe.referenceTo) && fieldDescribe.referenceTo.length > 0;
+    this.cascadeDelete = fieldDescribe.cascadeDelete;
+  }
+
+  /**
+   * Returns true if the field is a master-detail field.
+   *
+   * @readonly
+   * @type {boolean}
+   * @memberof SObjectFieldDescribe
+   */
+  public get isMasterDetail(): boolean {
+    return this.isLookup && ((!this.updateable || this.cascadeDelete) as boolean);
   }
 }
 

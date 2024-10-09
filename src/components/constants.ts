@@ -261,28 +261,34 @@ export class Constants {
    * @memberof Constants
    */
   public static readonly DATA_MOVE_CONSTANTS = {
-    /**
-     * The default relative path to the configuration file.
-     *
-     * @static
-     * @memberof Constants
-     */
+    /** The default relative path to the configuration file. */
     DEFAULT_CONFIG_PATH: './export.json',
+    /** The source directory for the temporary CSV files. */
     CSV_SOURCE_SUB_DIRECTORY: 'source',
+    /**  The target directory for the temporary CSV files. */
     CSV_TARGET_SUB_DIRECTORY: 'target',
+    /** The temporary directory for processing the data. */
     TEMP_DIRECTORY: 'temp',
-
+    /** The separator for the complex external id. */
     COMPLEX_EXTERNAL_ID_SEPARATOR: ';',
+    /** The separator for the polymorphic field. */
+    POLYMORPHIC_FIELD_SEPARATOR: '$',
+    /** The SOQL keyword to select all fields. */
+    ALL_FIELDS_KEYWORD: 'all',
 
-    /**
-     * The fields which need to be excluded from the data move.
-     */
+    /** The field should be excluded from the data move process per object. */
     EXCLUDED_FIELDS: new Map<string, string[]>([
-      ['Account', ['FirstName', 'LastName']], // since these fields are not available for business accounts
+      //['Account', ['FirstName', 'LastName']], // since these fields are not available for business accounts
     ]),
 
-    DEFAULT_EXTERNAL_IDS: new Map<string, string>([
+    /** The default external id for given sobject types. */
+    DEFAULT_EXTERNAL_ID: new Map<string, string>([
       ['EmailMessage', 'Subject'],
+      ['Case', 'CaseNumber'],
+      ['Contact', 'Email'],
+      ['Lead', 'Email'],
+      ['Opportunity', 'Name'],
+      ['User', 'Username'],
       ['RecordType', 'DeveloperName;NamespacePrefix;SobjectType'],
     ]),
   };

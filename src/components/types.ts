@@ -248,6 +248,7 @@ export type Field = {
   referenceTo?: string[];
   nameField?: boolean;
   autoNumber?: boolean;
+  cascadeDelete?: boolean;
   // Add other properties as needed
 };
 

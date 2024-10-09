@@ -4,7 +4,7 @@ import { readFile } from 'node:fs/promises';
 import { createRequire } from 'node:module';
 import 'reflect-metadata';
 // eslint-disable-next-line import/no-extraneous-dependencies
-import { plainToClass } from 'class-transformer';
+import { plainToInstance, instanceToPlain } from 'class-transformer';
 import { XMLParser } from 'fast-xml-parser';
 import { FindMatchingFilesResult, MatchingFiles, FilenameRegexpReplacement, ObjectPath } from './types.js';
 
@@ -233,7 +233,16 @@ export class Utils {
    * @returns The class instance.
    */
   public static plainToCLass<T>(cls: new () => T, plain: any): T {
-    return plainToClass(cls, plain);
+    const instance = plainToInstance(cls, plain);
+    // Workaround for Map objects not being cloned properly
+    const anyInstance = instance as any;
+    Object.keys(anyInstance).forEach((key: string) => {
+      const value = plain[key];
+      if (value instanceof Map) {
+        anyInstance[key] = new Map([...value]);
+      }
+    });
+    return instance;
   }
 
   /**
@@ -242,7 +251,25 @@ export class Utils {
    * @returns The plain object.
    */
   public static classToPlain<T>(obj: T): any {
-    return JSON.parse(JSON.stringify(obj));
+    const plain = instanceToPlain(obj);
+    // Workaround for Map objects not being converted to plain objects
+    Object.keys(plain).forEach((key: string) => {
+      const value = (obj as any)[key];
+      if (value instanceof Map) {
+        plain[key] = new Map([...value]);
+      }
+    });
+    return plain;
+  }
+
+  /**
+   * Deep clones an object by converting it to a plain object and then back to a class instance.
+   * @param obj The object to clone.
+   * @returns The cloned object.
+   */
+  public static deepClone<T>(obj: T): T {
+    const plain = Utils.classToPlain(obj);
+    return Utils.plainToCLass((obj as any).constructor, plain);
   }
 
   /**
@@ -262,6 +289,39 @@ export class Utils {
    */
   public static distinctArrayBy(array: any[], key: string): any[] {
     return array.filter((v, i, a) => a.findIndex((t) => t[key] === v[key]) === i);
+  }
+
+  /**
+   * Trims a string from the end if it ends with a specified substring.
+   * @param str The string to trim.
+   * @param toTrim The substring to trim from the end.
+   * @returns The trimmed string.
+   */
+  public static trimEndStr(str: string, toTrim: string): string {
+    if (str.endsWith(toTrim)) {
+      return str.substring(0, str.lastIndexOf(toTrim));
+    } else {
+      return str;
+    }
+  }
+
+  /**
+   * Replaces all occurrences of a substring in a string with a specified value.
+   * @param stringToReplace The string to replace substrings in.
+   * @param replaceWith The value to replace substrings with.
+   * @param predicate A function that returns the replacement value for each substring.
+   * @returns The string with all occurrences of the substring replaced.
+   */
+  public static replaceString(
+    stringToReplace: string,
+    substringToReplace: string,
+    predicate: (substring: string) => string
+  ): string {
+    // Escape special regex characters in substringToReplace
+    const escapedSubstringToReplace = substringToReplace.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const regex = new RegExp(escapedSubstringToReplace, 'g');
+
+    return stringToReplace.replace(regex, (substring) => predicate(substring));
   }
 
   // --- Private methods ---

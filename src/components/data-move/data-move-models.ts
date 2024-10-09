@@ -1,7 +1,69 @@
 /* eslint-disable import/no-extraneous-dependencies */
-import 'reflect-metadata';
 import { Type } from 'class-transformer';
-import { OPERATION, ParsedQuery } from './data-move-types.js';
+import 'reflect-metadata';
+import { SObjectDescribe } from '../models.js';
+import { OPERATION, ReferenceFieldData } from './data-move-types.js';
+
+// Common Models ----------------------------------------------------------------
+/**
+ * Class holds the components of the parsed query string.
+ */
+export class ParsedQuery {
+  /**
+   * The mapping between the source and target fields.
+   */
+  public fieldMapping!: Map<string, string>;
+
+  /**
+   * The mapping between the polymorphic fields and their object types.
+   */
+  public polymorphicFieldMapping!: Map<string, string>;
+
+  /**
+   * The mapping between the referenced field names and their data,
+   * for example, Account__c => Account__r.Name
+   * Note: This property is populated only for `target` ParsedQuery object.
+   * This field is populted for source ParsedQuery object only.
+   * @type {Map<string, ReferencedField>}
+   */
+  public referencedFieldsMap: Map<string, ReferenceFieldData> = new Map<string, ReferenceFieldData>();
+
+  /**
+   * The fields to exclude from the data move process.
+   * Note: This property is populated only for `target` ParsedQuery object.
+   */
+  public excludedFromUpdateFields = new Array<string>();
+
+  /**
+   * The fields to select in the query.
+   */
+  public fields!: string[];
+  /**
+   * The object name to query.
+   */
+  public objectName!: string;
+  /**
+   * The where clause of the query.
+   */
+  public where!: string;
+  /**
+   * The limit of the query.
+   */
+  public limit!: number;
+  /**
+   * The offset of the query.
+   */
+  public offset!: number;
+
+  /**
+   * The external id field of the object used for update operations.
+   */
+  public externalId!: string;
+
+  public constructor(init: Partial<ParsedQuery>) {
+    Object.assign(this, init);
+  }
+}
 
 /**
  * Class for the field for data anonymization.
@@ -219,12 +281,44 @@ export class ScriptObject {
   public parsedQuery!: ParsedQuery;
 
   /**
+   * The parsed query for target org concidering the field mapping.
+   *
+   * @type {string}
+   * @memberof ScriptObject
+   */
+  public targetParsedQuery!: ParsedQuery;
+
+  /**
    * The object set this object belongs to.
    *
    * @type {ScriptObjectSet}
    * @memberof ScriptObject
    */
   public objectSet!: ScriptObjectSet;
+
+  /**
+   * The description of this object in the source org.
+   *
+   * @type {number}
+   * @memberof ScriptObject
+   */
+  public sourceDescribe!: SObjectDescribe;
+
+  /**
+   * The description of this object in the target org.
+   *
+   * @type {number}
+   * @memberof ScriptObject
+   */
+  public targetDescribe!: SObjectDescribe;
+
+  /**
+   * Whether this field is to use for target org only.
+   *
+   * @type {string}
+   * @memberof ScriptObject
+   */
+  public isForTargetOnly: boolean = false;
 
   // Constructor ----------------------------------------------------------------
   public constructor(init: Partial<ScriptObject>) {

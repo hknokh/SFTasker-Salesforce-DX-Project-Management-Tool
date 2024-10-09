@@ -641,15 +641,20 @@ export class MetadataUtils<T> {
    * @param useSourceConnection  A flag indicating whether to use the source connection, target connection is used by default
    * @returns  The object metadata
    */
-  public async getSObjectMetadataAsync(sobjectName: string, useSourceConnection?: boolean): Promise<SObjectDescribe> {
+  public async getSObjectMetadataAsync(
+    sobjectName: string,
+    useSourceConnection?: boolean
+  ): Promise<SObjectDescribe | undefined> {
     const utils = new CommandUtils(this.command);
-    const connection = useSourceConnection ? this.command.sourceConnection : this.command.connection;
-    utils.logComponentMessage(
-      'progress.retrieving-sobject-metadata',
-      sobjectName,
-      useSourceConnection ? this.command.sourceConnectionLabel : this.command.targetConnectionLabel
-    );
-    const sobjectDescribe = (await connection.describe(sobjectName)) as DescribeSObjectResult;
-    return new SObjectDescribe(sobjectDescribe);
+    const label = useSourceConnection ? this.command.sourceConnectionLabel : this.command.targetConnectionLabel;
+    try {
+      const connection = useSourceConnection ? this.command.sourceConnection : this.command.connection;
+      utils.logComponentMessage('progress.retrieving-sobject-metadata', sobjectName, label);
+      const sobjectDescribe = (await connection.describe(sobjectName)) as DescribeSObjectResult;
+      utils.logComponentMessage('success.retrieving-sobject-metadata', sobjectName, label);
+      return new SObjectDescribe(sobjectDescribe);
+    } catch (err) {
+      utils.throwWithErrorMessage(err as Error, 'error.retrieving-sobject-metadata', sobjectName, label);
+    }
   }
 }
