@@ -9,5 +9,7 @@ export class DataMoveUtils<T> {
    *  Constructor for the data move utility class.
    * @param command  The command to process.
    */
-  public constructor(private command: SFtaskerCommand<T>) {}
+  public constructor(private command: SFtaskerCommand<T>) {
+    this.command.info('DataMoveUtils.constructor');
+  }
 }
