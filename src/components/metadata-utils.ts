@@ -17,31 +17,32 @@ type XmlSectionKey = {
 };
 
 /**
- *   Utility class for metadata-related operations.
+ * Utility class for metadata-related operations.
  */
 export class MetadataUtils<T> {
+  /** Default path for force-app project main folder. */
   private static _forceAppProjectMainDefaultPath: string;
 
   /**
    * Creates a new instance of the MetadataUtils class.
-   * @param command  The command object used to retrieve metadata
-   * @param outputDir  The output directory for the retrieved metadata
+   * @param command The command object used to retrieve metadata.
+   * @param outputDir The output directory for the retrieved metadata.
    */
   public constructor(private command: SFtaskerCommand<T>, private outputDir: string) {}
 
   // Public static methods ----------------------------------------------------------
 
   /**
-   *  Checks if the current project is a force-app project.
-   * @returns  true if the project is a force-app project, false otherwise
+   * Checks if the current project is a force-app project.
+   * @returns True if the project is a force-app project, false otherwise.
    */
   public static isForceAppProject(): boolean {
     return fs.existsSync(path.join(process.cwd(), Constants.FORCE_APP_SFDX_PROJECT_JSON));
   }
 
   /**
-   *  Gets the default path to the force-app project main folder from from the sfdx-project.json file.
-   * @returns  The default path to the force-app project main folder
+   * Gets the default path to the force-app project main folder from the sfdx-project.json file.
+   * @returns The default path to the force-app project main folder.
    */
   public static getForceAppProjectMainDefaultPath(): string {
     // Use the cached value if it exists
@@ -74,9 +75,9 @@ export class MetadataUtils<T> {
 
   /**
    * Extracts the key value from a section object using a mapping of section names to key names.
-   * @param sectionObject  The section object to extract the key from.
-   * @param sectionKeyMapping  A mapping of section names to key names.
-   * @returns  An object containing the key value and a boolean indicating if the section exists.
+   * @param sectionObject The section object to extract the key from.
+   * @param sectionKeyMapping A mapping of section names to key names.
+   * @returns An object containing the key value and a boolean indicating if the section exists.
    */
   private static _extractSectionKey(sectionObject: any, sectionKeyMapping: Record<string, string>): XmlSectionKey {
     let keyValue: XmlSectionKey = {
@@ -149,7 +150,7 @@ export class MetadataUtils<T> {
       return sectionKeyToUpdate;
     };
 
-    // Go thru each property in the section object and look for the property with contains the section
+    // Iterate through each property in the section object and look for the property containing the section
     for (const sectionName of Object.keys(sectionObject)) {
       propIndex++;
       // Check if the section name is in the mapping or if there is a wildcard mapping matching every section name
@@ -159,7 +160,6 @@ export class MetadataUtils<T> {
         // Get the key name for the section
         let keyName = sectionKeyMapping[sectionName];
         // If the key name is not found and there is a wildcard mapping, use the wildcard mapping as the key name
-        // Applies only to the first property in the section object, as it should contain all the section data
         if (!keyName && sectionKeyMapping['*'] && propIndex === 0) {
           keyName = sectionKeyMapping['*'];
         }
@@ -180,6 +180,12 @@ export class MetadataUtils<T> {
     return keyValue;
   }
 
+  /**
+   * Merges metadata properties from the source object into the target object.
+   * @param targetObject The target metadata object to update.
+   * @param sourceObject The source metadata object.
+   * @returns True if both objects are equal, otherwise false.
+   */
   private static _mergeMetadataProperties(targetObject: any, sourceObject: any): boolean {
     let isEquals = true;
     if (targetObject === undefined || sourceObject === undefined) {
@@ -210,9 +216,9 @@ export class MetadataUtils<T> {
   // Instance methods ----------------------------------------------------------
 
   /**
-   * Retrieve metadata from the target org using the command's connection
+   * Retrieves metadata from the target org using the command's connection.
    * @param metadataTypeName Name of the metadata type to retrieve, for example, `Profile`.
-   * @param members  List of metadata members to retrieve, default to `*` if not provided.
+   * @param members List of metadata members to retrieve, defaults to `*` if not provided.
    */
   public async retrieveSingleMetadataAsync(metadataTypeName: string, members?: string[]): Promise<string | undefined> {
     const utils = new CommandUtils(this.command);
@@ -295,7 +301,7 @@ export class MetadataUtils<T> {
   }
 
   /**
-   * Retrieve package metadata and extract to a temporary directory.
+   * Retrieves package metadata and extracts it to a temporary directory.
    * @param packagePath The path of the package to retrieve.
    */
   public async retrievePackageMetadataAsync(packagePath: string): Promise<string | undefined> {
@@ -307,6 +313,7 @@ export class MetadataUtils<T> {
       // Read and parse the package.xml file
       const packageManifest = (await Utils.loadXmlAsJsonAsync(packagePath)) as PackageXmlContent;
 
+      // Ensure types are arrays
       // eslint-disable-next-line eqeqeq
       if (packageManifest.Package?.types != undefined && !Array.isArray(packageManifest.Package.types)) {
         packageManifest.Package.types = [packageManifest.Package.types];
@@ -338,7 +345,6 @@ export class MetadataUtils<T> {
         .retrieve({
           apiVersion: Number(Constants.DEFAULT_API_VERSION),
           singlePackage: false, // Set to false to get filtered profiles
-          // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-explicit-any
           unpackaged: packageManifest.Package as any,
         })
         .stream();
@@ -410,17 +416,16 @@ export class MetadataUtils<T> {
   }
 
   /**
-   *  Merge two metadata XML files by comparing sections by their names and key values.
-   *  Updates the existing sections in the target xml file with the sections having the same key values in the source xml file.
-   *  Puts the new sections after the last occurrence of the similar section in the target xml file or at the end of the file if the section does not exist.
-   *  Preserves the order of the sections in the target xml file.
-   * @param sourceFilePath  The path to the source metadata XML file.
-   * @param targetFilePath  The path to the target metadata XML file.
-   * @param outputFilePath  The path to the output metadata XML file.
+   * Merges two metadata XML files by comparing sections by their names and key values.
+   * Updates the existing sections in the target XML file with the sections having the same key values in the source XML file.
+   * Puts the new sections after the last occurrence of the similar section in the target XML file or at the end of the file if the section does not exist.
+   * Preserves the order of the sections in the target XML file.
+   * @param sourceFilePath The path to the source metadata XML file.
+   * @param targetFilePath The path to the target metadata XML file.
+   * @param outputFilePath The path to the output metadata XML file.
    * @param rootTag The root tag of the metadata XML file, for example, `Profile` for profile metadata.
-   * @param sectionKeyMapping  A mapping of section names to key names used to identify sections in the XML files.
+   * @param sectionKeyMapping A mapping of section names to key names used to identify sections in the XML files.
    */
-  // eslint-disable-next-line complexity
   public mergeMetadataXml(
     sourceFilePath: string,
     targetFilePath: string,
@@ -597,10 +602,10 @@ export class MetadataUtils<T> {
   }
 
   /**
-   *  lists files in the metadata folder by the given metadata type name
-   * @param metadataTypeName  The metadata type name
-   * @param metadataRootFolder  The root folder of the metadata, can be relative or absolute path
-   * @returns  list of paths to the metadata files
+   * Lists files in the metadata folder by the given metadata type name.
+   * @param metadataTypeName The metadata type name.
+   * @param metadataRootFolder The root folder of the metadata, can be a relative or absolute path.
+   * @returns List of paths to the metadata files.
    */
   public listMetadataFiles(metadataTypeName: string, metadataRootFolder?: string): string[] {
     const filePath = this.getMetadataRootFolder(metadataTypeName, metadataRootFolder);
@@ -613,10 +618,10 @@ export class MetadataUtils<T> {
   }
 
   /**
-   *  Gets the root folder of the metadata for the force-app project.
-   * @param metadataTypeName  The metadata type name
-   * @param metadataRootFolder  The root folder of the metadata, can be relative or absolute path
-   * @returns  The path to the root folder of the metadata
+   * Gets the root folder of the metadata for the force-app project.
+   * @param metadataTypeName The metadata type name.
+   * @param metadataRootFolder The root folder of the metadata, can be a relative or absolute path.
+   * @returns The path to the root folder of the metadata.
    */
   public getMetadataRootFolder(metadataTypeName: string, metadataRootFolder?: string): string {
     if (metadataRootFolder) {
@@ -636,10 +641,10 @@ export class MetadataUtils<T> {
   }
 
   /**
-   *  Retrieves metadata for an sObject from the target or source org.
-   * @param sobjectName  The name of the sObject to retrieve metadata for
-   * @param useSourceConnection  A flag indicating whether to use the source connection
-   * @returns  The object metadata
+   * Retrieves metadata for an sObject from the target or source org.
+   * @param sobjectName The name of the sObject to retrieve metadata for.
+   * @param useSourceConnection A flag indicating whether to use the source connection.
+   * @returns The object metadata.
    */
   public async getSObjectMetadataAsync(
     sobjectName: string,

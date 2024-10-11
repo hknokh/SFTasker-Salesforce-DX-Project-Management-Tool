@@ -27,44 +27,44 @@ Loading script file %s...
 
 # process.excluding-object
 
-[Object-Set #%s : %s] Object set #%s: excluding object '%s' from the process...
-
-# process.verifying-query-fields
-
-[Object-Set #%s : %s] Verifying query fields...
+[WARN: Object-Set #%s] Excluding object '%s' from the process...
 
 # process.describing-object
 
 [Object-Set #%s : %s : %s] Describing object...
 
-# process.mapping-fields
+# process.field-not-found-in-metadata-or-readonly
 
-[Object-Set #%s : %s] Mapping fields...
+[WARN: Object-Set #%s : %s : %s] Field '%s' not found in metadata or is read-only. Skipping...
 
-# process.applying-multiselect-fields
+# process.skipping-lookup-field-referenced-object-excluded
 
-[Object-Set #%s : %s] Applying multi-select fields...
-
-# process.field-not-found-in-describe
-
-[WARN: Object-Set #%s : %s : %s] Field '%s' not found in describe...
-
-# process.processing-lookup-fields
-
-[Object-Set #%s : %s] Processing lookup fields...
+[WARN: Object-Set #%s : %s] Lookup field '%s' references an excluded object '%s'. Skipping...
 
 # process.added-new-referenced-object
 
-[Object-Set #%s : %s : %s] Added a new referenced object '%s'...
+[Object-Set #%s : %s] Added a new referenced object '%s'...
 
-# process.setting-default-external-id
+# process.setting-external-id
 
-[Object-Set #%s : %s] Setting default external ID field: '%s'...
+[Object-Set #%s : %s] Setting external ID field to '%s'...
 
 # process.processing-object-dependencies
 
 [Object-Set #%s : %s] Processing object dependencies...
 
-# error.complex-external-id-field-not-found-in-metadata
+# error.external-id-field-not-found-in-metadata
 
-[Object-Set #%s : %s : %s] Field '%s' as a part of complex external ID field '%s' not found in metadata.
+[Object-Set #%s : %s] External ID field '%s' not found in metadata...
+
+# process.processing-object
+
+[Object-Set #%s : %s] Processing object...
+
+# process.post-processing-object
+
+[Object-Set #%s : %s] Post-processing object...
+
+# process.processing-object-set-configurations
+
+Processing %s object set configurations...

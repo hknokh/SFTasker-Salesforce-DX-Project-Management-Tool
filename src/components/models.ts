@@ -6,89 +6,61 @@ import { DataOriginType, DescribeSObjectResult, Field, SftaskerCommandFlags } fr
 // Command models ----------------------------------------------------------------
 /**
  * Base class for all sftasker commands.
- * @template T - The type of the result returned by the run method.
+ * @template T The type of the result returned by the run method.
  */
 export class SFtaskerCommand<T> extends SfCommand<T> {
   // Public properties ----------------------------------------------------------
-  /**
-   * The Salesforce organization ID.
-   * @type {string}
-   */
+  /** The Salesforce organization ID. */
   public orgId!: string;
 
-  /**
-   * The Salesforce organization source ID.
-   * @type {string}
-   */
+  /** The Salesforce organization source ID. */
   public sourceOrgId!: string;
 
-  /**
-   * The Salesforce organization username.
-   * @type {string}
-   */
+  /** The Salesforce organization username. */
   public orgUsername!: string;
 
-  /**
-   * The Salesforce organization source username.
-   * @type {string}
-   */
+  /** The Salesforce organization source username. */
   public sourceOrgUsername!: string;
 
-  /**
-   * The label for the source connection. Typically 'Source'
-   * @type {string}
-   */
+  /** The label for the source connection. Typically 'Source'. */
   public sourceConnectionLabel!: string;
 
-  /**
-   * The label for the target connection. Typically 'Target'
-   * @type {string}
-   */
+  /** The label for the target connection. Typically 'Target'. */
   public targetConnectionLabel!: string;
 
-  /**
-   * Messages related to the command execution.
-   * @type {Messages<string>}
-   */
+  /** Messages related to the command execution. */
   public messages!: Messages<string>;
 
-  /**
-   * Messages related to the components used in the task.
-   * @type {Messages<string>}
-   */
+  /** Messages related to the components used in the task. */
   public componentsMessages!: Messages<string>;
 
-  /**
-   * The flags used in the command.
-   *
-   * @type {SftaskerCommandFlags}
-   */
+  /** The flags used in the command. */
   public flags!: SftaskerCommandFlags;
 
-  /**
-   * The source data origin type for the command.
-   * @type {DataOriginType}
-   */
+  /** The source data origin type for the command. */
   public sourceDataOriginType: DataOriginType = DataOriginType.org;
 
-  /**
-   * The target data origin type for the command.
-   * @type {DataOriginType}
-   */
+  /** The target data origin type for the command. */
   public targetDataOriginType: DataOriginType = DataOriginType.org;
 
   // Private properties ---------------------------------------------------------
+  /** The Salesforce connection. */
   private _connection!: Connection;
+
+  /** The Salesforce source connection. */
   private _sourceConnection!: Connection;
 
+  /** The Salesforce connection getter. */
   public get connection(): Connection {
     return this._connection;
   }
 
+  /** The Salesforce source connection getter. */
   public get sourceConnection(): Connection {
     return this._sourceConnection;
   }
 
+  /** The Salesforce connection setter. */
   public set connection(value: Connection) {
     this._connection = value;
     if (this._connection) {
@@ -98,6 +70,7 @@ export class SFtaskerCommand<T> extends SfCommand<T> {
     }
   }
 
+  /** The Salesforce source connection setter. */
   public set sourceConnection(value: Connection) {
     this._sourceConnection = value;
     if (this._sourceConnection) {
@@ -110,7 +83,7 @@ export class SFtaskerCommand<T> extends SfCommand<T> {
   /**
    * Executes the command logic.
    * This method is not yet implemented and will throw an error.
-   * @returns {Promise<T>} - A promise resolving to the command's result.
+   * @returns A promise resolving to the command's result.
    */
   public run(): Promise<T> {
     this.error('Method not implemented.');
@@ -122,32 +95,88 @@ export class SFtaskerCommand<T> extends SfCommand<T> {
  * Wrapper class to hold SObject field describe properties.
  */
 export class SObjectFieldDescribe {
+  /** The name of the field. */
   public name: string;
+
+  /** The label of the field. */
   public label: string;
+
+  /** The data type of the field. */
   public type: string;
+
+  /** The length of the field. */
   public length?: number;
+
+  /** The precision of the field. */
   public precision?: number;
+
+  /** The scale of the field. */
   public scale?: number;
+
+  /** Indicates if the field is nillable. */
   public nillable: boolean;
+
+  /** Indicates if the field has a default value on create. */
   public defaultedOnCreate: boolean;
+
+  /** Indicates if the field is calculated. */
   public calculated: boolean;
+
+  /** Indicates if the field is filterable. */
   public filterable: boolean;
+
+  /** Indicates if the field is sortable. */
   public sortable: boolean;
+
+  /** Indicates if the field is updateable. */
   public updateable: boolean;
+
+  /** Indicates if the field is createable. */
   public createable: boolean;
+
+  /** Indicates if the field is unique. */
   public unique: boolean;
+
+  /** Indicates if the field is case-sensitive. */
   public caseSensitive?: boolean;
+
+  /** Indicates if the field is a restricted picklist. */
   public restrictedPicklist?: boolean;
+
+  /** The picklist values for the field. */
   public picklistValues?: any[];
+
+  /** The sObjects that the field references. */
   public referenceTo?: string[];
+
+  /** Indicates if the field is a name field. */
   public nameField?: boolean;
+
+  /** Indicates if the field is an auto-number field. */
   public autoNumber?: boolean;
+
+  /** Indicates if the field is polymorphic. */
   public isPolymorphic: boolean;
+
+  /** Indicates if the field is read-only. */
   public readonly: boolean = false;
+
+  /** Indicates if the field is a formula. */
   public isFormula: boolean = false;
+
+  /** Indicates if the field is a lookup. */
   public isLookup: boolean = false;
+
+  /** Indicates if the field supports cascade delete. */
   public cascadeDelete?: boolean = false;
 
+  /** The referenced object type, if applicable. */
+  public referencedObjectType?: string;
+
+  /**
+   * Creates an instance of SObjectFieldDescribe.
+   * @param fieldDescribe The field describe properties.
+   */
   public constructor(fieldDescribe: Field) {
     this.name = fieldDescribe.name;
     this.label = fieldDescribe.label;
@@ -174,14 +203,12 @@ export class SObjectFieldDescribe {
     this.isFormula = fieldDescribe.calculated;
     this.isLookup = Array.isArray(fieldDescribe.referenceTo) && fieldDescribe.referenceTo.length > 0;
     this.cascadeDelete = fieldDescribe.cascadeDelete;
+    this.referencedObjectType = fieldDescribe.referenceTo ? fieldDescribe.referenceTo[0] : undefined;
   }
 
   /**
    * Returns true if the field is a master-detail field.
-   *
    * @readonly
-   * @type {boolean}
-   * @memberof SObjectFieldDescribe
    */
   public get isMasterDetail(): boolean {
     return this.isLookup && ((!this.updateable || this.cascadeDelete) as boolean);
@@ -192,13 +219,28 @@ export class SObjectFieldDescribe {
  * Wrapper class to hold SObject describe properties.
  */
 export class SObjectDescribe {
+  /** The name of the sObject. */
   public name: string;
+
+  /** The label of the sObject. */
   public label: string;
+
+  /** Indicates if the sObject is custom. */
   public custom: boolean;
+
+  /** The key prefix for the sObject. */
   public keyPrefix: string;
+
+  /** The fields of the sObject. */
   public fields: SObjectFieldDescribe[];
+
+  /** A map of field names to field describe properties. */
   public fieldsMap: Map<string, SObjectFieldDescribe> = new Map<string, SObjectFieldDescribe>();
 
+  /**
+   * Creates an instance of SObjectDescribe.
+   * @param sobjectDescribe The sObject describe properties.
+   */
   public constructor(sobjectDescribe: DescribeSObjectResult) {
     this.name = sobjectDescribe.name;
     this.label = sobjectDescribe.label;

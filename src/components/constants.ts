@@ -1,64 +1,28 @@
 import { AvailableMetadataTypes, FilenameRegexpReplacement, SftaskerCommandFlags } from './types.js';
 
-/**
- * Constants used in the application.
- */
+/** Constants used throughout the application. */
 export class Constants {
-  /**
-   * The name of the components resource.
-   *
-   * @static
-   * @memberof Constants
-   */
+  /** The name of the components resource. */
   public static readonly COMPONENTS_RESOURCE_NAME = 'components';
 
-  /**
-   * The name of the commands resource.
-   * @static
-   * @memberof Constants
-   */
+  /** The name of the commands resource. */
   public static readonly COMMANDS_COMMON_RESOURCE_NAME = 'commands';
 
-  /**
-   * The path to the temporary directory used for command execution.
-   *
-   * @static
-   * @memberof Constants
-   */
+  /** The path to the temporary directory used for command execution. */
   public static readonly TEMP_PATH = '/tmp';
 
-  /**
-   * The default API version used in the application.
-   *
-   * @static
-   * @memberof Constants
-   */
+  /** The default API version used in the application. */
   public static readonly DEFAULT_API_VERSION = '61.0';
 
-  /**
-   * The default path to the force-app project manifest file.
-   *
-   * @static
-   * @memberof Constants
-   */
+  /** The default path to the force-app project manifest file. */
   public static readonly DEFAULT_MANIFEST_PATH = 'manifest/package.xml';
 
-  /**
-   * The timeout for polling metadata retrieval.
-   *
-   * @static
-   * @memberof Constants
-   */
+  /** The timeout duration for polling metadata retrieval in milliseconds. */
   public static readonly POLL_TIMEOUT = 300_000;
 
-  /**
-   * The mapping betweeen the metadata type and the section key in the metadata file.
-   *
-   * @static
-   * @memberof Constants
-   */
+  /** Maps metadata types to their corresponding section keys in the metadata file. */
   public static readonly METADATA_SECTION_KEY_MAPPING = {
-    // Profile section key mapping
+    // Profile section key mappings
     Profile: {
       custom: '',
       userLicense: '',
@@ -81,10 +45,12 @@ export class Constants {
       '*': 'name',
     },
 
+    // Custom labels section key mapping
     CustomLabels: {
       labels: 'fullName',
     },
 
+    // Translations section key mappings
     Translations: {
       flowDefinitions: 'fullName',
       standardValueSetTranslations: 'standardValueSetName',
@@ -92,12 +58,7 @@ export class Constants {
     },
   };
 
-  /**
-   * The mapping between the metadata type names in the package.xml file and the folder names in the force-app project.
-   *
-   * @static
-   * @memberof Constants
-   */
+  /** Maps metadata type names in package.xml to folder names in the force-app project. */
   public static readonly PACKAGE_XML_METADATA_NAME_TO_SFDX_PROJECT_FOLDER_MAPPING: Record<string, string> = {
     ApexClass: 'classes',
     ApexPage: 'pages',
@@ -169,26 +130,14 @@ export class Constants {
     PathAssistant: 'pathAssistants',
   };
 
-  /**
-   * The mapping between the metadata type names in the package.xml file and the metadata file root tags.
-   *
-   * @static
-   * @type {Record<string, string>}
-   * @memberof Constants
-   */
+  /** Maps metadata type names in package.xml to their corresponding root XML tags in metadata files. */
   public static readonly PACKAGE_XML_METADATA_NAME_TO_XNL_METADATA_FILE_ROOT_TAG_MAPPING: Record<string, string> = {
     Profile: 'Profile',
     CustomLabels: 'CustomLabels',
     Translations: 'Translations',
   };
 
-  /**
-   * The mapping between the metadata type names in the package.xml file and the regular expression and replacement for the metadata file name.
-   *
-   * @static
-   * @type {Record<string, FilenameRegexpReplacement>}
-   * @memberof Constants
-   */
+  /** Maps metadata type names in package.xml to their filename regex patterns and replacements. */
   public static readonly PACKAGE_XML_METADATA_NAME_TO_FILE_REGEX_REPLACE_MAPPING: Record<
     string,
     FilenameRegexpReplacement
@@ -207,9 +156,7 @@ export class Constants {
     },
   };
 
-  /**
-   * The mapping between the metadata type names in the package.xml file and the flags used in the sftasker command.
-   */
+  /** Maps metadata type names in package.xml to the flags used in the sftasker command. */
   public static readonly PACKAGE_XML_METADATA_NAME_TO_FLAG_MAPPING: Record<
     AvailableMetadataTypes,
     SftaskerCommandFlags
@@ -231,57 +178,38 @@ export class Constants {
     },
   };
 
-  /**
-   * The default path to the force-app project main default folder.
-   *
-   * @static
-   * @memberof Constants
-   */
+  /** The default path to the main default folder in the force-app project. */
   public static readonly FORCE_APP_MAIN_DEFAULT_PATH = 'main/default';
 
-  /**
-   * The default path to the force-app project main folder.
-   *
-   * @static
-   * @memberof Constants
-   */
+  /** The root path of the force-app project. */
   public static readonly FORCE_APP_PROJECT_ROOT_MAIN_DEFAULT_PATH = 'force-app';
-  /**
-   * The name of the sfdx-project.json file.
-   *
-   * @static
-   * @memberof Constants
-   */
+
+  /** The name of the sfdx-project.json configuration file. */
   public static readonly FORCE_APP_SFDX_PROJECT_JSON = 'sfdx-project.json';
 
-  /**
-   * The constants used in the data-move command.
-   *
-   * @static
-   * @memberof Constants
-   */
+  /** Constants used specifically in the data-move command. */
   public static readonly DATA_MOVE_CONSTANTS = {
     /** The default relative path to the configuration file. */
     DEFAULT_CONFIG_PATH: './export.json',
-    /** The source directory for the temporary CSV files. */
+    /** The source directory for temporary CSV files. */
     CSV_SOURCE_SUB_DIRECTORY: 'source',
-    /**  The target directory for the temporary CSV files. */
+    /** The target directory for temporary CSV files. */
     CSV_TARGET_SUB_DIRECTORY: 'target',
-    /** The temporary directory for processing the data. */
+    /** The temporary directory for processing data. */
     TEMP_DIRECTORY: 'temp',
-    /** The separator for the complex external id. */
+    /** Separator used for complex external IDs. */
     COMPLEX_EXTERNAL_ID_SEPARATOR: ';',
-    /** The separator for the polymorphic field. */
+    /** Separator used for polymorphic fields. */
     POLYMORPHIC_FIELD_SEPARATOR: '$',
-    /** The SOQL keyword to select all fields. */
+    /** SOQL keyword to select all fields. */
     ALL_FIELDS_KEYWORD: 'all',
 
-    /** The field should be excluded from the data move process per object. */
+    /** Fields to exclude from the data move process per object. */
     EXCLUDED_FIELDS: new Map<string, string[]>([
-      //['Account', ['FirstName', 'LastName']], // since these fields are not available for business accounts
+      // Example: ['Account', ['FirstName', 'LastName']], // Excluded fields for business accounts
     ]),
 
-    /** The default external id for given sobject types. */
+    /** Default external IDs for specific sObject types. */
     DEFAULT_EXTERNAL_ID: new Map<string, string>([
       ['EmailMessage', 'Subject'],
       ['Case', 'CaseNumber'],

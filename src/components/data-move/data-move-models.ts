@@ -1,379 +1,202 @@
-/* eslint-disable import/no-extraneous-dependencies */
 import { Type } from 'class-transformer';
 import 'reflect-metadata';
-import { SObjectDescribe } from '../models.js';
-import { OPERATION, ReferenceFieldData } from './data-move-types.js';
+import { OPERATION } from './data-move-types.js';
 
 // Common Models ----------------------------------------------------------------
+
 /**
- * Class holds the components of the parsed query string.
+ * Represents extra data for an object, including mappings, fields, object names, where clauses, limits, and offsets.
  */
-export class ParsedQuery {
-  /**
-   * The mapping between the source and target fields.
-   */
-  public fieldMapping!: Map<string, string>;
+export class ObjectExtraData {
+  /** Mapping between lookup field names and their corresponding parent object names. */
+  public lookupObjectNameMapping: Map<string, string> = new Map<string, string>();
 
-  /**
-   * The mapping between the polymorphic fields and their object types.
-   */
-  public polymorphicFieldMapping!: Map<string, string>;
+  /** Mapping between the lookup field names and their corresponding parent script objects. */
+  public lookupObjectMapping: Map<string, ScriptObject> = new Map<string, ScriptObject>();
 
-  /**
-   * The mapping between the referenced field names and their data,
-   * for example, Account__c => Account__r.Name
-   * Note: This property is populated only for `target` ParsedQuery object.
-   * This field is populted for source ParsedQuery object only.
-   * @type {Map<string, ReferencedField>}
-   */
-  public referencedFieldsMap: Map<string, ReferenceFieldData> = new Map<string, ReferenceFieldData>();
+  /** Mapping between the field names in the source org and their representation in the target org. */
+  public fieldMapping: Map<string, string> = new Map<string, string>();
 
-  /**
-   * The fields to exclude from the data move process.
-   * Note: This property is populated only for `target` ParsedQuery object.
-   */
-  public excludedFromUpdateFields = new Array<string>();
+  /** Mapping between the lookup fields and their full reference fields, containing the parent external ID. For example, Account__c => Account__r.Name. */
+  public lookupFieldMapping: Map<string, string> = new Map<string, string>();
 
-  /**
-   * The fields to select in the query.
-   */
+  /** Fields to select in the query. */
   public fields!: string[];
-  /**
-   * The object name to query.
-   */
+
+  /** Object name to query. */
   public objectName!: string;
-  /**
-   * The where clause of the query.
-   */
+
+  /** API name of the target object according to the field mapping. */
+  public targetObjectName!: string;
+
+  /** External ID of the target object according to the field mapping. */
+  public targetExternalId!: string;
+
+  /** Indicates if the external ID was originally missing in object settings. */
+  public isExternalIdMissing!: boolean;
+
+  /** WHERE clause of the query. */
   public where!: string;
-  /**
-   * The limit of the query.
-   */
+
+  /** Target WHERE clause of the query according to the field mapping. */
+  public targetWhere!: string;
+
+  /** LIMIT of the query. */
   public limit!: number;
-  /**
-   * The offset of the query.
-   */
+
+  /** OFFSET of the query. */
   public offset!: number;
 
   /**
-   * The external id field of the object used for update operations.
+   * Constructs an instance of ObjectExtraData.
+   *
+   * @param init - Partial initialization object.
    */
-  public externalId!: string;
-
-  public constructor(init: Partial<ParsedQuery>) {
+  public constructor(init: Partial<ObjectExtraData>) {
+    // Assign initial values from the provided partial object
     Object.assign(this, init);
   }
 }
 
+// Script Models ----------------------------------------------------------------
+
 /**
- * Class for the field for data anonymization.
+ * Represents a field and its settings for data anonymization.
  */
 export class ScriptMockField {
-  /**
-   * Api name of the field.
-   *
-   * @type {string}
-   * @memberof ScriptMockField
-   */
+  /** API name of the field. */
   public name: string = '';
 
-  /**
-   * Anonymization pattern for the field.
-   * For example, 'Name' for name fields, 'Email' for email fields, 'Phone' for phone fields, etc.
-   *
-   * @type {string}
-   * @memberof ScriptMockField
-   */
+  /** Anonymization pattern for the field, e.g., 'Name', 'Email', 'Phone'. */
   public pattern: string = '';
 
-  /**
-   * Regular expression for fields to exclude from anonymization.
-   *
-   * @type {string}
-   * @memberof ScriptMockField
-   */
+  /** Regular expression for fields to exclude from anonymization. */
   public excludedRegex: string = '';
 
-  /**
-   * Regular expression for fields to include in anonymization.
-   *
-   * @type {string}
-   * @memberof ScriptMockField
-   */
+  /** Regular expression for fields to include in anonymization. */
   public includedRegex: string = '';
 }
 
 /**
- * Class for the field mapping item.
+ * Represents a mapping between source and target fields and objects.
  */
-export default class ScriptMappingItem {
-  /**
-   * The api name of target object which the current object should be mapped to.
-   *
-   * @type {string}
-   * @memberof ScriptMappingItem
-   */
+export class ScriptMappingItem {
+  /** API name of the target object to which the current object should be mapped. */
   public targetObject: string = '';
 
-  /**
-   * The api name of the source field.
-   * This field should be present in the query string of the source object.
-   * @type {string}
-   * @memberof ScriptMappingItem
-   */
+  /** API name of the source field, present in the query string of the source object. */
   public sourceField: string = '';
 
-  /**
-   * The api name of the target field.
-   * This is the field which the source field should be mapped to in the target object.
-   *
-   * @type {string}
-   * @memberof ScriptMappingItem
-   */
+  /** API name of the target field to which the source field should be mapped in the target object. */
   public targetField: string = '';
 }
 
 /**
- * Class for the object in the script.
+ * Represents an object in the script, including its settings and operations.
  */
 export class ScriptObject {
-  // Inner Types ----------------------------------------------------------------
-  /**
-   * The data anonymization settings for the object.
-   *
-   * @type {string}
-   * @memberof ScriptObject
-   */
+  /** Data anonymization settings for the object. */
   @Type(() => ScriptMockField)
   public mockFields: ScriptMockField[] = new Array<ScriptMockField>();
 
-  /**
-   * The field mapping settings for the object.
-   *
-   * @type {string}
-   * @memberof ScriptObject
-   */
+  /** Field mapping settings for the object. */
   @Type(() => ScriptMappingItem)
   public fieldMapping: ScriptMappingItem[] = new Array<ScriptMappingItem>();
 
-  // Properties ----------------------------------------------------------------
-  /**
-   * SOQL query to fetch the data from the source object.
-   *
-   * @type {string}
-   * @memberof ScriptObject
-   */
+  /** SOQL query to fetch the data from the source object. */
   public query: string = '';
 
-  /**
-   * The operation to be performed on the object.
-   *
-   * @type {string}
-   * @memberof ScriptObject
-   */
+  /** Operation to be performed on the object. */
   public operation: OPERATION = OPERATION.Readonly;
 
-  /**
-   * The external id field of the object.
-   * Can be complex field containing multiple fields, separated by ';', for example, 'FirstName;LastName'.
-   *
-   * @type {string}
-   * @memberof ScriptObject
-   */
+  /** External ID field of the object, can be a complex field containing multiple fields separated by ';', e.g., 'FirstName;LastName'. */
   public externalId: string = '';
 
-  /**
-   * true if this object is excluded from the data move process.
-   *
-   * @type {string}
-   * @memberof ScriptObject
-   */
+  /** Indicates if this object is excluded from the data move process. */
   public excluded: boolean = false;
 
-  /**
-   * true if this object is a master object.
-   * Master meaning that plugin will transfer only the child records of other object which are related to this object.
-   * For master object, plugin will transfer only the records determined by the query.
-   *
-   * @type {string}
-   * @memberof ScriptObject
-   */
+  /** Indicates if this object is a master object. Master objects transfer only child records related to this object based on the query. */
   public master: boolean = true;
 
-  /**
-   * The dedicated query string to perform a record deletion before the main data move operation.
-   *
-   * @type {string}
-   * @memberof ScriptObject
-   */
+  /** Dedicated query string to perform a record deletion before the main data move operation. */
   public deleteQuery: string = '';
 
-  /**
-   * true if the old data should be deleted before the main data move operation.
-   *
-   * @type {string}
-   * @memberof ScriptObject
-   */
+  /** Indicates if the old data should be deleted before the main data move operation. */
   public deleteOldData: boolean = false;
 
-  /**
-   * true if the records should be hard deleted.
-   * Applied both when `deleteOldData` is true and when the operation is 'Delete'.
-   *
-   * @type {string}
-   * @memberof ScriptObject
-   */
+  /** Indicates if the records should be hard deleted, applicable when `deleteOldData` is true or operation is 'Delete'. */
   public hardDelete: boolean = false;
 
-  /**
-   * true if fiewld mapping should be applied.
-   *
-   * @type {string}
-   * @memberof ScriptObject
-   */
+  /** Indicates if field mapping should be applied. */
   public useFieldMapping: boolean = false;
 
-  /**
-   * true if values mapping should be applied.
-   *
-   * @type {string}
-   * @memberof ScriptObject
-   */
+  /** Indicates if values mapping should be applied. */
   public useValuesMapping: boolean = false;
 
-  /**
-   * List of api names of the fields to exclude from the data move process.
-   * Usefull when multiselect keywords are used in the query.
-   *
-   * @type {string}
-   * @memberof ScriptObject
-   */
+  /** List of API names of the fields to exclude from the data move process, useful with multiselect keywords in the query. */
   public excludedFields: string[] = [];
 
-  /**
-   * List of api names of the fields to exclude from the update operation.
-   * Even thru these fields are still retrieved from the source object, they are not used in the update operation.
-   *
-   * @type {string}
-   * @memberof ScriptObject
-   */
+  /** List of API names of the fields to exclude from the update operation, retrieved from the source but not used in the update. */
   public excludedFromUpdateFields: string[] = [];
 
-  /**
-   * true if the records should be skipped if they already exist in the target org.
-   * Applied when oiperation is `Insert` or `Upsert` and insertion is performed.
-   * For `Insert` operation, it skips the records which exist in the target org, which prevents inserting duplicates.
-   * For `Upsert` operation, it turns it into 'Update' operation since new records are never inserted.
-   *
-   * @type {string}
-   * @memberof ScriptObject
-   */
+  /** Indicates if records should be skipped if they already exist in the target org. Applies to `Insert` and `Upsert` operations to prevent duplicates or convert to 'Update'. */
   public skipExistingRecords: boolean = false;
 
   // Working Methods and Properties ----------------------------------------------------------------
 
-  /**
-   * The parsed query string object.
-   *
-   * @type {string}
-   * @memberof ScriptObject
-   */
-  public parsedQuery!: ParsedQuery;
+  /** Extra data of the object. */
+  public extraData!: ObjectExtraData;
 
-  /**
-   * The parsed query for target org concidering the field mapping.
-   *
-   * @type {string}
-   * @memberof ScriptObject
-   */
-  public targetParsedQuery!: ParsedQuery;
-
-  /**
-   * The object set this object belongs to.
-   *
-   * @type {ScriptObjectSet}
-   * @memberof ScriptObject
-   */
+  /** Object set this object belongs to. */
   public objectSet!: ScriptObjectSet;
 
   /**
-   * The description of this object in the source org.
+   * Constructs an instance of ScriptObject.
    *
-   * @type {number}
-   * @memberof ScriptObject
+   * @param init - Partial initialization object.
    */
-  public sourceDescribe!: SObjectDescribe;
-
-  /**
-   * The description of this object in the target org.
-   *
-   * @type {number}
-   * @memberof ScriptObject
-   */
-  public targetDescribe!: SObjectDescribe;
-
-  /**
-   * Whether this field is to use for target org only.
-   *
-   * @type {string}
-   * @memberof ScriptObject
-   */
-  public isForTargetOnly: boolean = false;
-
-  // Constructor ----------------------------------------------------------------
   public constructor(init: Partial<ScriptObject>) {
+    // Assign initial values from the provided partial object
     Object.assign(this, init);
   }
 }
 
 /**
- * Class represents set of objects in the script.
- * Each object set contains a list of objects to be processed together.
+ * Represents a set of script objects to be processed together.
  */
 export class ScriptObjectSet {
-  /**
-   * List of objects in the set.
-   *
-   * @type {string}
-   * @memberof ScriptObjectSet
-   */
+  /** List of objects in the set. */
   @Type(() => ScriptObject)
   public objects: ScriptObject[] = new Array<ScriptObject>();
 
   // Working Methods and Properties ----------------------------------------------------------------
-  /**
-   * The index of the object set in the script.
-   *
-   * @type {number}
-   * @memberof ScriptObjectSet
-   */
+
+  /** Index of the object set in the script. */
   public index: number = 0;
 
-  // Constructor ----------------------------------------------------------------
+  /** Names of the objects excluded from the data move process and not included in the `objects` array. */
+  public excludedObjects: string[] = [];
+
+  /**
+   * Constructs an instance of ScriptObjectSet.
+   *
+   * @param init - Partial initialization object.
+   */
   public constructor(init: Partial<ScriptObjectSet>) {
+    // Assign initial values from the provided partial object
     Object.assign(this, init);
   }
 }
 
 /**
- * Class represents the script.
+ * Represents the script containing objects and object sets.
  */
 export class Script {
-  /**
-   * List of objects in the script.
-   *
-   * @type {string}
-   * @memberof Script
-   */
+  /** List of objects in the script. */
   @Type(() => ScriptObject)
   public objects: ScriptObject[] = new Array<ScriptObject>();
 
-  /**
-   * List of object sets in the script.
-   *
-   * @type {string}
-   * @memberof Script
-   */
+  /** List of object sets in the script. */
   @Type(() => ScriptObjectSet)
   public objectSets: ScriptObjectSet[] = new Array<ScriptObjectSet>();
 }

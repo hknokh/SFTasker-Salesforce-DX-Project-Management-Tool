@@ -6,48 +6,66 @@ import { SFtaskerCommand } from '../../components/models.js';
 import { FindMatchingFilesResult } from '../../components/types.js';
 import { Utils } from '../../components/utils.js';
 
+/** Represents the result of the Sftasker Merge Meta command. */
 export type SftaskerMergeMetaResult = Record<string, never>;
 
-// Set up the command messages
+// Set up the command messages using CommandUtils utility.
 const messages = CommandUtils.setupCommandMessages('sftasker', 'merge-meta');
 
-// eslint-disable-next-line sf-plugin/only-extend-SfCommand
+/**
+ * Command class for merging metadata using Sftasker.
+ *
+ * @extends SFtaskerCommand
+ */
 export default class SftaskerMergeMeta extends SFtaskerCommand<SftaskerMergeMetaResult> {
+  /** Summary of the command. */
   public static readonly summary = messages.commandMessages.getMessage('summary');
+
+  /** Description of the command. */
   public static readonly description = messages.commandMessages.getMessage('description');
+
+  /** Examples of how to use the command. */
   public static readonly examples = messages.commandMessages.getMessages('examples');
 
-  // eslint-disable-next-line sf-plugin/spread-base-flags
+  /** Defines the flags/options for the command. */
   public static readonly flags = {
+    /** Specifies the target Salesforce org. (Required) */
     'target-org': Flags.requiredOrg(),
+
+    /** Specifies the API version to use. */
     'api-version': Flags.orgApiVersion({
       char: 'a',
     }),
 
+    /** Specifies the path to the manifest file. */
     manifest: Flags.string({
       summary: messages.commandMessages.getMessage('flags.manifest.summary'),
       char: 'x',
       default: Constants.DEFAULT_MANIFEST_PATH,
     }),
 
+    /** Specifies the source directory path. */
     'source-dir': Flags.string({
       summary: messages.commandMessages.getMessage('flags.source-dir.summary'),
       char: 'p',
       required: false,
     }),
 
+    /** Enables deduplication of metadata files. (Hidden) */
     dedup: Flags.boolean({
       summary: messages.commandMessages.getMessage('flags.dedup.summary'),
       char: 'd',
       hidden: true, // This flag is managed internally
     }),
 
+    /** Enables merging of properties in metadata files. (Hidden) */
     'merge-props': Flags.boolean({
       summary: messages.commandMessages.getMessage('flags.merge-props.summary'),
       char: 'e',
       hidden: true, // This flag is managed internally
     }),
 
+    /** Specifies the type of metadata to merge. */
     type: Flags.option({
       summary: messages.commandMessages.getMessage('flags.type.summary'),
       char: 't',
@@ -55,46 +73,56 @@ export default class SftaskerMergeMeta extends SFtaskerCommand<SftaskerMergeMeta
       options: ['Profile', 'CustomLabels', 'Translations'] as const,
     })(),
 
+    /** Indicates whether to keep temporary directories after execution. */
     'keep-temp-dirs': Flags.boolean({
       summary: messages.commandMessages.getMessage('flags.keep-temp-dirs.summary'),
       char: 'k',
     }),
   };
 
+  /**
+   * Executes the Merge Meta command to merge metadata based on the provided flags and configuration.
+   *
+   * @returns The result of the merge operation.
+   */
   public async run(): Promise<SftaskerMergeMetaResult> {
+    // Parse the command-line flags provided by the user.
     const { flags } = await this.parse(SftaskerMergeMeta);
 
-    // Set up the command utils
+    // Initialize CommandUtils with the current command instance.
     const commandUtils = new CommandUtils(this);
 
-    // Set up the command with the necessary properties
+    // Set up the command instance with the necessary messages and flags.
     commandUtils.setupCommandInstance(messages, flags);
 
-    // Log the command start message
+    // Log a message indicating the start of the command execution.
     commandUtils.logCommandStartMessage();
 
-    // Create a temporary directory for the command execution
+    // Create a temporary directory for the command execution.
     const tempPath = commandUtils.createTempDirectory();
 
-    // Create an instance of the MetadataUtils class
+    // Initialize MetadataUtils with the current command instance and temporary path.
     const metadataUtils = new MetadataUtils(this, tempPath);
 
-    // Set the metadata root folder
+    // Get the root folder for the specified metadata type.
     const forceAppMetadataRootFolder = metadataUtils.getMetadataRootFolder(flags.type);
+    // Log the metadata root folder being used.
     commandUtils.logCommandMessage('command.progress.metadata-root-folder', forceAppMetadataRootFolder);
 
-    // Retrieve the metadata from the manifest file
+    // Retrieve metadata from the manifest file and store it in a temporary folder.
     const manifestTempFolder = (await metadataUtils.retrievePackageMetadataAsync(flags.manifest)) as string;
+    // Log the path to the manifest's temporary folder.
     commandUtils.logCommandMessage('command.progress.manifest-temp-folder', manifestTempFolder);
 
-    // List metadata files in the manifest
+    // List metadata files specified in the manifest.
     const manifestMetadataFiles = metadataUtils.listMetadataFiles(flags.type, manifestTempFolder);
 
-    // List metadata files in the force-app project
+    // List metadata files present in the local force-app project.
     const forceAppMetadataFiles = metadataUtils.listMetadataFiles(flags.type);
+    // Log the number of local metadata files found.
     commandUtils.logCommandMessage('command.progress.found-local-files', forceAppMetadataFiles.length.toString());
 
-    // Find matching metadata files in the manifest and force-app project
+    // Find matching metadata files between the manifest and the local force-app project.
     commandUtils.logCommandMessage('command.progress.finding-matching-files');
     const matchingManifest2ForceAppMetadataFiles: FindMatchingFilesResult = Utils.findMatchingFiles(
       manifestMetadataFiles,
@@ -102,16 +130,17 @@ export default class SftaskerMergeMeta extends SFtaskerCommand<SftaskerMergeMeta
       Constants.PACKAGE_XML_METADATA_NAME_TO_FILE_REGEX_REPLACE_MAPPING[flags.type]
     );
 
-    // Missing files are those that are in the manifest but not in the force-app project
+    // Check if there are no matching or missing files to merge.
     if (
       matchingManifest2ForceAppMetadataFiles.matchingFiles.length === 0 &&
       matchingManifest2ForceAppMetadataFiles.missingFiles.length === 0
     ) {
+      // Log that there are no components to merge and exit early.
       commandUtils.logCommandMessage('command.result.no-components-to-merge');
       return {};
     }
 
-    // Merge each of the matching metadata files and put them in the force-app project folder
+    // Merge each of the matching metadata files into the force-app project folder.
     commandUtils.logCommandMessage(
       'command.progress.processing-matching-files',
       matchingManifest2ForceAppMetadataFiles.matchingFiles.length.toString()
@@ -126,13 +155,15 @@ export default class SftaskerMergeMeta extends SFtaskerCommand<SftaskerMergeMeta
       );
     }
 
-    // Copy missing metadata files to the force-app project
+    // If there are missing metadata files, copy them to the force-app project.
     if (matchingManifest2ForceAppMetadataFiles.missingFiles.length > 0) {
+      // Log the number of missing files being copied.
       commandUtils.logCommandMessage(
         'command.progress.copying-missing-files',
         matchingManifest2ForceAppMetadataFiles.missingFiles.length.toString()
       );
 
+      // Copy the missing files to the target metadata root folder.
       Utils.copyFiles(
         matchingManifest2ForceAppMetadataFiles.missingFiles,
         forceAppMetadataRootFolder,
@@ -140,14 +171,16 @@ export default class SftaskerMergeMeta extends SFtaskerCommand<SftaskerMergeMeta
       );
     }
 
+    // If the user does not want to keep temporary directories, delete them.
     if (!flags['keep-temp-dirs']) {
-      // Delete the temporary directory
+      // Delete the temporary directory used for the manifest.
       commandUtils.deleteTempDirectory(manifestTempFolder);
     }
 
-    // Log the command completion message
+    // Log a message indicating the completion of the command execution.
     commandUtils.logCommandEndMessage();
 
+    // Return an empty result as defined by SftaskerMergeMetaResult.
     return {};
   }
 }
