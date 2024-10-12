@@ -1,10 +1,10 @@
 import fs from 'node:fs';
 import { CommandUtils } from '../command-utils.js';
 import { Constants } from '../constants.js';
+import { DataOriginType } from '../types.js';
 import { SFtaskerCommand, SObjectDescribe, SObjectFieldDescribe } from '../models.js';
 import { Utils } from '../utils.js';
 import { MetadataUtils } from '../metadata-utils.js';
-import { DataOriginType } from '../types.js';
 import { Script, ScriptObject, ScriptObjectSet } from './data-move-models.js';
 import { DataMoveUtilsStatic } from './data-move-utils-static.js';
 import { OPERATION } from './data-move-types.js';
@@ -12,7 +12,7 @@ import { OPERATION } from './data-move-types.js';
 /**
  * Utility class for data-move command operations.
  *
- * @template T - The type parameter for the command.
+ * @template T The type parameter for the command.
  */
 export class DataMoveUtils<T> {
   // Public properties ----------------------------------------------------------
@@ -43,7 +43,7 @@ export class DataMoveUtils<T> {
   /**
    * Constructs a new instance of the DataMoveUtils class.
    *
-   * @param command - The command to process.
+   * @param command The command to process.
    */
   public constructor(private command: SFtaskerCommand<T>) {}
 
@@ -52,7 +52,8 @@ export class DataMoveUtils<T> {
   /**
    * Describes an object for both source and target connections.
    *
-   * @param object - The object to describe.
+   * @param object The object to describe.
+   * @returns A promise that resolves when the object is described.
    */
   public async describeObjectAsync(object: ScriptObject): Promise<void> {
     // Initialize metadata and command utilities
@@ -60,50 +61,77 @@ export class DataMoveUtils<T> {
     const comUtils = new CommandUtils(this.command);
 
     // Describe the source object if the data origin is an org and not already described
-    if (this.command.sourceDataOriginType === DataOriginType.org) {
-      if (!this.sourceSObjectDescribeMap.has(object.extraData.objectName)) {
-        comUtils.logCommandMessage(
-          'process.describing-object',
-          object.objectSet.index.toString(),
-          object.extraData.objectName,
-          this.command.sourceConnectionLabel
+    if (!this.sourceSObjectDescribeMap.has(object.extraData.objectName)) {
+      if (
+        object.extraData.objectName !== object.extraData.targetObjectName ||
+        this.command.sourceDataOriginType === DataOriginType.org
+      ) {
+        try {
+          // Fetch and store the source object metadata
+          const sourceDescribe = (await metaUtils.getSObjectMetadataAsync(
+            object.extraData.objectName,
+            this.command.sourceDataOriginType === DataOriginType.org
+          )) as SObjectDescribe;
+          this.sourceSObjectDescribeMap.set(object.extraData.objectName, sourceDescribe);
+        } catch (error) {
+          // Handle missing source object in metadata
+          comUtils.throwCommandError(
+            'error.missing-object-in-metadata',
+            object.objectSet.index.toString(),
+            this.command.sourceConnectionLabel,
+            object.extraData.objectName
+          );
+        }
+      }
+      if (
+        this.command.targetDataOriginType !== DataOriginType.org &&
+        object.extraData.targetObjectName === object.extraData.objectName
+      ) {
+        // Use source description for target if applicable
+        this.targetSObjectDescribeMap.set(
+          object.extraData.targetObjectName,
+          this.sourceSObjectDescribeMap.get(object.extraData.targetObjectName) as SObjectDescribe
         );
-        // Fetch and store the source object metadata
-        const sourceDescribe = (await metaUtils.getSObjectMetadataAsync(
-          object.extraData.objectName,
-          true
-        )) as SObjectDescribe;
-        this.sourceSObjectDescribeMap.set(object.extraData.objectName, sourceDescribe);
       }
     }
 
     // Describe the target object if the data origin is an org and not already described
-    if (this.command.targetDataOriginType === DataOriginType.org) {
-      if (!this.targetSObjectDescribeMap.has(object.extraData.targetObjectName)) {
-        comUtils.logCommandMessage(
-          'process.describing-object',
-          object.objectSet.index.toString(),
-          object.extraData.targetObjectName,
-          this.command.targetConnectionLabel
-        );
-        // Fetch and store the target object metadata
-        const targetDescribe = (await metaUtils.getSObjectMetadataAsync(
-          object.extraData.targetObjectName,
-          false
-        )) as SObjectDescribe;
-        this.targetSObjectDescribeMap.set(object.extraData.targetObjectName, targetDescribe);
+    if (!this.targetSObjectDescribeMap.has(object.extraData.targetObjectName)) {
+      if (
+        object.extraData.targetObjectName !== object.extraData.objectName ||
+        this.command.targetDataOriginType === DataOriginType.org
+      ) {
+        try {
+          // Fetch and store the target object metadata
+          const targetDescribe = (await metaUtils.getSObjectMetadataAsync(
+            object.extraData.targetObjectName,
+            !(this.command.targetDataOriginType === DataOriginType.org)
+          )) as SObjectDescribe;
+          this.targetSObjectDescribeMap.set(object.extraData.targetObjectName, targetDescribe);
+        } catch (error) {
+          if (this.command.targetDataOriginType === DataOriginType.org) {
+            // Throw error if target object is missing in org metadata
+            comUtils.throwCommandError(
+              'error.missing-object-in-metadata',
+              object.objectSet.index.toString(),
+              this.command.targetConnectionLabel,
+              object.extraData.targetObjectName
+            );
+          }
+          // Use source description for target if target is a CSV file
+          const sourceDescribe = this.sourceSObjectDescribeMap.get(object.extraData.objectName) as SObjectDescribe;
+          this.targetSObjectDescribeMap.set(object.extraData.targetObjectName, sourceDescribe);
+        }
       }
-    } else {
-      // If the target is a CSV file, copy the source object description to the target
-      const sourceDescribe = this.sourceSObjectDescribeMap.get(object.extraData.objectName) as SObjectDescribe;
-      this.targetSObjectDescribeMap.set(object.extraData.targetObjectName, sourceDescribe);
-    }
-
-    // If the source data origin is not an org, ensure the source object description is set
-    if (this.command.sourceDataOriginType !== DataOriginType.org) {
-      if (!this.sourceSObjectDescribeMap.has(object.extraData.objectName)) {
-        const targetDescribe = this.targetSObjectDescribeMap.get(object.extraData.targetObjectName) as SObjectDescribe;
-        this.sourceSObjectDescribeMap.set(object.extraData.objectName, targetDescribe);
+      if (
+        this.command.sourceDataOriginType !== DataOriginType.org &&
+        object.extraData.objectName === object.extraData.targetObjectName
+      ) {
+        // Use target description for source if applicable
+        this.sourceSObjectDescribeMap.set(
+          object.extraData.objectName,
+          this.targetSObjectDescribeMap.get(object.extraData.objectName) as SObjectDescribe
+        );
       }
     }
   }
@@ -111,21 +139,42 @@ export class DataMoveUtils<T> {
   /**
    * Adds multiselect fields to the object's fields based on the source object's description.
    *
-   * @param object - The object to add the multiselect fields to.
+   * @param object The object to add the multiselect fields to.
    */
   public includeMultiselectFields(object: ScriptObject): void {
+    const comUtils = new CommandUtils(this.command);
+
+    // Check if the object has multiselect fields
+    const hasMultiselectFields = object.extraData.fields.some(
+      (field) =>
+        field === Constants.DATA_MOVE_CONSTANTS.ALL_FIELDS_KEYWORD ||
+        field.endsWith('_true') ||
+        field.endsWith('_false')
+    );
+
+    if (!hasMultiselectFields) {
+      return;
+    }
+
+    // Log inclusion of multiselect fields
+    comUtils.logCommandMessage(
+      'process.including-multiselect-fields',
+      object.objectSet.index.toString(),
+      object.extraData.objectName
+    );
+
     // Retrieve the source object description
     const describe = this.sourceSObjectDescribeMap.get(object.extraData.objectName) as SObjectDescribe;
 
     // Map and flatten fields, handling multiselect and filter keywords
     object.extraData.fields = object.extraData.fields
       .map((field: string) => {
-        // Expand the 'all' keyword to include all fields from the description
         if (field === Constants.DATA_MOVE_CONSTANTS.ALL_FIELDS_KEYWORD) {
+          // Expand the 'all' keyword to include all fields from the description
           return describe.fields.map((f) => f.name);
         }
-        // Handle fields with '_true' or '_false' suffixes to filter based on field properties
         if (field.endsWith('_true') || field.endsWith('_false')) {
+          // Handle fields with '_true' or '_false' suffixes to filter based on field properties
           const sObjectFieldKeyToEvaluate = field
             .replace('_true', '')
             .replace('_false', '') as keyof SObjectFieldDescribe;
@@ -142,8 +191,8 @@ export class DataMoveUtils<T> {
   /**
    * Retrieves the default external ID for a given object based on its metadata.
    *
-   * @param objectName - The name of the object.
-   * @param useTargetConnection - Whether to use the target connection's metadata.
+   * @param objectName The name of the object.
+   * @param useTargetConnection Whether to use the target connection's metadata.
    * @returns The default external ID field name.
    */
   public getDefaultExternalId(objectName: string, useTargetConnection: boolean = false): string {
@@ -176,43 +225,54 @@ export class DataMoveUtils<T> {
   /**
    * Processes an object by parsing its query, describing it, and preparing its fields.
    *
-   * @param object - The object to process.
-   * @param objectSet - The object set containing the object.
+   * @param object The object to process.
+   * @param objectSet The object set containing the object.
+   * @returns A promise that resolves when the object is processed.
    */
   public async objectProcessAsync(object: ScriptObject, objectSet: ScriptObjectSet): Promise<void> {
     // Initialize command utilities
     const comUtils = new CommandUtils(this.command);
 
+    // Create extraData object ****************************************************
     // Parse the object's query string into structured data
     object.extraData = DataMoveUtilsStatic.parseQueryString(object.query);
+
+    // Assign objectSet reference to the object ***********************************
     object.objectSet = objectSet;
-    // Map the object name to its target counterpart if necessary
+
+    // Map the object name to its target counterpart ******************************
     object.extraData.targetObjectName = DataMoveUtilsStatic.mapObjectName(object.extraData.objectName, object);
 
-    // Log the processing of the object
-    comUtils.logCommandMessage('process.processing-object', objectSet.index.toString(), object.extraData.objectName);
-
-    // Describe the object to retrieve metadata
+    // Describe the object to retrieve metadata ***********************************
     await this.describeObjectAsync(object);
 
+    // Set operation type **********************************************************
+    if (this.command.targetDataOriginType === DataOriginType.csvfile) {
+      // If the target is a CSV file, set the operation to Insert
+      object.operation = OPERATION.Insert;
+    }
+
+    // Set external ID field ******************************************************
     // Retrieve the source object's description
     const objectDescribe = this.sourceSObjectDescribeMap.get(object.extraData.objectName) as SObjectDescribe;
     const targetObjectDescribe = this.targetSObjectDescribeMap.get(
       object.extraData.targetObjectName
     ) as SObjectDescribe;
 
-    // Determine the external ID based on the operation type
     let isExternalIdSet = false;
     if (object.operation === OPERATION.Insert) {
+      // Use 'Id' as external ID for insert operations
       object.externalId = 'Id';
       isExternalIdSet = true;
     } else if (!object.externalId) {
+      // Assign default external ID if missing
       object.extraData.isExternalIdMissing = true;
       object.externalId = this.getDefaultExternalId(object.extraData.objectName);
       isExternalIdSet = true;
     }
 
     if (!isExternalIdSet) {
+      // Log setting of external ID
       comUtils.logCommandMessage(
         'process.setting-external-id',
         objectSet.index.toString(),
@@ -225,14 +285,17 @@ export class DataMoveUtils<T> {
     object.externalId.split(Constants.DATA_MOVE_CONSTANTS.COMPLEX_EXTERNAL_ID_SEPARATOR).forEach((field) => {
       if (!object.extraData.fields.includes(field)) {
         object.extraData.fields.push(field);
-        // We don't want to update the external ID field if they were not in the original query field set
+        // Exclude external ID fields from updates if not in original query
         object.excludedFromUpdateFields.push(field);
       }
     });
 
+    // Include fields ***************************************************************
     // Include multiselect fields based on the object's description
     this.includeMultiselectFields(object);
 
+    // Exclude fields ****************************************************************
+    comUtils.logCommandMessage('process.excluding-fields', objectSet.index.toString(), object.extraData.objectName);
     // Exclude any fields specified in the excludedFields list
     object.extraData.fields = object.extraData.fields.filter((field) => !object.excludedFields.includes(field));
 
@@ -263,7 +326,10 @@ export class DataMoveUtils<T> {
         }
 
         // Exclude the field if it's readonly or not described in target metadata
-        if (!fieldTargetDescribe || fieldTargetDescribe.readonly) {
+        if (
+          (!fieldTargetDescribe || fieldTargetDescribe.readonly) &&
+          this.command.targetDataOriginType === DataOriginType.org
+        ) {
           comUtils.logCommandMessage(
             'process.field-not-found-in-metadata-or-readonly',
             objectSet.index.toString(),
@@ -275,9 +341,9 @@ export class DataMoveUtils<T> {
         }
       }
 
+      // Exclude objects ****************************************************************
       // Handle lookup fields by mapping referenced object names
       if (fieldDescribe.isLookup) {
-        // Determine the referenced object name
         const referencedObjectName =
           object.extraData.lookupObjectNameMapping.get(field) || fieldDescribe.referenceTo?.[0];
         object.extraData.lookupObjectNameMapping.set(field, referencedObjectName as string);
@@ -322,10 +388,10 @@ export class DataMoveUtils<T> {
   /**
    * Creates a new referenced object and adds it to the object set.
    *
-   * @param referencingObjectName - The name of the object that references the new object.
-   * @param referencedObjectName - The name of the new object to create.
-   * @param objectSet - The object set to add the new object to.
-   * @returns The newly created object.
+   * @param referencingObjectName The name of the object that references the new object.
+   * @param referencedObjectName The name of the new object to create.
+   * @param objectSet The object set to add the new object to.
+   * @returns A promise that resolves to the newly created object.
    */
   public async createObjectAsync(
     referencingObjectName: string,
@@ -362,7 +428,7 @@ export class DataMoveUtils<T> {
   /**
    * Post-processes an object after initial processing.
    *
-   * @param object - The object to post-process.
+   * @param object The object to post-process.
    */
   public objectPostProcess(object: ScriptObject): void {
     // Initialize command utilities
@@ -371,16 +437,10 @@ export class DataMoveUtils<T> {
     // Retrieve the source object's description
     const objectDescribe = this.sourceSObjectDescribeMap.get(object.extraData.objectName) as SObjectDescribe;
 
-    // Log the post-processing of the object
-    comUtils.logCommandMessage(
-      'process.post-processing-object',
-      object.objectSet.index.toString(),
-      object.extraData.objectName
-    );
-
-    // Ensure fields are distinct
+    // Ensure fields are distinct ****************************************************
     object.extraData.fields = Utils.distinctStringArray(object.extraData.fields);
 
+    // Processing and mapping object dependencies ************************************
     // Iterate over each field to handle reference mappings
     comUtils.logCommandMessage(
       'process.processing-object-dependencies',
@@ -420,6 +480,16 @@ export class DataMoveUtils<T> {
         object.extraData.fields.push(_rField);
       }
     }
+
+    // Ensure fields are distinct ****************************************************
+    object.extraData.fields = Utils.distinctStringArray(object.extraData.fields);
+
+    // Map fields and query parts to their target counterparts ************************
+    comUtils.logCommandMessage(
+      'process.mapping-object-fields',
+      object.objectSet.index.toString(),
+      object.extraData.objectName
+    );
 
     // Map each field to its target counterpart
     object.extraData.fields.forEach((field) => {
@@ -480,6 +550,7 @@ export class DataMoveUtils<T> {
       this.script.objectSets.forEach((objectSet) => {
         objectSet.objects = objectSet.objects.filter((object) => {
           if (object.excluded) {
+            // Log exclusion of the object
             comUtils.logCommandMessage(
               'process.excluding-object',
               objectSet.index.toString(),
@@ -507,12 +578,14 @@ export class DataMoveUtils<T> {
 
   /**
    * Initializes and processes the command by loading the script and processing all object sets.
+   *
+   * @returns A promise that resolves when the command initialization is complete.
    */
   public async processCommandInitializationAsync(): Promise<void> {
     // Initialize command utilities
     const comUtils = new CommandUtils(this.command);
 
-    // Load the script configurations
+    // Load the script configurations ****************************************************
     this.loadScript();
 
     // Log the number of object sets being processed
@@ -521,7 +594,7 @@ export class DataMoveUtils<T> {
       this.script.objectSets.length.toString()
     );
 
-    // Process each object in each object set
+    // Process each object in each object set **********************************************
     for (const objectSet of this.script.objectSets) {
       for (const object of objectSet.objects) {
         // Process the object asynchronously
@@ -529,6 +602,7 @@ export class DataMoveUtils<T> {
       }
     }
 
+    // Create referenced objects **********************************************************
     // Create any referenced objects that are not already present in the object sets
     for (const objectSet of this.script.objectSets) {
       for (const object of objectSet.objects) {
@@ -542,7 +616,7 @@ export class DataMoveUtils<T> {
       }
     }
 
-    // Post-process each object in each object set
+    // Post-process each object in each object set ******************************************
     for (const objectSet of this.script.objectSets) {
       for (const object of objectSet.objects) {
         this.objectPostProcess(object);

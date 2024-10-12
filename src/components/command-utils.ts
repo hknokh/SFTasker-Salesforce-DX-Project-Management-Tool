@@ -8,13 +8,13 @@ import { AvailableMetadataTypes, SftaskerCommandFlags, SftaskerCommandMessages, 
 /**
  * Utility class for command-related operations.
  *
- * @typeParam T - The type parameter for the SFtaskerCommand.
+ * @typeParam T The type parameter for the SFtaskerCommand.
  */
 export class CommandUtils<T> {
   /**
    * Constructs a new CommandUtils instance.
    *
-   * @param command - The command object for which the utility class is being created.
+   * @param command The command object for which the utility class is being created.
    */
   public constructor(private command: SFtaskerCommand<T>) {
     // Initialize the CommandUtils with the provided command
@@ -23,8 +23,8 @@ export class CommandUtils<T> {
   /**
    * Sets up the command messages for the command.
    *
-   * @param bundleName - The name of the bundle containing the command.
-   * @param commandName - The name of the command.
+   * @param bundleName The name of the bundle containing the command.
+   * @param commandName The name of the command.
    * @returns The command messages object.
    */
   public static setupCommandMessages(bundleName: string, commandName: string): SftaskerCommandMessages {
@@ -51,44 +51,83 @@ export class CommandUtils<T> {
   /**
    * Sets up the command instance with the provided messages and flags.
    *
-   * @param messages - The messages object for the command.
-   * @param flags - The flags object for the command.
+   * @param messages The messages object for the command.
+   * @param flags The flags object for the command.
    */
   public setupCommandInstance(messages: SftaskerCommandMessages, flags: SftaskerCommandFlags): void {
+    const comUtils = new CommandUtils(this.command);
+
     // Assign the command and components messages
     this.command.messages = messages.commandMessages;
     this.command.componentsMessages = messages.componentsMessages;
     this.command.flags = flags;
 
-    // Manage internal flags if flags are provided
-    if (flags) {
-      // Assign additional flags based on metadata name to flag mapping
-      Object.assign(flags, Constants.PACKAGE_XML_METADATA_NAME_TO_FLAG_MAPPING[flags.type as AvailableMetadataTypes]);
+    // Manage internal flags
+    // Assign additional flags based on metadata name to flag mapping
+    Object.assign(flags, Constants.PACKAGE_XML_METADATA_NAME_TO_FLAG_MAPPING[flags.type as AvailableMetadataTypes]);
 
-      // Assign the target org connection and org ID to the command object
-      this.command.connection = flags['target-org']?.getConnection(flags['api-version'] as string) as Connection;
-      this.command.orgId = flags['target-org']?.getOrgId() as string;
-      if (flags['csv-target']) {
-        this.command.targetDataOriginType = DataOriginType.csvfile;
-      }
-      // Set the source connection label from components messages
-      this.command.sourceConnectionLabel = this.command.componentsMessages.getMessage('label.source-connection');
+    // Verify connection flags
+    switch (this.command.id) {
+      case 'sftasker:data-move':
+        // Check if the target org connection is provided
+        if (!flags['target-org'] && !flags['csv-target']) {
+          comUtils.throwCommandError('errors.target-org-or-csv-required');
+        }
+        // Check if the source org connection is provided
+        if (!flags['source-org'] && !flags['csv-source']) {
+          comUtils.throwCommandError('errors.source-org-or-csv-required');
+        }
+        // Ensure both CSV source and target are not provided simultaneously
+        if (flags['csv-source'] && flags['csv-target']) {
+          comUtils.throwCommandError('errors.csv-source-and-target');
+        }
+        break;
+      default:
+        // Check if the target org connection is provided
+        if (!flags['target-org']) {
+          this.throwError('errors.target-org-required');
+        }
+        break;
+    }
 
-      // Assign the source org connection and org ID to the command object
-      this.command.sourceConnection = flags['source-org']?.getConnection(flags['api-version'] as string) as Connection;
-      this.command.sourceOrgId = flags['source-org']?.getOrgId() as string;
-      if (flags['csv-source']) {
-        this.command.sourceDataOriginType = DataOriginType.csvfile;
-      }
-      // Set the target connection label from components messages
-      this.command.targetConnectionLabel = this.command.componentsMessages.getMessage('label.target-connection');
+    // Target Connection
+    // Assign the target org connection and org ID to the command object
+    this.command.connection = flags['target-org']?.getConnection(flags['api-version'] as string) as Connection;
+    this.command.orgId = flags['target-org']?.getOrgId() as string;
+
+    // Set the source connection label from components messages
+    this.command.sourceConnectionLabel = this.command.componentsMessages.getMessage('label.source-connection');
+
+    // Source Connection
+    // Assign the source org connection and org ID to the command object
+    this.command.sourceConnection = flags['source-org']?.getConnection(flags['api-version'] as string) as Connection;
+    this.command.sourceOrgId = flags['source-org']?.getOrgId() as string;
+
+    // Set the target connection label from components messages
+    this.command.targetConnectionLabel = this.command.componentsMessages.getMessage('label.target-connection');
+
+    // Adjust the data origin type and connections based on the CSV flags
+    if (flags['csv-source']) {
+      // Use the target connection as the source connection
+      this.command.sourceConnection = this.command.connection;
+      this.command.sourceOrgId = this.command.orgId;
+      // Set the source data origin type to CSV file
+      this.command.sourceDataOriginType = DataOriginType.csvfile;
+    }
+
+    if (flags['csv-target']) {
+      // Use the source connection as the target connection
+      this.command.connection = this.command.sourceConnection;
+      this.command.orgId = this.command.sourceOrgId;
+      // Set the target data origin type to CSV file
+      this.command.targetDataOriginType = DataOriginType.csvfile;
     }
   }
 
   /**
    * Creates a temporary directory for the command execution.
    *
-   * @param subdir - An optional subdirectory path.
+   * @param subdir An optional subdirectory path.
    * @returns The path of the created temporary directory.
    */
   public createTempDirectory(subdir?: string): string {
@@ -122,7 +161,7 @@ export class CommandUtils<T> {
   /**
    * Gets or creates a subdirectory in the configuration directory.
    *
-   * @param subdir - An optional subdirectory path. If not provided, the configuration directory is returned.
+   * @param subdir An optional subdirectory path. If not provided, the configuration directory is returned.
    * @returns The path of the created directory.
    */
   public createConfigDirectory(subdir?: string): string | undefined {
@@ -143,7 +182,7 @@ export class CommandUtils<T> {
   /**
    * Deletes the temporary directory created for the command execution.
    *
-   * @param tempDir - The path of the temporary directory to be deleted.
+   * @param tempDir The path of the temporary directory to be deleted.
    */
   public deleteTempDirectory(tempDir: string): void {
     try {
@@ -161,9 +200,9 @@ export class CommandUtils<T> {
   /**
    * Throws a component error with a detailed error message, including the stack trace.
    *
-   * @param error - The error object containing the error message and stack trace.
-   * @param messageKey - The key for the error message in the components messages.
-   * @param messageArgs - Additional arguments to be included in the error message.
+   * @param error The error object containing the error message and stack trace.
+   * @param messageKey The key for the error message in the components messages.
+   * @param messageArgs Additional arguments to be included in the error message.
    * @throws Always throws an error with a custom message.
    */
   public throwWithErrorMessage(error: Error, messageKey: string, ...messageArgs: string[]): never {
@@ -177,7 +216,7 @@ export class CommandUtils<T> {
   /**
    * Throws an unexpected error with a detailed error message, including the stack trace.
    *
-   * @param error - The error object containing the error message and stack trace.
+   * @param error The error object containing the error message and stack trace.
    * @throws Always throws an error with a custom message.
    */
   public throwUnexpectedError(error: Error): never {
@@ -188,8 +227,8 @@ export class CommandUtils<T> {
   /**
    * Throws a component error with a message from the components messages.
    *
-   * @param messageKey - The key for the error message in the components messages.
-   * @param messageArgs - Additional arguments to be included in the error message.
+   * @param messageKey The key for the error message in the components messages.
+   * @param messageArgs Additional arguments to be included in the error message.
    * @throws Always throws an error with a custom message.
    */
   public throwError(messageKey: string, ...messageArgs: string[]): never {
@@ -199,8 +238,8 @@ export class CommandUtils<T> {
   /**
    * Throws a command error with a message from the command messages.
    *
-   * @param messageKey - The key for the error message in the command messages.
-   * @param messageArgs - Additional arguments to be included in the error message.
+   * @param messageKey The key for the error message in the command messages.
+   * @param messageArgs Additional arguments to be included in the error message.
    * @throws Always throws an error with a custom message.
    */
   public throwCommandError(messageKey: string, ...messageArgs: string[]): never {
@@ -210,8 +249,8 @@ export class CommandUtils<T> {
   /**
    * Logs a component-related message in the command.
    *
-   * @param messageKey - The key for the message in the components messages.
-   * @param messageArgs - Additional arguments to be included in the log message.
+   * @param messageKey The key for the message in the components messages.
+   * @param messageArgs Additional arguments to be included in the log message.
    */
   public logComponentMessage(messageKey: string, ...messageArgs: string[]): void {
     // Log the component message with a specific prefix
@@ -221,8 +260,8 @@ export class CommandUtils<T> {
   /**
    * Logs a command-related message in the command.
    *
-   * @param messageKey - The key for the message in the command messages.
-   * @param messageArgs - Additional arguments to be included in the log message.
+   * @param messageKey The key for the message in the command messages.
+   * @param messageArgs Additional arguments to be included in the log message.
    */
   public logCommandMessage(messageKey: string, ...messageArgs: string[]): void {
     // Log the command message with a specific prefix
@@ -248,9 +287,9 @@ export class CommandUtils<T> {
   /**
    * Starts, updates, or stops a spinner with a message from the components messages.
    *
-   * @param mode - The mode in which the spinner is used: start, status, or stop. Defaults to 'start'.
-   * @param messageKey - The key for the message in the components messages.
-   * @param messageArgs - Additional arguments to be included in the spinner message.
+   * @param mode The mode in which the spinner is used: start, status, or stop. Defaults to 'start'.
+   * @param messageKey The key for the message in the components messages.
+   * @param messageArgs Additional arguments to be included in the spinner message.
    */
   public spinnerwithComponentMessage(
     mode: 'start' | 'status' | 'stop' = 'start',

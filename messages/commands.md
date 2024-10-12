@@ -49,3 +49,15 @@ Command %s started...
 # command.end
 
 Command %s finished!
+
+# errors.target-org-or-csv-required
+
+Either the --target-org or --csv-target flag is required.
+
+# errors.source-org-or-csv-required
+
+Either the --source-org or --csv-source flag is required.
+
+# errors.csv-source-and-target
+
+Cannot use both --csv-source and --csv-target flags at the same time.
