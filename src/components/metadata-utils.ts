@@ -8,6 +8,15 @@ import { CommandUtils } from './command-utils.js';
 import { Utils } from './utils.js';
 import { DescribeSObjectResult, PackageXmlContent, PackageXmlType } from './types.js';
 
+/**
+ * Represents a key section in XML metadata.
+ *
+ * @property key - The combined key identifier.
+ * @property isSectionExist - Indicates if the section exists.
+ * @property sectionName - The name of the section.
+ * @property keyName - The name of the key.
+ * @property keyValue - The value of the key.
+ */
 type XmlSectionKey = {
   key: string;
   isSectionExist: boolean;
@@ -219,6 +228,7 @@ export class MetadataUtils<T> {
    * Retrieves metadata from the target org using the command's connection.
    * @param metadataTypeName Name of the metadata type to retrieve, for example, `Profile`.
    * @param members List of metadata members to retrieve, defaults to `*` if not provided.
+   * @returns The path to the temporary output directory containing the retrieved metadata, or undefined if retrieval fails.
    */
   public async retrieveSingleMetadataAsync(metadataTypeName: string, members?: string[]): Promise<string | undefined> {
     const utils = new CommandUtils(this.command);
@@ -303,6 +313,7 @@ export class MetadataUtils<T> {
   /**
    * Retrieves package metadata and extracts it to a temporary directory.
    * @param packagePath The path of the package to retrieve.
+   * @returns The path to the temporary output directory containing the retrieved package metadata, or undefined if retrieval fails.
    */
   public async retrievePackageMetadataAsync(packagePath: string): Promise<string | undefined> {
     const utils = new CommandUtils(this.command);
@@ -581,6 +592,7 @@ export class MetadataUtils<T> {
         // Write the merged XML to the output file synchronously
         fs.writeFileSync(outputFilePath, updatedXml);
 
+        // Log the completion of the metadata merge
         utils.spinnerwithComponentMessage(
           'stop',
           'success.merging-metadata-xml',
@@ -589,6 +601,7 @@ export class MetadataUtils<T> {
           logOutputFilePath
         );
       } else {
+        // Log that no changes were made during the metadata merge
         utils.spinnerwithComponentMessage(
           'stop',
           'success.merging-metadata-xml.no-changes',
@@ -597,6 +610,7 @@ export class MetadataUtils<T> {
         );
       }
     } catch (err) {
+      // Log and handle any errors that occur during the metadata merge
       utils.throwWithErrorMessage(err as Error, 'error.merging-metadata-xml', logSourcefilePath, logTargetFilePath);
     }
   }
@@ -653,12 +667,17 @@ export class MetadataUtils<T> {
     const utils = new CommandUtils(this.command);
     const label = useSourceConnection ? this.command.sourceConnectionLabel : this.command.targetConnectionLabel;
     try {
+      // Determine which connection to use based on the flag
       const connection = useSourceConnection ? this.command.sourceConnection : this.command.connection;
+      // Log the start of the sObject metadata retrieval
       utils.logComponentMessage('progress.retrieving-sobject-metadata', sobjectName, label);
+      // Retrieve the sObject description from the connection
       const sobjectDescribe = (await connection.describe(sobjectName)) as DescribeSObjectResult;
+      // Log the successful retrieval of the sObject metadata
       utils.logComponentMessage('success.retrieving-sobject-metadata', sobjectName, label);
       return new SObjectDescribe(sobjectDescribe);
     } catch (err) {
+      // Handle any errors that occur during the sObject metadata retrieval
       utils.throwWithErrorMessage(err as Error, 'error.retrieving-sobject-metadata', sobjectName, label);
     }
   }
