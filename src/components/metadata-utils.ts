@@ -1,12 +1,19 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
+import { promisify } from 'node:util';
+import { Transform, pipeline as streamPipeline } from 'node:stream';
+import { Connection } from '@salesforce/core';
+import { parse } from 'csv-parse';
 import * as unzipper from 'unzipper';
+import { stringify } from 'csv-stringify';
 import { XMLParser, XMLBuilder } from 'fast-xml-parser';
 import { Constants } from './constants.js';
 import { SFtaskerCommand, SObjectDescribe } from './models.js';
 import { CommandUtils } from './command-utils.js';
 import { Utils } from './utils.js';
 import { DescribeSObjectResult, PackageXmlContent, PackageXmlType } from './types.js';
+
+const pipelineAsync = promisify(streamPipeline);
 
 /**
  * Represents a key section in XML metadata.
@@ -679,6 +686,123 @@ export class MetadataUtils<T> {
     } catch (err) {
       // Handle any errors that occur during the sObject metadata retrieval
       utils.throwWithErrorMessage(err as Error, 'error.retrieving-sobject-metadata', sobjectName, label);
+    }
+  }
+
+  /**
+   * Asynchronously runs a query against a database or an API and writes the results to a CSV file.
+   *
+   * @param query - The query string to execute.
+   * @param filePath - The file path where the query result will be saved.
+   * @param appendToExistingFile - Whether to append to an existing file (if true) or overwrite it (if false).
+   * @param useSourceConnection - Whether to use the source connection (if true) or the target connection (if false).
+   * @param recordCallback - Optional callback function to process each record before it's written.
+   * @param recordValidationCallback - Optional callback function to validate each record before processing.
+   * @returns A promise that resolves with the number of records processed or `undefined` if an error occurs.
+   */
+  public async queryAsync(
+    query: string,
+    filePath: string,
+    appendToExistingFile?: boolean,
+    useSourceConnection?: boolean,
+    recordCallback?: (rawRecord: any) => any,
+    recordValidationCallback?: (record: any) => any
+  ): Promise<number | undefined> {
+    // Utility for logging messages and handling errors
+    const utils = new CommandUtils(this.command);
+
+    // Determine which connection label to use for logging
+    const label = useSourceConnection ? this.command.sourceConnectionLabel : this.command.targetConnectionLabel;
+
+    // Select the appropriate connection (source or target) based on the flag
+    const connection: Connection = useSourceConnection ? this.command.sourceConnection : this.command.connection;
+
+    try {
+      // Log a message indicating the start of the query process
+      utils.logComponentMessage('progress.querying-records', label, query);
+
+      // Resolve the file path to an absolute path if it is not already
+      const resolvedFilePath = path.isAbsolute(filePath) ? filePath : path.resolve(process.cwd(), filePath);
+
+      // Check if the file already exists and decide whether to write headers
+      const fileExists = fs.existsSync(resolvedFilePath);
+      const writeHeaders = !appendToExistingFile || !fileExists;
+
+      // Create a write stream to write the query results to the file
+      const writeStream = fs.createWriteStream(resolvedFilePath, {
+        flags: appendToExistingFile ? 'a' : 'w', // Append if specified, otherwise overwrite
+      });
+
+      let recordCount = 0; // Track the number of records processed
+
+      // Perform the query and stream the records using bulk2.query
+      const recordStream = await connection.bulk2.query(query);
+
+      // Configure the CSV parser to parse the incoming CSV data
+      const csvParserStream = parse({
+        columns: true, // First line contains headers
+        delimiter: ',', // Specify the delimiter, assuming it's a comma
+        quote: '"', // Specify the quote character for fields
+        // eslint-disable-next-line camelcase
+        relax_quotes: true, // Allow quotes to be escaped
+        // eslint-disable-next-line camelcase
+        skip_empty_lines: true, // Ignore empty lines in the CSV
+        trim: true, // Trim whitespace around fields
+        bom: true, // Handle byte order marks if present
+        // eslint-disable-next-line camelcase
+        on_record: (record): any => {
+          // If a validation callback is provided, validate each record
+          if (recordValidationCallback) {
+            return recordValidationCallback(record);
+          }
+          return record;
+        },
+      });
+
+      // Transform stream to apply record processing and count records
+      const recordTransformer = new Transform({
+        objectMode: true, // Handle objects instead of buffers
+        transform(record: any, encoding: BufferEncoding, callback: (error?: Error, data?: any) => void): void {
+          try {
+            // Apply the record callback if provided
+            if (recordCallback) {
+              record = recordCallback(record);
+            }
+            recordCount++; // Increment the record count
+            callback(undefined, record); // Proceed to the next record
+          } catch (err) {
+            callback(new Error('Failed to process record: ' + (err as any).message)); // Handle any processing errors
+          }
+        },
+      });
+
+      // CSV Stringifier to convert objects back to CSV format
+      const csvStringifier = stringify({
+        header: writeHeaders, // Write headers if creating a new file
+        columns: undefined, // Infer columns from the first record
+      });
+
+      // Handle errors in the CSV stringification process
+      csvStringifier.on('error', (err: any) => {
+        throw err;
+      });
+
+      // Use a pipeline to connect all streams and handle errors centrally
+      await pipelineAsync(
+        recordStream.stream(), // Input: raw CSV stream from Bulk2
+        csvParserStream, // Step 1: parse CSV into objects
+        recordTransformer, // Step 2: process each record
+        csvStringifier, // Step 3: convert objects back to CSV
+        writeStream // Output: write the result to the file
+      );
+
+      // Log a success message when the query finishes
+      utils.logComponentMessage('success.querying-records', label, recordCount.toString());
+
+      return recordCount; // Return the total number of records processed
+    } catch (err) {
+      // Handle any errors that occur during the query or file writing process
+      utils.throwWithErrorMessage(err as Error, 'error.querying-records', label);
     }
   }
 }

@@ -81,3 +81,15 @@ Source
 # label.target-connection
 
 Target
+
+# progress.querying-records
+
+[%s] Querying records... Query string: %s
+
+# success.querying-records
+
+[%s] %d records queried successfully.
+
+# error.querying-records
+
+[%s] An error occurred while querying records. %s.
