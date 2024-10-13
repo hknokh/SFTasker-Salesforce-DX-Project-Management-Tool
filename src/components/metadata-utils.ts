@@ -740,15 +740,7 @@ export class MetadataUtils<T> {
 
       // Configure the CSV parser to parse the incoming CSV data
       const csvParserStream = parse({
-        columns: true, // First line contains headers
-        delimiter: ',', // Specify the delimiter, assuming it's a comma
-        quote: '"', // Specify the quote character for fields
-        // eslint-disable-next-line camelcase
-        relax_quotes: true, // Allow quotes to be escaped
-        // eslint-disable-next-line camelcase
-        skip_empty_lines: true, // Ignore empty lines in the CSV
-        trim: true, // Trim whitespace around fields
-        bom: true, // Handle byte order marks if present
+        ...Constants.CSV_OPTIONS,
         // eslint-disable-next-line camelcase
         on_record: (record): any => {
           // If a validation callback is provided, validate each record

@@ -187,6 +187,21 @@ export class Constants {
   /** The name of the sfdx-project.json configuration file. */
   public static readonly FORCE_APP_SFDX_PROJECT_JSON = 'sfdx-project.json';
 
+  /** The options to parse CSV files. */
+  public static readonly CSV_OPTIONS = {
+    columns: true, // First line contains headers
+    delimiter: ',', // Specify the delimiter, assuming it's a comma
+    quote: '"', // Specify the quote character for fields
+    // eslint-disable-next-line camelcase
+    relax_quotes: true, // Allow quotes to be escaped
+    // eslint-disable-next-line camelcase
+    skip_empty_lines: true, // Ignore empty lines in the CSV
+    trim: true, // Trim whitespace around fields
+    bom: true, // Handle byte order marks if present
+  };
+
+  public static readonly BULK2_POLLING_INTERVAL = 5000;
+
   /** Constants used specifically in the data-move command. */
   public static readonly DATA_MOVE_CONSTANTS = {
     /** The default relative path to the configuration file. */

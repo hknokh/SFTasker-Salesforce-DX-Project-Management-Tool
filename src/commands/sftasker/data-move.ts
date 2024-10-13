@@ -3,6 +3,7 @@ import { CommandUtils } from '../../components/command-utils.js';
 import { SFtaskerCommand } from '../../components/models.js';
 import { Constants } from '../../components/constants.js';
 import { DataMoveUtils } from '../../components/data-move/data-move-utils.js';
+import { MetadataUtils } from '../../components/metadata-utils.js';
 
 /** Represents the result of the Sftasker Data Move command. */
 export type SftaskerDataMoveResult = Record<string, never>;
@@ -84,7 +85,23 @@ export default class SftaskerDataMove extends SFtaskerCommand<SftaskerDataMoveRe
     const dataMoveUtils = new DataMoveUtils(this);
 
     // Initialize and process the data move command asynchronously.
-    await dataMoveUtils.initializeCommandAsync();
+    //await dataMoveUtils.initializeCommandAsync();
+
+    const metaUtils = new MetadataUtils(this, dataMoveUtils.tempDir);
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-return
+    const numb = await metaUtils.queryAsync(
+      'SELECT Id, Name FROM Test_Big_Data_Volume__c',
+      './tmp/output.csv',
+      false,
+      true,
+      (record): any => {
+        record.Name = record.Name + ' - Updated';
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-return
+        return record;
+      }
+    );
+
+    this.info(`Number of records: ${numb}`);
 
     // Log a message indicating the end of the command execution.
     commandUtils.logCommandEndMessage();
