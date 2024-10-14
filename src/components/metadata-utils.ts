@@ -730,6 +730,7 @@ export class MetadataUtils<T> {
       // Создаём поток записи
       const writeStream = fs.createWriteStream(resolvedFilePath, {
         flags: appendToExistingFile ? 'a' : 'w', // Добавляем, если указано, иначе перезаписываем
+        highWaterMark: 1024 * 64,
       }) as fs.WriteStream & { fd?: number };
 
       let recordCount = 0; // Track the number of records processed
@@ -749,13 +750,9 @@ export class MetadataUtils<T> {
         // Process the data stream
         for await (const chunk of queryStream) {
           recordCount++;
-          if (!writeStream.closed) {
-            const canContinue = writeStream.write(chunk);
-            if (!canContinue) {
-              await Promise.race([once(writeStream, 'drain'), writeStreamError]);
-            }
-          } else {
-            throw new Error('Incomplete query results written to file.');
+          const canContinue = writeStream.write(chunk);
+          if (!canContinue) {
+            await Promise.race([once(writeStream, 'drain'), writeStreamError]);
           }
         }
 
