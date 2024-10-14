@@ -723,56 +723,62 @@ export class MetadataUtils<T> {
       const resolvedFilePath = path.isAbsolute(filePath) ? filePath : path.resolve(process.cwd(), filePath);
 
       // Check if the file already exists and decide whether to write headers
-      //const fileExists = fs.existsSync(resolvedFilePath);
-      //const writeHeaders = !appendToExistingFile || !fileExists;
+      const fileExists = fs.existsSync(resolvedFilePath);
+      const writeHeaders = !appendToExistingFile || !fileExists;
 
       // Create a write stream to write the query results to the file
-      // Создаём поток записи
       const writeStream = fs.createWriteStream(resolvedFilePath, {
-        flags: appendToExistingFile ? 'a' : 'w', // Добавляем, если указано, иначе перезаписываем
+        flags: writeHeaders ? 'w' : 'a',
         highWaterMark: 1024 * 64,
+        encoding: 'utf8',
       }) as fs.WriteStream & { fd?: number };
 
-      let recordCount = 0; // Track the number of records processed
+      // Track the number of records processed
+      let recordCount = 0;
 
-      try {
-        const recordStream = await connection.bulk.query(query);
-        const queryStream = recordStream.stream();
+      const recordStream = await connection.bulk.query(query);
+      const queryStream = recordStream.stream();
+      queryStream.setEncoding('utf8');
 
-        // Promises to handle 'error' events
-        const writeStreamError = once(writeStream, 'error').then(([err]) => {
-          throw err;
-        });
-        void once(queryStream, 'error').then(([err]) => {
-          throw err;
-        });
+      // Promises to handle 'error' events
+      const writeStreamError = once(writeStream, 'error').then(([err]) => {
+        queryStream.destroy();
+        throw err;
+      });
 
-        // Process the data stream
-        for await (const chunk of queryStream) {
-          recordCount++;
-          const canContinue = writeStream.write(chunk);
-          if (!canContinue) {
-            await Promise.race([once(writeStream, 'drain'), writeStreamError]);
-          }
+      void once(queryStream, 'error').then(([err]) => {
+        throw err;
+      });
+
+      // Process the data stream
+      for await (const chunk of queryStream) {
+        recordCount++;
+        // Write the chunk to the file stream
+        const canContinue = writeStream.write(chunk);
+        if (!canContinue) {
+          // Wait for the write stream to drain before continuing
+          await Promise.race([once(writeStream, 'drain'), writeStreamError]);
         }
-
-        // End the write stream after processing
-        writeStream.end();
-
-        // Wait for 'finish' event or handle errors
-        await Promise.race([once(writeStream, 'finish'), writeStreamError]);
-
-        // Sync the file descriptor if available
-        if (writeStream.fd) {
-          // eslint-disable-next-line @typescript-eslint/no-unsafe-call
-          await new Promise((resolve) => fs.fsync(writeStream.fd as number, resolve));
-        }
-
-        utils.logComponentMessage('success.querying-records', label, recordCount.toString());
-        return recordCount;
-      } catch (err) {
-        utils.throwWithErrorMessage(err as Error, 'error.querying-records', label);
       }
+
+      // End the write stream after processing
+      writeStream.end();
+
+      // Wait for 'finish' event or handle errors
+      await Promise.race([once(writeStream, 'finish'), writeStreamError]);
+
+      // Destroy the query stream to prevent memory leaks
+      queryStream.destroy();
+
+      // Sync the file descriptor if available
+      if (writeStream.fd) {
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-call
+        await new Promise((resolve) => fs.fsync(writeStream.fd as number, resolve));
+      }
+
+      utils.logComponentMessage('success.querying-records', label, recordCount.toString());
+
+      return recordCount;
 
       // // Perform the query and stream the records using bulk2.query
       // const recordStream = await connection.bulk2.query(query);
