@@ -1,6 +1,11 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { once } from 'node:events';
+import * as os from 'node:os';
+
+import { stringify } from 'csv-stringify';
+import { parse } from 'csv-parse/sync';
 
 import { Connection } from '@salesforce/core';
 
@@ -67,7 +72,7 @@ export class MetadataUtils<T> {
     if (MetadataUtils.isForceAppProject()) {
       // Read the sfdx-project.json file
       const sfdxProjectJsonPath = path.join(process.cwd(), Constants.FORCE_APP_SFDX_PROJECT_JSON);
-      const sfdxProjectJson = fs.readFileSync(sfdxProjectJsonPath, 'utf8');
+      const sfdxProjectJson = fs.readFileSync(sfdxProjectJsonPath, Constants.DEFAULT_ENCODING);
       const sfdxProjectJsonObj = JSON.parse(sfdxProjectJson);
       const packageDirectories: any[] = sfdxProjectJsonObj.packageDirectories;
       // Find the package directory with the default property set to true
@@ -458,8 +463,8 @@ export class MetadataUtils<T> {
       utils.spinnerwithComponentMessage('start', 'progress.merging-metadata-xml', logSourcefilePath, logTargetFilePath);
 
       // Read the XML files synchronously
-      const sourceXml = fs.readFileSync(sourceFilePath, 'utf8');
-      const targetXml = fs.readFileSync(targetFilePath, 'utf8');
+      const sourceXml = fs.readFileSync(sourceFilePath, Constants.DEFAULT_ENCODING);
+      const targetXml = fs.readFileSync(targetFilePath, Constants.DEFAULT_ENCODING);
 
       // Parse the XML into JS objects
       const parser = new XMLParser({ ignoreAttributes: false, preserveOrder: true, commentPropName: '#comment' });
@@ -689,22 +694,24 @@ export class MetadataUtils<T> {
 
   /**
    * Asynchronously runs a query against a database or an API and writes the results to a CSV file.
+   * Supports large datasets by processing records in chunks and writing them to the file incrementally.
+   * Support optional record stream realtime transformation and progress reporting.
    *
    * @param query - The query string to execute.
    * @param filePath - The file path where the query result will be saved.
    * @param appendToExistingFile - Whether to append to an existing file (if true) or overwrite it (if false).
    * @param useSourceConnection - Whether to use the source connection (if true) or the target connection (if false).
    * @param recordCallback - Optional callback function to process each record before it's written.
-   * @param recordValidationCallback - Optional callback function to validate each record before processing.
+   * @param progressCallback - Optional callback function to report progress.
    * @returns A promise that resolves with the number of records processed or `undefined` if an error occurs.
    */
   public async queryAsync(
     query: string,
     filePath: string,
     appendToExistingFile?: boolean,
-    useSourceConnection?: boolean
-    //recordCallback?: (rawRecord: any) => any,
-    //recordValidationCallback?: (record: any) => any
+    useSourceConnection?: boolean,
+    recordCallback?: (rawRecord: any) => any,
+    progressCallback?: (recordCount: number) => void
   ): Promise<number | undefined> {
     // Utility for logging messages and handling errors
     const utils = new CommandUtils(this.command);
@@ -714,6 +721,8 @@ export class MetadataUtils<T> {
 
     // Select the appropriate connection (source or target) based on the flag
     const connection: Connection = useSourceConnection ? this.command.sourceConnection : this.command.connection;
+
+    let timeout: NodeJS.Timeout | undefined;
 
     try {
       // Log a message indicating the start of the query process
@@ -730,15 +739,60 @@ export class MetadataUtils<T> {
       const writeStream = fs.createWriteStream(resolvedFilePath, {
         flags: writeHeaders ? 'w' : 'a',
         highWaterMark: 1024 * 64,
-        encoding: 'utf8',
+        encoding: Constants.DEFAULT_ENCODING,
       }) as fs.WriteStream & { fd?: number };
 
       // Track the number of records processed
       let recordCount = 0;
+      let lastRecordsCountReported = -1;
+
+      const reportProgress = (count: number): void => {
+        if (progressCallback && count !== lastRecordsCountReported) {
+          progressCallback(count);
+          lastRecordsCountReported = count;
+        }
+      };
+
+      if (progressCallback) {
+        // Set a timeout to report progress every 5 seconds
+        timeout = setInterval(() => reportProgress(recordCount), Constants.BULK_POLLING_INTERVAL);
+        // Immediately report the initial progress
+        reportProgress(recordCount);
+      }
 
       const recordStream = await connection.bulk.query(query);
       const queryStream = recordStream.stream();
-      queryStream.setEncoding('utf8');
+      queryStream.setEncoding(Constants.DEFAULT_ENCODING);
+
+      // Define the processing and writing logic as a constant function
+      const processAndWriteRecords = async (records: any[], columns = true): Promise<void> => {
+        // Process each record
+        const processedRecords = [];
+
+        for (const record of records) {
+          recordCount++; // Increment the record count
+          const processedRecord = recordCallback ? recordCallback(record) : record;
+          if (processedRecord !== null) {
+            processedRecords.push(processedRecord);
+          }
+        }
+
+        if (processedRecords.length > 0) {
+          // Convert processed records back to CSV strings
+          const csvData = stringify(processedRecords, {
+            header: columns,
+            columns: undefined, // Infer columns from the first record
+          });
+
+          for await (const chunk of csvData) {
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-call
+            if (!writeStream.write(chunk)) {
+              // Wait for the write stream to drain before continuing
+              await Promise.race([once(writeStream, 'drain'), writeStreamError]);
+            }
+          }
+        }
+      };
 
       // Promises to handle 'error' events
       const writeStreamError = once(writeStream, 'error').then(([err]) => {
@@ -751,14 +805,47 @@ export class MetadataUtils<T> {
       });
 
       // Process the data stream
+      let columns = true; // Flag to indicate if the first row contains column headers
+
+      let lastLinePostfix = '';
+      let columnsCount = 0;
+
       for await (const chunk of queryStream) {
-        recordCount++;
-        // Write the chunk to the file stream
-        const canContinue = writeStream.write(chunk);
-        if (!canContinue) {
-          // Wait for the write stream to drain before continuing
-          await Promise.race([once(writeStream, 'drain'), writeStreamError]);
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-call
+        let dataBuffer: string = chunk.toString(Constants.DEFAULT_ENCODING);
+        if (lastLinePostfix) {
+          dataBuffer = lastLinePostfix + dataBuffer;
+          lastLinePostfix = '';
         }
+
+        const lines = dataBuffer.split(/[\n\r]+/g);
+
+        if (columns) {
+          columnsCount = lines[0].split(Constants.CSV_OPTIONS.delimiter).length;
+        }
+
+        const lastLine = lines[lines.length - 1];
+
+        if (
+          (!lastLine.endsWith('\n') && !lastLine.endsWith(Constants.CSV_OPTIONS.quote)) ||
+          lastLine.endsWith('\n"') ||
+          lastLine.endsWith(`,${Constants.CSV_OPTIONS.quote}`) ||
+          lastLine.split(Constants.CSV_OPTIONS.delimiter).length < columnsCount
+        ) {
+          lastLinePostfix = lines.pop() as string;
+          dataBuffer = lines.join(os.EOL);
+        }
+
+        const options = {
+          ...Constants.CSV_OPTIONS,
+          columns,
+          encoding: Constants.DEFAULT_ENCODING, // Specify the encoding of the CSV file
+        };
+        const records = parse(dataBuffer, options as any);
+
+        await processAndWriteRecords(records, columns);
+
+        columns = false;
       }
 
       // End the write stream after processing
@@ -770,6 +857,11 @@ export class MetadataUtils<T> {
       // Destroy the query stream to prevent memory leaks
       queryStream.destroy();
 
+      if (progressCallback) {
+        // Report the final progress
+        reportProgress(recordCount);
+      }
+
       // Sync the file descriptor if available
       if (writeStream.fd) {
         // eslint-disable-next-line @typescript-eslint/no-unsafe-call
@@ -779,67 +871,14 @@ export class MetadataUtils<T> {
       utils.logComponentMessage('success.querying-records', label, recordCount.toString());
 
       return recordCount;
-
-      // // Perform the query and stream the records using bulk2.query
-      // const recordStream = await connection.bulk2.query(query);
-
-      // // Configure the CSV parser to parse the incoming CSV data
-      // const csvParserStream = parse({
-      //   ...Constants.CSV_OPTIONS,
-      //   // eslint-disable-next-line camelcase
-      //   on_record: (record): any => {
-      //     // If a validation callback is provided, validate each record
-      //     if (recordValidationCallback) {
-      //       return recordValidationCallback(record);
-      //     }
-      //     return record;
-      //   },
-      // });
-
-      // // Transform stream to apply record processing and count records
-      // const recordTransformer = new Transform({
-      //   objectMode: true, // Handle objects instead of buffers
-      //   transform(record: any, encoding: BufferEncoding, callback: (error?: Error, data?: any) => void): void {
-      //     try {
-      //       // Apply the record callback if provided
-      //       if (recordCallback) {
-      //         record = recordCallback(record);
-      //       }
-      //       recordCount++; // Increment the record count
-      //       callback(undefined, record); // Proceed to the next record
-      //     } catch (err) {
-      //       callback(new Error('Failed to process record: ' + (err as any).message)); // Handle any processing errors
-      //     }
-      //   },
-      // });
-
-      // // CSV Stringifier to convert objects back to CSV format
-      // const csvStringifier = stringify({
-      //   header: writeHeaders, // Write headers if creating a new file
-      //   columns: undefined, // Infer columns from the first record
-      // });
-
-      // // Handle errors in the CSV stringification process
-      // csvStringifier.on('error', (err: any) => {
-      //   throw err;
-      // });
-
-      // // Use a pipeline to connect all streams and handle errors centrally
-      // await pipelineAsync(
-      //   recordStream.stream(), // Input: raw CSV stream from Bulk2
-      //   csvParserStream, // Step 1: parse CSV into objects
-      //   recordTransformer, // Step 2: process each record
-      //   csvStringifier, // Step 3: convert objects back to CSV
-      //   writeStream // Output: write the result to the file
-      // );
-
-      // // Log a success message when the query finishes
-      // utils.logComponentMessage('success.querying-records', label, recordCount.toString());
-
-      // return recordCount; // Return the total number of records processed
     } catch (err) {
       // Handle any errors that occur during the query or file writing process
       utils.throwWithErrorMessage(err as Error, 'error.querying-records', label);
+    } finally {
+      // Clear the progress reporting timeout if it was set
+      if (timeout) {
+        clearInterval(timeout);
+      }
     }
   }
 }

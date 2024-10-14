@@ -12,6 +12,7 @@ import {
   ObjectPath,
   FastSafeStringify,
 } from './types.js';
+import { Constants } from './constants.js';
 
 /** Creates a require function for module imports */
 const require = createRequire(import.meta.url);
@@ -38,7 +39,7 @@ export class Utils {
     preserveOrder: boolean = false
   ): Promise<Record<string, any>> {
     // Read the XML file content
-    const xmlData = await readFile(filePath, 'utf-8');
+    const xmlData = await readFile(filePath, Constants.DEFAULT_ENCODING);
 
     // Create an instance of the XMLParser
     const parser = new XMLParser({

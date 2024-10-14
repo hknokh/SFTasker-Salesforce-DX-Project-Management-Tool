@@ -20,6 +20,9 @@ export class Constants {
   /** The timeout duration for polling metadata retrieval in milliseconds. */
   public static readonly POLL_TIMEOUT = 300_000;
 
+  /** The default encoding used for reading and writing files. */
+  public static readonly DEFAULT_ENCODING = 'utf8';
+
   /** Maps metadata types to their corresponding section keys in the metadata file. */
   public static readonly METADATA_SECTION_KEY_MAPPING = {
     // Profile section key mappings
@@ -200,7 +203,7 @@ export class Constants {
     bom: true, // Handle byte order marks if present
   };
 
-  public static readonly BULK2_POLLING_INTERVAL = 5000;
+  public static readonly BULK_POLLING_INTERVAL = 5000;
 
   /** Constants used specifically in the data-move command. */
   public static readonly DATA_MOVE_CONSTANTS = {

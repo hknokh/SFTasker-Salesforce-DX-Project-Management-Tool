@@ -534,7 +534,7 @@ export class DataMoveUtils<T> {
     // Check if the configuration file exists
     if (fs.existsSync(configPath)) {
       // Parse and instantiate the script from the configuration file
-      this.script = Utils.plainToCLass(Script, JSON.parse(fs.readFileSync(configPath, 'utf8')));
+      this.script = Utils.plainToCLass(Script, JSON.parse(fs.readFileSync(configPath, Constants.DEFAULT_ENCODING)));
 
       // If there are objects directly under script, wrap them in an object set
       if (this.script.objects.length > 0) {

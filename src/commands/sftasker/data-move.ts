@@ -93,12 +93,15 @@ export default class SftaskerDataMove extends SFtaskerCommand<SftaskerDataMoveRe
       'SELECT Id, Name FROM Test_Big_Data_Volume__c',
       './tmp/output.csv',
       false,
-      true
-      // (record): any => {
-      //   record.Name = record.Name + ' - Updated';
-      //   // eslint-disable-next-line @typescript-eslint/no-unsafe-return
-      //   return record;
-      // }
+      true,
+      (record): any => {
+        record.Name = record.Name + ' - Updated';
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-return
+        return record;
+      },
+      (recordCount) => {
+        this.info(`Records processed: ${recordCount}`);
+      }
     );
 
     this.info(`Number of records: ${numb}`);
