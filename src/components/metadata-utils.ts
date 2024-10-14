@@ -807,15 +807,15 @@ export class MetadataUtils<T> {
       // Process the data stream
       let columns = true; // Flag to indicate if the first row contains column headers
 
-      let lastLinePostfix = '';
+      let lastIncompleteRow = '';
       let columnsCount = 0;
 
       for await (const chunk of queryStream) {
         // eslint-disable-next-line @typescript-eslint/no-unsafe-call
         let dataBuffer: string = chunk.toString(Constants.DEFAULT_ENCODING);
-        if (lastLinePostfix) {
-          dataBuffer = lastLinePostfix + dataBuffer;
-          lastLinePostfix = '';
+        if (lastIncompleteRow) {
+          dataBuffer = lastIncompleteRow + dataBuffer;
+          lastIncompleteRow = '';
         }
 
         const lines = dataBuffer.split(/[\n\r]+/g);
@@ -832,7 +832,7 @@ export class MetadataUtils<T> {
           lastLine.endsWith(`,${Constants.CSV_OPTIONS.quote}`) ||
           lastLine.split(Constants.CSV_OPTIONS.delimiter).length < columnsCount
         ) {
-          lastLinePostfix = lines.pop() as string;
+          lastIncompleteRow = lines.pop() as string;
           dataBuffer = lines.join(os.EOL);
         }
 
