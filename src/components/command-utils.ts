@@ -236,6 +236,16 @@ export class CommandUtils<T> {
   }
 
   /**
+   *  Get a component error with a message from the components messages.
+   * @param messageKey  The key for the error message in the components messages.
+   * @param messageArgs  Additional arguments to be included in the error message.
+   * @returns  The error with the custom message.
+   */
+  public getError(messageKey: string, ...messageArgs: string[]): Error {
+    return new Error(this.command.componentsMessages.getMessage(messageKey, messageArgs));
+  }
+
+  /**
    * Throws a command error with a message from the command messages.
    *
    * @param messageKey The key for the error message in the command messages.
@@ -244,6 +254,16 @@ export class CommandUtils<T> {
    */
   public throwCommandError(messageKey: string, ...messageArgs: string[]): never {
     throw new Error(this.command.messages.getMessage(messageKey, messageArgs));
+  }
+
+  /**
+   *  Get a command error with a message from the command messages.
+   * @param messageKey  The key for the error message in the command messages.
+   * @param messageArgs  Additional arguments to be included in the error message.
+   * @returns  The error with the custom message.
+   */
+  public getCommandError(messageKey: string, ...messageArgs: string[]): Error {
+    return new Error(this.command.messages.getMessage(messageKey, messageArgs));
   }
 
   /**

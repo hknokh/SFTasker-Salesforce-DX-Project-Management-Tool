@@ -1,19 +1,17 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { promisify } from 'node:util';
-import { Transform, pipeline as streamPipeline } from 'node:stream';
+import { once } from 'node:events';
+
 import { Connection } from '@salesforce/core';
-import { parse } from 'csv-parse';
+
 import * as unzipper from 'unzipper';
-import { stringify } from 'csv-stringify';
+
 import { XMLParser, XMLBuilder } from 'fast-xml-parser';
 import { Constants } from './constants.js';
 import { SFtaskerCommand, SObjectDescribe } from './models.js';
 import { CommandUtils } from './command-utils.js';
 import { Utils } from './utils.js';
 import { DescribeSObjectResult, PackageXmlContent, PackageXmlType } from './types.js';
-
-const pipelineAsync = promisify(streamPipeline);
 
 /**
  * Represents a key section in XML metadata.
@@ -704,9 +702,9 @@ export class MetadataUtils<T> {
     query: string,
     filePath: string,
     appendToExistingFile?: boolean,
-    useSourceConnection?: boolean,
-    recordCallback?: (rawRecord: any) => any,
-    recordValidationCallback?: (record: any) => any
+    useSourceConnection?: boolean
+    //recordCallback?: (rawRecord: any) => any,
+    //recordValidationCallback?: (record: any) => any
   ): Promise<number | undefined> {
     // Utility for logging messages and handling errors
     const utils = new CommandUtils(this.command);
@@ -725,73 +723,117 @@ export class MetadataUtils<T> {
       const resolvedFilePath = path.isAbsolute(filePath) ? filePath : path.resolve(process.cwd(), filePath);
 
       // Check if the file already exists and decide whether to write headers
-      const fileExists = fs.existsSync(resolvedFilePath);
-      const writeHeaders = !appendToExistingFile || !fileExists;
+      //const fileExists = fs.existsSync(resolvedFilePath);
+      //const writeHeaders = !appendToExistingFile || !fileExists;
 
       // Create a write stream to write the query results to the file
+      // Создаём поток записи
       const writeStream = fs.createWriteStream(resolvedFilePath, {
-        flags: appendToExistingFile ? 'a' : 'w', // Append if specified, otherwise overwrite
-      });
+        flags: appendToExistingFile ? 'a' : 'w', // Добавляем, если указано, иначе перезаписываем
+      }) as fs.WriteStream & { fd?: number };
 
       let recordCount = 0; // Track the number of records processed
 
-      // Perform the query and stream the records using bulk2.query
-      const recordStream = await connection.bulk2.query(query);
+      try {
+        const recordStream = await connection.bulk.query(query);
+        const queryStream = recordStream.stream();
 
-      // Configure the CSV parser to parse the incoming CSV data
-      const csvParserStream = parse({
-        ...Constants.CSV_OPTIONS,
-        // eslint-disable-next-line camelcase
-        on_record: (record): any => {
-          // If a validation callback is provided, validate each record
-          if (recordValidationCallback) {
-            return recordValidationCallback(record);
-          }
-          return record;
-        },
-      });
+        // Promises to handle 'error' events
+        const writeStreamError = once(writeStream, 'error').then(([err]) => {
+          throw err;
+        });
+        void once(queryStream, 'error').then(([err]) => {
+          throw err;
+        });
 
-      // Transform stream to apply record processing and count records
-      const recordTransformer = new Transform({
-        objectMode: true, // Handle objects instead of buffers
-        transform(record: any, encoding: BufferEncoding, callback: (error?: Error, data?: any) => void): void {
-          try {
-            // Apply the record callback if provided
-            if (recordCallback) {
-              record = recordCallback(record);
+        // Process the data stream
+        for await (const chunk of queryStream) {
+          recordCount++;
+          if (!writeStream.closed) {
+            const canContinue = writeStream.write(chunk);
+            if (!canContinue) {
+              await Promise.race([once(writeStream, 'drain'), writeStreamError]);
             }
-            recordCount++; // Increment the record count
-            callback(undefined, record); // Proceed to the next record
-          } catch (err) {
-            callback(new Error('Failed to process record: ' + (err as any).message)); // Handle any processing errors
+          } else {
+            throw new Error('Incomplete query results written to file.');
           }
-        },
-      });
+        }
 
-      // CSV Stringifier to convert objects back to CSV format
-      const csvStringifier = stringify({
-        header: writeHeaders, // Write headers if creating a new file
-        columns: undefined, // Infer columns from the first record
-      });
+        // End the write stream after processing
+        writeStream.end();
 
-      // Handle errors in the CSV stringification process
-      csvStringifier.on('error', (err: any) => {
-        throw err;
-      });
+        // Wait for 'finish' event or handle errors
+        await Promise.race([once(writeStream, 'finish'), writeStreamError]);
 
-      // Use a pipeline to connect all streams and handle errors centrally
-      await pipelineAsync(
-        recordStream.stream(), // Input: raw CSV stream from Bulk2
-        csvParserStream, // Step 1: parse CSV into objects
-        recordTransformer, // Step 2: process each record
-        csvStringifier, // Step 3: convert objects back to CSV
-        writeStream // Output: write the result to the file
-      );
+        // Sync the file descriptor if available
+        if (writeStream.fd) {
+          // eslint-disable-next-line @typescript-eslint/no-unsafe-call
+          await new Promise((resolve) => fs.fsync(writeStream.fd as number, resolve));
+        }
 
-      // Log a success message when the query finishes
-      utils.logComponentMessage('success.querying-records', label, recordCount.toString());
+        utils.logComponentMessage('success.querying-records', label, recordCount.toString());
+        return recordCount;
+      } catch (err) {
+        utils.throwWithErrorMessage(err as Error, 'error.querying-records', label);
+      }
 
-      return recordCount; // Return the total number of records processed
+      // // Perform the query and stream the records using bulk2.query
+      // const recordStream = await connection.bulk2.query(query);
+
+      // // Configure the CSV parser to parse the incoming CSV data
+      // const csvParserStream = parse({
+      //   ...Constants.CSV_OPTIONS,
+      //   // eslint-disable-next-line camelcase
+      //   on_record: (record): any => {
+      //     // If a validation callback is provided, validate each record
+      //     if (recordValidationCallback) {
+      //       return recordValidationCallback(record);
+      //     }
+      //     return record;
+      //   },
+      // });
+
+      // // Transform stream to apply record processing and count records
+      // const recordTransformer = new Transform({
+      //   objectMode: true, // Handle objects instead of buffers
+      //   transform(record: any, encoding: BufferEncoding, callback: (error?: Error, data?: any) => void): void {
+      //     try {
+      //       // Apply the record callback if provided
+      //       if (recordCallback) {
+      //         record = recordCallback(record);
+      //       }
+      //       recordCount++; // Increment the record count
+      //       callback(undefined, record); // Proceed to the next record
+      //     } catch (err) {
+      //       callback(new Error('Failed to process record: ' + (err as any).message)); // Handle any processing errors
+      //     }
+      //   },
+      // });
+
+      // // CSV Stringifier to convert objects back to CSV format
+      // const csvStringifier = stringify({
+      //   header: writeHeaders, // Write headers if creating a new file
+      //   columns: undefined, // Infer columns from the first record
+      // });
+
+      // // Handle errors in the CSV stringification process
+      // csvStringifier.on('error', (err: any) => {
+      //   throw err;
+      // });
+
+      // // Use a pipeline to connect all streams and handle errors centrally
+      // await pipelineAsync(
+      //   recordStream.stream(), // Input: raw CSV stream from Bulk2
+      //   csvParserStream, // Step 1: parse CSV into objects
+      //   recordTransformer, // Step 2: process each record
+      //   csvStringifier, // Step 3: convert objects back to CSV
+      //   writeStream // Output: write the result to the file
+      // );
+
+      // // Log a success message when the query finishes
+      // utils.logComponentMessage('success.querying-records', label, recordCount.toString());
+
+      // return recordCount; // Return the total number of records processed
     } catch (err) {
       // Handle any errors that occur during the query or file writing process
       utils.throwWithErrorMessage(err as Error, 'error.querying-records', label);
