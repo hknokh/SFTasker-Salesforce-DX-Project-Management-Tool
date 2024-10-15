@@ -115,14 +115,14 @@ export default class SftaskerDataMove extends SFtaskerCommand<SftaskerDataMoveRe
     // Inline generation of 30,000 names
     const whereInClauses = DataMoveUtilsStatic.constructWhereInClause(
       'Name__c',
-      Array.from({ length: 30000 }, () => {
+      Array.from({ length: 30_000 }, () => {
         const randomType = Math.floor(Math.random() * 3); // 0: string, 1: number, 2: date
         if (randomType === 0) {
           // Return a random string in the format 'nameX'
-          return `name${Math.floor(Math.random() * 10000) + 1}`;
+          return `name${Math.floor(Math.random() * 10_000) + 1}`;
         } else if (randomType === 1) {
           // Return a random number
-          return Math.floor(Math.random() * 10000);
+          return Math.floor(Math.random() * 10_000);
         } else {
           // Return a random date within the past year
           const randomDate = new Date();
@@ -130,7 +130,7 @@ export default class SftaskerDataMove extends SFtaskerCommand<SftaskerDataMoveRe
           return randomDate;
         }
       }),
-      extraData
+      extraData.where
     );
     this.info(`Number of records: ${whereInClauses}`);
 

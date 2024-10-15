@@ -334,13 +334,13 @@ export class DataMoveUtilsStatic {
    *  These clauses can be used in the REST API calls to Salesforce.
    * @param field  Field to use in WHERE IN clause
    * @param inValues  Values to use in WHERE IN clause
-   * @param extraData  Extra data object containing the current WHERE clause
+   * @param where  Existing WHERE clause to append to the WHERE IN clause
    * @returns  Array of splitted WHERE IN clauses
    */
-  public static constructWhereInClause(field: string, inValues: any[], extraData: ObjectExtraData): string[] {
+  public static constructWhereInClause(field: string, inValues: any[], where: string): string[] {
     const whereClauses: string[] = [];
     const maxLength = Constants.MAX_SOQL_WHERE_CLAUSE_CHARACTER_LENGTH;
-    const overheadLength = (extraData.where ? extraData.where.length : 0) + field.length + 15;
+    const overheadLength = (where ? where.length : 0) + field.length + 15;
 
     let currentValues: string[] = [];
     let currentLength = overheadLength;
@@ -353,7 +353,7 @@ export class DataMoveUtilsStatic {
       if (currentLength + valueLength > maxLength) {
         // Construct the where clause with currentValues
         const inClause = currentValues.join(',');
-        const whereClause = `(${extraData.where}) AND (${field} IN (${inClause}))`;
+        const whereClause = `(${where}) AND (${field} IN (${inClause}))`;
         whereClauses.push(whereClause);
 
         // Reset currentValues and currentLength
@@ -369,7 +369,7 @@ export class DataMoveUtilsStatic {
     // After the loop, if currentValues is not empty, construct the final clause
     if (currentValues.length > 0) {
       const inClause = currentValues.join(',');
-      const whereClause = `(${extraData.where}) AND (${field} IN (${inClause}))`;
+      const whereClause = `(${where}) AND (${field} IN (${inClause}))`;
       whereClauses.push(whereClause);
     }
 
