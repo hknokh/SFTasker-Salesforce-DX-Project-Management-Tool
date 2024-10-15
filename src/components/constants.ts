@@ -23,6 +23,9 @@ export class Constants {
   /** The default encoding used for reading and writing files. */
   public static readonly DEFAULT_ENCODING = 'utf8';
 
+  /** The default high water mark for read streams. */
+  public static readonly DEFAULT_FILE_WRITE_STREAM_HIGH_WATER_MARK = 64 * 1024;
+
   /** Maps metadata types to their corresponding section keys in the metadata file. */
   public static readonly METADATA_SECTION_KEY_MAPPING = {
     // Profile section key mappings

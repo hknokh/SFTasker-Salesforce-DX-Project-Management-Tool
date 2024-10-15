@@ -733,7 +733,7 @@ export class MetadataUtils<T> {
       // Create a write stream to write the query results to the file
       const writeStream = fs.createWriteStream(resolvedFilePath, {
         flags: writeHeaders ? 'w' : 'a',
-        highWaterMark: 1024 * 64,
+        highWaterMark: Constants.DEFAULT_FILE_WRITE_STREAM_HIGH_WATER_MARK,
         encoding: Constants.DEFAULT_ENCODING,
       }) as fs.WriteStream & { fd?: number };
 
