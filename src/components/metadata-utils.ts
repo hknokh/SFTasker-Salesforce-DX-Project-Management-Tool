@@ -1153,7 +1153,7 @@ export class MetadataUtils<T> {
    * @param params
    * @returns
    */
-  public async queryRestSimpleAsync(params: QueryAsyncParameters): Promise<any[] | undefined> {
+  public async queryRestToMemorySimpleAsync(params: QueryAsyncParameters): Promise<any[] | undefined> {
     // Utility for logging messages and handling errors
     const utils = new CommandUtils(this.command);
 
