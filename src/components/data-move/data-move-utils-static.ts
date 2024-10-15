@@ -377,6 +377,11 @@ export class DataMoveUtilsStatic {
   }
 
   // Private methods -----------------------------------------------------------
+  /**
+   *  Converts a value to a SOQL-compatible string.
+   * @param value  Value to convert
+   * @returns  SOQL-compatible string representation of the value
+   */
   private static valueToSOQL(value: any): string {
     if (typeof value === 'string') {
       // Escape single quotes by replacing ' with \'
