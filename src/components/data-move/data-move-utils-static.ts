@@ -327,4 +327,66 @@ export class DataMoveUtilsStatic {
       .map((field) => DataMoveUtilsStatic.mapField(field, object))
       .join(Constants.DATA_MOVE_CONSTANTS.COMPLEX_EXTERNAL_ID_SEPARATOR);
   }
+
+  public static constructWhereInClause(field: string, inValues: any[], extraData: ObjectExtraData): string[] {
+    const whereClauses: string[] = [];
+    const maxLength = Constants.MAX_SOQL_WHERE_CLAUSE_CHARACTER_LENGTH;
+    const overheadLength = (extraData.where ? extraData.where.length : 0) + field.length + 15;
+
+    let currentValues: string[] = [];
+    let currentLength = overheadLength;
+
+    for (const value of inValues) {
+      const valueString = this.valueToSOQL(value);
+      const separatorLength = currentValues.length > 0 ? 1 : 0; // ',' is 1 characters
+      const valueLength = valueString.length + separatorLength;
+
+      if (currentLength + valueLength > maxLength) {
+        // Construct the where clause with currentValues
+        const inClause = currentValues.join(',');
+        const whereClause = `(${extraData.where}) AND (${field} IN (${inClause}))`;
+        whereClauses.push(whereClause);
+
+        // Reset currentValues and currentLength
+        currentValues = [];
+        currentLength = overheadLength;
+      }
+
+      // Add the value to currentValues and update currentLength
+      currentValues.push(valueString);
+      currentLength += valueLength;
+    }
+
+    // After the loop, if currentValues is not empty, construct the final clause
+    if (currentValues.length > 0) {
+      const inClause = currentValues.join(',');
+      const whereClause = `(${extraData.where}) AND (${field} IN (${inClause}))`;
+      whereClauses.push(whereClause);
+    }
+
+    return whereClauses;
+  }
+
+  private static valueToSOQL(value: any): string {
+    if (typeof value === 'string') {
+      // Escape single quotes by replacing ' with \'
+      const escapedValue = value.replace(/'/g, "\\'");
+      return `'${escapedValue}'`;
+    } else if (typeof value === 'number') {
+      return value.toString();
+    } else if (value instanceof Date) {
+      // Format date to ISO 8601 format without milliseconds, wrapped in single quotes
+      const isoString = value.toISOString().replace(/\.\d{3}Z$/, 'Z');
+      return `'${isoString}'`;
+      // eslint-disable-next-line eqeqeq
+    } else if (value != undefined) {
+      // For other types, convert to string and wrap in single quotes
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-call
+      const stringValue = value.toString();
+      return `'${stringValue}'`;
+    } else {
+      // For null or undefined values, return NULL without quotes
+      return 'NULL';
+    }
+  }
 }

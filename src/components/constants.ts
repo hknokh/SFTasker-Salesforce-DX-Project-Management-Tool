@@ -222,7 +222,11 @@ export class Constants {
     quote: '"', // Specify the quote character for fields
   };
 
+  /** The default polling interval for bulk operations in milliseconds. */
   public static readonly BULK_POLLING_INTERVAL = 5000;
+
+  /** The maximum number of characters allowed in a SOQL WHERE clause. */
+  public static readonly MAX_SOQL_WHERE_CLAUSE_CHARACTER_LENGTH = 3900;
 
   /** Constants used specifically in the data-move command. */
   public static readonly DATA_MOVE_CONSTANTS = {

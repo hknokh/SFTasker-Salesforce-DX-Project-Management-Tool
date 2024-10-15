@@ -4,6 +4,8 @@ import { SFtaskerCommand } from '../../components/models.js';
 import { Constants } from '../../components/constants.js';
 import { DataMoveUtils } from '../../components/data-move/data-move-utils.js';
 import { MetadataUtils } from '../../components/metadata-utils.js';
+import { ObjectExtraData } from '../../components/data-move/data-move-models.js';
+import { DataMoveUtilsStatic } from '../../components/data-move/data-move-utils-static.js';
 
 /** Represents the result of the Sftasker Data Move command. */
 export type SftaskerDataMoveResult = Record<string, never>;
@@ -89,8 +91,8 @@ export default class SftaskerDataMove extends SFtaskerCommand<SftaskerDataMoveRe
 
     const metaUtils = new MetadataUtils(this, dataMoveUtils.tempDir);
     // eslint-disable-next-line @typescript-eslint/no-unsafe-return
-    const numb = await metaUtils.queryRestToFileAsync({
-      query: 'SELECT Id, Name FROM Test_Big_Data_Volume__c LIMIT 1000',
+    const numb = await metaUtils.queryRestSimpleAsync({
+      query: 'SELECT Id, Name FROM Test_Big_Data_Volume__c LIMIT 1',
       filePath: './tmp/output.csv',
       appendToExistingFile: true,
       useSourceConnection: true,
@@ -105,6 +107,32 @@ export default class SftaskerDataMove extends SFtaskerCommand<SftaskerDataMoveRe
     });
 
     this.info(`Number of records: ${numb}`);
+
+    const extraData: ObjectExtraData = new ObjectExtraData({
+      where: "Name <> 'ExcludedName'",
+    });
+
+    // Inline generation of 30,000 names
+    const whereInClauses = DataMoveUtilsStatic.constructWhereInClause(
+      'Name__c',
+      Array.from({ length: 30000 }, () => {
+        const randomType = Math.floor(Math.random() * 3); // 0: string, 1: number, 2: date
+        if (randomType === 0) {
+          // Return a random string in the format 'nameX'
+          return `name${Math.floor(Math.random() * 10000) + 1}`;
+        } else if (randomType === 1) {
+          // Return a random number
+          return Math.floor(Math.random() * 10000);
+        } else {
+          // Return a random date within the past year
+          const randomDate = new Date();
+          randomDate.setDate(randomDate.getDate() - Math.floor(Math.random() * 365));
+          return randomDate;
+        }
+      }),
+      extraData
+    );
+    this.info(`Number of records: ${whereInClauses}`);
 
     // Log a message indicating the end of the command execution.
     commandUtils.logCommandEndMessage();
