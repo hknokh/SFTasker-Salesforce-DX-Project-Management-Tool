@@ -1047,7 +1047,7 @@ export class MetadataUtils<T> {
 
   /**
    * Asynchronously runs a REST query against a database or an API and returns the results as an array.
-   * Suitable for small datasets.
+   * Suitable for small and medium datasets.
    * Supports progress reporting and optional record transformation.
    * @param params  The parameters for the query operation.
    * @returns  A promise that resolves with the number of records processed or `undefined` if an error occurs.
@@ -1148,7 +1148,7 @@ export class MetadataUtils<T> {
   /**
    *  Asynchronously runs a REST query against a database or an API and  returns the results as an array.
    *  Uses the simple query method to retrieve data.
-   *  Suitable for small datasets.
+   *  Suitable for tiny datasets.
    *  Provide optional support for records transformation, but not for progress reporting.
    * @param params
    * @returns
