@@ -695,6 +695,7 @@ export class MetadataUtils<T> {
    * Asynchronously runs a bulk query against a database or an API and writes the results to a CSV file.
    * Uses streaming so can handle large datasets without running out of memory.
    * Support optional record stream realtime transformation and progress reporting.
+   * Uses Salesforce bulk query API to query records.
    *
    * @param query - The query string to execute.
    * @param filePath - The file path where the query result will be saved.
