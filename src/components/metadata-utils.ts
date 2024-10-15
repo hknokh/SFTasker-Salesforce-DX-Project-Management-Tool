@@ -1178,10 +1178,7 @@ export class MetadataUtils<T> {
         .map((record: any): any => {
           delete record.attributes;
           if (params.recordCallback) {
-            const processedRecord = params.recordCallback(record);
-            if (processedRecord) {
-              return processedRecord;
-            }
+            return params.recordCallback(record);
           } else {
             return record;
           }
