@@ -339,7 +339,6 @@ export class DataMoveUtilsStatic {
    */
   public static constructWhereInClause(field: string, inValues: any[], where: string): string[] {
     const whereClauses: string[] = [];
-    const maxLength = Constants.MAX_SOQL_WHERE_CLAUSE_CHARACTER_LENGTH;
     const overheadLength = (where ? where.length : 0) + field.length + 15;
 
     let currentValues: string[] = [];
@@ -350,7 +349,7 @@ export class DataMoveUtilsStatic {
       const separatorLength = currentValues.length > 0 ? 1 : 0; // ',' is 1 characters
       const valueLength = valueString.length + separatorLength;
 
-      if (currentLength + valueLength > maxLength) {
+      if (currentLength + valueLength > Constants.MAX_SOQL_WHERE_CLAUSE_CHARACTER_LENGTH) {
         // Construct the where clause with currentValues
         const inClause = currentValues.join(',');
         const whereClause = `(${where}) AND (${field} IN (${inClause}))`;
