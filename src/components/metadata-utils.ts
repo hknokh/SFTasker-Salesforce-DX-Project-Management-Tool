@@ -16,7 +16,7 @@ import { Constants } from './constants.js';
 import { SFtaskerCommand, SObjectDescribe } from './models.js';
 import { CommandUtils } from './command-utils.js';
 import { Utils } from './utils.js';
-import { DescribeSObjectResult, PackageXmlContent, PackageXmlType } from './types.js';
+import { DescribeSObjectResult, PackageXmlContent, PackageXmlType, QueryAsyncParameters } from './types.js';
 
 /**
  * Represents a key section in XML metadata.
@@ -705,35 +705,30 @@ export class MetadataUtils<T> {
    * @param progressCallback - Optional callback function to report progress.
    * @returns A promise that resolves with the number of records processed or `undefined` if an error occurs.
    */
-  public async queryAsync(
-    query: string,
-    filePath: string,
-    appendToExistingFile?: boolean,
-    useSourceConnection?: boolean,
-    recordCallback?: (rawRecord: any) => any,
-    progressCallback?: (recordCount: number) => void
-  ): Promise<number | undefined> {
+  public async queryAsync(params: QueryAsyncParameters): Promise<number | undefined> {
     // Utility for logging messages and handling errors
     const utils = new CommandUtils(this.command);
 
     // Determine which connection label to use for logging
-    const label = useSourceConnection ? this.command.sourceConnectionLabel : this.command.targetConnectionLabel;
+    const label = params.useSourceConnection ? this.command.sourceConnectionLabel : this.command.targetConnectionLabel;
 
     // Select the appropriate connection (source or target) based on the flag
-    const connection: Connection = useSourceConnection ? this.command.sourceConnection : this.command.connection;
+    const connection: Connection = params.useSourceConnection ? this.command.sourceConnection : this.command.connection;
 
     let timeout: NodeJS.Timeout | undefined;
 
     try {
       // Log a message indicating the start of the query process
-      utils.logComponentMessage('progress.querying-records', label, query);
+      utils.logComponentMessage('progress.querying-records', label, params.query);
 
       // Resolve the file path to an absolute path if it is not already
-      const resolvedFilePath = path.isAbsolute(filePath) ? filePath : path.resolve(process.cwd(), filePath);
+      const resolvedFilePath = path.isAbsolute(params.filePath)
+        ? params.filePath
+        : path.resolve(process.cwd(), params.filePath);
 
       // Check if the file already exists and decide whether to write headers
       const fileExists = fs.existsSync(resolvedFilePath);
-      const writeHeaders = !appendToExistingFile || !fileExists;
+      const writeHeaders = !params.appendToExistingFile || !fileExists;
 
       // Create a write stream to write the query results to the file
       const writeStream = fs.createWriteStream(resolvedFilePath, {
@@ -747,20 +742,20 @@ export class MetadataUtils<T> {
       let lastRecordsCountReported = -1;
 
       const reportProgress = (count: number): void => {
-        if (progressCallback && count !== lastRecordsCountReported) {
-          progressCallback(count);
+        if (params.progressCallback && count !== lastRecordsCountReported) {
+          params.progressCallback(count);
           lastRecordsCountReported = count;
         }
       };
 
-      if (progressCallback) {
+      if (params.progressCallback) {
         // Set a timeout to report progress every 5 seconds
         timeout = setInterval(() => reportProgress(recordCount), Constants.BULK_POLLING_INTERVAL);
         // Immediately report the initial progress
         reportProgress(recordCount);
       }
 
-      const recordStream = await connection.bulk.query(query);
+      const recordStream = await connection.bulk.query(params.query);
       const queryStream = recordStream.stream();
       queryStream.setEncoding(Constants.DEFAULT_ENCODING);
 
@@ -771,7 +766,7 @@ export class MetadataUtils<T> {
 
         for (const record of records) {
           recordCount++; // Increment the record count
-          const processedRecord = recordCallback ? recordCallback(record) : record;
+          const processedRecord = params.recordCallback ? params.recordCallback(record) : record;
           if (processedRecord !== null) {
             processedRecords.push(processedRecord);
           }
@@ -862,7 +857,7 @@ export class MetadataUtils<T> {
       // Destroy the query stream to prevent memory leaks
       queryStream.destroy();
 
-      if (progressCallback) {
+      if (params.progressCallback) {
         // Report the final progress
         reportProgress(recordCount);
       }

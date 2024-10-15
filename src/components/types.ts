@@ -278,3 +278,22 @@ export type DescribeSObjectResult = {
   /** The fields of the sObject. */
   fields: Field[];
 };
+
+// Method Parameters ----------------------------------------------------------------
+/**
+ * Represetns parameters for an asynchronous query operation.
+ * @property query - The query to run.
+ * @property filePath - The path to the file to write the results to.
+ * @property appendToExistingFile - Indicates whether to append to an existing file.
+ * @property useSourceConnection - Indicates whether to use the source connection.
+ * @property recordCallback - A callback function to process each record.
+ * @property progressCallback - A callback function to report progress.
+ */
+export type QueryAsyncParameters = {
+  query: string;
+  filePath: string;
+  appendToExistingFile?: boolean;
+  useSourceConnection?: boolean;
+  recordCallback?: (rawRecord: any) => any;
+  progressCallback?: (recordCount: number) => void;
+};
