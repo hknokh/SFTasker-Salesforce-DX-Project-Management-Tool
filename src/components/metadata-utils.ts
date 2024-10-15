@@ -734,24 +734,25 @@ export class MetadataUtils<T> {
         flags: writeHeaders ? 'w' : 'a',
         highWaterMark: Constants.DEFAULT_FILE_WRITE_STREAM_HIGH_WATER_MARK,
         encoding: Constants.DEFAULT_ENCODING,
-      }) as fs.WriteStream & { fd?: number };
+      });
 
       // Track the number of records processed
       let recordCount = 0;
+      let filteredRecordCount = 0;
       let lastRecordsCountReported = -1;
 
-      const reportProgress = (count: number): void => {
-        if (params.progressCallback && count !== lastRecordsCountReported) {
-          params.progressCallback(count);
-          lastRecordsCountReported = count;
+      const reportProgress = (): void => {
+        if (params.progressCallback && recordCount !== lastRecordsCountReported) {
+          params.progressCallback(recordCount, filteredRecordCount);
+          lastRecordsCountReported = recordCount;
         }
       };
 
       if (params.progressCallback) {
         // Set a timeout to report progress every 5 seconds
-        timeout = setInterval(() => reportProgress(recordCount), Constants.BULK_POLLING_INTERVAL);
+        timeout = setInterval(() => reportProgress(), Constants.BULK_POLLING_INTERVAL);
         // Immediately report the initial progress
-        reportProgress(recordCount);
+        reportProgress();
       }
       const recordStream = await connection.bulk.query(params.query);
       const queryStream = recordStream.stream();
@@ -763,16 +764,17 @@ export class MetadataUtils<T> {
         const processedRecords = [];
 
         for (const record of records) {
+          recordCount++;
           if (params.recordCallback) {
             // Process the record using the callback function
             const processedRecord = params.recordCallback(record);
             if (processedRecord) {
-              recordCount++;
+              filteredRecordCount++;
               processedRecords.push(processedRecord);
             }
           } else {
             processedRecords.push(record);
-            recordCount++;
+            filteredRecordCount++;
           }
         }
 
@@ -781,6 +783,7 @@ export class MetadataUtils<T> {
           const csvData = stringify(processedRecords, {
             ...Constants.CSV_STRINGIFY_OPTIONS,
             header: columns,
+            bom: columns,
           });
 
           for await (const chunk of csvData) {
@@ -840,12 +843,8 @@ export class MetadataUtils<T> {
           columns,
           encoding: Constants.DEFAULT_ENCODING, // Specify the encoding of the CSV file
         };
-        let records = parse(dataBuffer, options as any);
 
-        if (columns && !writeHeaders) {
-          // eslint-disable-next-line @typescript-eslint/no-unsafe-call
-          records = records.slice(1);
-        }
+        const records = parse(dataBuffer, options as any);
 
         await processAndWriteRecords(records, columns && writeHeaders);
 
@@ -861,16 +860,8 @@ export class MetadataUtils<T> {
       // Destroy the query stream to prevent memory leaks
       queryStream.destroy();
 
-      if (params.progressCallback) {
-        // Report the final progress
-        reportProgress(recordCount);
-      }
-
-      // Sync the file descriptor if available
-      if (writeStream.fd) {
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-call
-        await new Promise((resolve) => fs.fsync(writeStream.fd as number, resolve));
-      }
+      // Final progress report
+      reportProgress();
 
       utils.logComponentMessage('success.querying-records', label, recordCount.toString());
 
@@ -922,24 +913,25 @@ export class MetadataUtils<T> {
         flags: writeHeaders ? 'w' : 'a',
         highWaterMark: Constants.DEFAULT_FILE_WRITE_STREAM_HIGH_WATER_MARK,
         encoding: Constants.DEFAULT_ENCODING,
-      }) as fs.WriteStream & { fd?: number };
+      });
 
       // Track the number of records processed
       let recordCount = 0;
+      let filteredRecordCount = 0;
       let lastRecordsCountReported = -1;
 
-      const reportProgress = (count: number): void => {
-        if (params.progressCallback && count !== lastRecordsCountReported) {
-          params.progressCallback(count);
-          lastRecordsCountReported = count;
+      const reportProgress = (): void => {
+        if (params.progressCallback && recordCount !== lastRecordsCountReported) {
+          params.progressCallback(recordCount, filteredRecordCount);
+          lastRecordsCountReported = recordCount;
         }
       };
 
       if (params.progressCallback) {
         // Set a timeout to report progress every specified interval
-        timeout = setInterval(() => reportProgress(recordCount), Constants.BULK_POLLING_INTERVAL);
+        timeout = setInterval(() => reportProgress(), Constants.BULK_POLLING_INTERVAL);
         // Immediately report the initial progress
-        reportProgress(recordCount);
+        reportProgress();
       }
 
       // Perform the query using the REST API with event handlers
@@ -954,14 +946,15 @@ export class MetadataUtils<T> {
           void connection
             .query(params.query)
             .on('record', (record) => {
+              recordCount++;
               if (params.recordCallback) {
                 const processedRecord = params.recordCallback(record);
-                if (processedRecord !== null) {
-                  recordCount++;
+                if (processedRecord) {
+                  filteredRecordCount++;
                   records.push(processedRecord);
                 }
               } else {
-                recordCount++;
+                filteredRecordCount++;
                 records.push(record);
               }
             })
@@ -986,6 +979,7 @@ export class MetadataUtils<T> {
           {
             ...Constants.CSV_STRINGIFY_OPTIONS,
             header: writeHeaders,
+            bom: writeHeaders,
           },
           (err, output) => {
             if (err) {
@@ -1008,6 +1002,9 @@ export class MetadataUtils<T> {
           });
         });
       });
+
+      // Final progress report
+      reportProgress();
 
       // Log a success message indicating the number of records processed
       utils.logComponentMessage('success.querying-records', label, recordCount.toString());
@@ -1049,20 +1046,21 @@ export class MetadataUtils<T> {
 
       // Track the number of records processed
       let recordCount = 0;
+      let filteredRecordCount = 0;
       let lastRecordsCountReported = -1;
 
-      const reportProgress = (count: number): void => {
-        if (params.progressCallback && count !== lastRecordsCountReported) {
-          params.progressCallback(count);
-          lastRecordsCountReported = count;
+      const reportProgress = (): void => {
+        if (params.progressCallback && recordCount !== lastRecordsCountReported) {
+          params.progressCallback(recordCount, filteredRecordCount);
+          lastRecordsCountReported = recordCount;
         }
       };
 
       if (params.progressCallback) {
         // Set a timeout to report progress every specified interval
-        timeout = setInterval(() => reportProgress(recordCount), Constants.BULK_POLLING_INTERVAL);
+        timeout = setInterval(() => reportProgress(), Constants.BULK_POLLING_INTERVAL);
         // Immediately report the initial progress
-        reportProgress(recordCount);
+        reportProgress();
       }
 
       // Perform the query using the REST API with event handlers
@@ -1077,14 +1075,15 @@ export class MetadataUtils<T> {
           void connection
             .query(params.query)
             .on('record', (record) => {
+              recordCount++;
               if (params.recordCallback) {
                 const processedRecord = params.recordCallback(record);
                 if (processedRecord) {
-                  recordCount++;
+                  filteredRecordCount++;
                   records.push(processedRecord);
                 }
               } else {
-                recordCount++;
+                filteredRecordCount++;
                 records.push(record);
               }
             })
@@ -1102,6 +1101,9 @@ export class MetadataUtils<T> {
           delete record.attributes;
           return record;
         });
+
+      // Final progress report
+      reportProgress();
 
       // Log a success message indicating the number of records processed
       utils.logComponentMessage('success.querying-records', label, recordCount.toString());

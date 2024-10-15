@@ -89,18 +89,18 @@ export default class SftaskerDataMove extends SFtaskerCommand<SftaskerDataMoveRe
 
     const metaUtils = new MetadataUtils(this, dataMoveUtils.tempDir);
     // eslint-disable-next-line @typescript-eslint/no-unsafe-return
-    const numb = await metaUtils.queryRestSimpleAsync({
-      query: 'SELECT Name FROM Test_Big_Data_Volume__c LIMIT 1000',
+    const numb = await metaUtils.queryBulkToFileAsync({
+      query: 'SELECT Id, Name FROM Test_Big_Data_Volume__c',
       filePath: './tmp/output.csv',
-      appendToExistingFile: false,
+      appendToExistingFile: true,
       useSourceConnection: true,
       recordCallback: (record): any => {
         record.Name = record.Name + ' - Updated';
         // eslint-disable-next-line @typescript-eslint/no-unsafe-return
-        //return record;
+        return record;
       },
-      progressCallback: (recordCount) => {
-        this.info(`Records processed: ${recordCount}`);
+      progressCallback: (recordCount, filteredRecordCount) => {
+        this.info(`Records processed: ${recordCount}, Filtered records: ${filteredRecordCount}`);
       },
     });
 

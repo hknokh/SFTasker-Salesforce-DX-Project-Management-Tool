@@ -295,5 +295,5 @@ export type QueryAsyncParameters = {
   appendToExistingFile?: boolean;
   useSourceConnection?: boolean;
   recordCallback?: (rawRecord: any) => any;
-  progressCallback?: (recordCount: number) => void;
+  progressCallback?: (recordCount: number, filteredRecordCount: number) => void;
 };
