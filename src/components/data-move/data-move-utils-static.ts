@@ -328,6 +328,15 @@ export class DataMoveUtilsStatic {
       .join(Constants.DATA_MOVE_CONSTANTS.COMPLEX_EXTERNAL_ID_SEPARATOR);
   }
 
+  /**
+   *  Constructs a WHERE IN clause with the given field and values, splitting into multiple clauses if necessary.
+   *  Keeps maximum SOQL WHERE clause character length in mind.
+   *  These clauses can be used in the REST API calls to Salesforce.
+   * @param field  Field to use in WHERE IN clause
+   * @param inValues  Values to use in WHERE IN clause
+   * @param extraData  Extra data object containing the current WHERE clause
+   * @returns  Array of splitted WHERE IN clauses
+   */
   public static constructWhereInClause(field: string, inValues: any[], extraData: ObjectExtraData): string[] {
     const whereClauses: string[] = [];
     const maxLength = Constants.MAX_SOQL_WHERE_CLAUSE_CHARACTER_LENGTH;
@@ -367,6 +376,7 @@ export class DataMoveUtilsStatic {
     return whereClauses;
   }
 
+  // Private methods -----------------------------------------------------------
   private static valueToSOQL(value: any): string {
     if (typeof value === 'string') {
       // Escape single quotes by replacing ' with \'
