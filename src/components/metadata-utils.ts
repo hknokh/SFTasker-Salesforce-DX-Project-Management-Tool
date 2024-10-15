@@ -841,9 +841,14 @@ export class MetadataUtils<T> {
           columns,
           encoding: Constants.DEFAULT_ENCODING, // Specify the encoding of the CSV file
         };
-        const records = parse(dataBuffer, options as any);
+        let records = parse(dataBuffer, options as any);
 
-        await processAndWriteRecords(records, columns);
+        if (columns && !writeHeaders) {
+          // eslint-disable-next-line @typescript-eslint/no-unsafe-call
+          records = records.slice(1);
+        }
+
+        await processAndWriteRecords(records, columns && writeHeaders);
 
         columns = false;
       }
