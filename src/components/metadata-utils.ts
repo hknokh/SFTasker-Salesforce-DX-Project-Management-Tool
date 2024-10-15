@@ -704,7 +704,7 @@ export class MetadataUtils<T> {
    * @param progressCallback - Optional callback function to report progress.
    * @returns A promise that resolves with the number of records processed or `undefined` if an error occurs.
    */
-  public async queryBulkAsync(params: QueryAsyncParameters): Promise<number | undefined> {
+  public async queryBulkToFileAsync(params: QueryAsyncParameters): Promise<number | undefined> {
     // Utility for logging messages and handling errors
     const utils = new CommandUtils(this.command);
 
@@ -763,10 +763,16 @@ export class MetadataUtils<T> {
         const processedRecords = [];
 
         for (const record of records) {
-          recordCount++; // Increment the record count
-          const processedRecord = params.recordCallback ? params.recordCallback(record) : record;
-          if (processedRecord !== null) {
-            processedRecords.push(processedRecord);
+          if (params.recordCallback) {
+            // Process the record using the callback function
+            const processedRecord = params.recordCallback(record);
+            if (processedRecord) {
+              recordCount++;
+              processedRecords.push(processedRecord);
+            }
+          } else {
+            processedRecords.push(record);
+            recordCount++;
           }
         }
 
@@ -886,7 +892,7 @@ export class MetadataUtils<T> {
    * @param params  The parameters for the query operation.
    * @returns  A promise that resolves with the number of records processed or `undefined` if an error occurs.
    */
-  public async queryRestAsync(params: QueryAsyncParameters): Promise<number | undefined> {
+  public async queryRestToFileAsync(params: QueryAsyncParameters): Promise<number | undefined> {
     // Utility for logging messages and handling errors
     const utils = new CommandUtils(this.command);
 
@@ -948,8 +954,16 @@ export class MetadataUtils<T> {
           void connection
             .query(params.query)
             .on('record', (record) => {
-              recordCount++;
-              records.push(record);
+              if (params.recordCallback) {
+                const processedRecord = params.recordCallback(record);
+                if (processedRecord !== null) {
+                  recordCount++;
+                  records.push(processedRecord);
+                }
+              } else {
+                recordCount++;
+                records.push(record);
+              }
             })
             .on('end', () => {
               resolve(records);
@@ -959,10 +973,12 @@ export class MetadataUtils<T> {
             })
             .run(queryOptions);
         })
-      ).map((record: any): any => {
-        delete record.attributes;
-        return record;
-      });
+      )
+        .filter((record) => !!record)
+        .map((record: any): any => {
+          delete record.attributes;
+          return record;
+        });
 
       const csvString = await new Promise<string>((resolve, reject) => {
         stringify(
@@ -1009,7 +1025,9 @@ export class MetadataUtils<T> {
   }
 
   /**
-   *  Asynchronously runs a REST query against a database or an API and writes the results to a CSV file.
+   * Asynchronously runs a REST query against a database or an API and returns the results as an array.
+   * Suitable for small datasets.
+   * Supports progress reporting and optional record transformation.
    * @param params  The parameters for the query operation.
    * @returns  A promise that resolves with the number of records processed or `undefined` if an error occurs.
    */
@@ -1059,8 +1077,16 @@ export class MetadataUtils<T> {
           void connection
             .query(params.query)
             .on('record', (record) => {
-              recordCount++;
-              records.push(record);
+              if (params.recordCallback) {
+                const processedRecord = params.recordCallback(record);
+                if (processedRecord) {
+                  recordCount++;
+                  records.push(processedRecord);
+                }
+              } else {
+                recordCount++;
+                records.push(record);
+              }
             })
             .on('end', () => {
               resolve(records);
@@ -1070,10 +1096,12 @@ export class MetadataUtils<T> {
             })
             .run(queryOptions);
         })
-      ).map((record: any): any => {
-        delete record.attributes;
-        return record;
-      });
+      )
+        .filter((record) => !!record)
+        .map((record: any): any => {
+          delete record.attributes;
+          return record;
+        });
 
       // Log a success message indicating the number of records processed
       utils.logComponentMessage('success.querying-records', label, recordCount.toString());
@@ -1088,6 +1116,60 @@ export class MetadataUtils<T> {
       if (timeout) {
         clearInterval(timeout);
       }
+    }
+  }
+
+  /**
+   *  Asynchronously runs a REST query against a database or an API and  returns the results as an array.
+   *  Uses the simple query method to retrieve data.
+   *  Suitable for small datasets.
+   *  Provide optional support for records transformation, but not for progress reporting.
+   * @param params
+   * @returns
+   */
+  public async queryRestSimpleAsync(params: QueryAsyncParameters): Promise<any[] | undefined> {
+    // Utility for logging messages and handling errors
+    const utils = new CommandUtils(this.command);
+
+    // Determine which connection label to use for logging
+    const label = params.useSourceConnection ? this.command.sourceConnectionLabel : this.command.targetConnectionLabel;
+
+    // Select the appropriate connection (source or target) based on the flag
+    const connection: Connection = params.useSourceConnection ? this.command.sourceConnection : this.command.connection;
+
+    try {
+      // Log a message indicating the start of the query process
+      utils.logComponentMessage('progress.querying-records', label, params.query);
+
+      const queryOptions = {
+        autoFetch: true,
+        maxFetch: Constants.DATA_MOVE_CONSTANTS.MAX_FETCH_LIMIT,
+        headers: Constants.DATA_MOVE_CONSTANTS.SFORCE_API_CALL_HEADERS,
+      };
+
+      const res = await connection.query(params.query, queryOptions);
+      const data = res.records
+        .map((record: any): any => {
+          delete record.attributes;
+          if (params.recordCallback) {
+            const processedRecord = params.recordCallback(record);
+            if (processedRecord) {
+              return processedRecord;
+            }
+          } else {
+            return record;
+          }
+        })
+        .filter((record: any) => !!record);
+
+      // Log a success message indicating the number of records processed
+      utils.logComponentMessage('success.querying-records', label, data.length.toString());
+
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-return
+      return data;
+    } catch (err) {
+      // Handle any errors that occur during the query or file writing process
+      utils.throwWithErrorMessage(err as Error, 'error.querying-records', label);
     }
   }
 }
