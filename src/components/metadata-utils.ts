@@ -749,7 +749,7 @@ export class MetadataUtils<T> {
       };
 
       if (params.progressCallback) {
-        // Set a timeout to report progress every 5 seconds
+        // Set a timeout to report progress at regular intervals
         timeout = setInterval(() => reportProgress(), Constants.BULK_POLLING_INTERVAL);
         // Immediately report the initial progress
         reportProgress();
@@ -758,8 +758,21 @@ export class MetadataUtils<T> {
       const queryStream = recordStream.stream();
       queryStream.setEncoding(Constants.DEFAULT_ENCODING);
 
+      let headers: Map<number, string> = new Map();
+      let columns = true; // Flag to indicate if the first row contains column headers
+
+      const arrayToObject = (arr: any[]): any =>
+        arr.reduce((acc, val, index) => {
+          acc[headers.get(index) as string] = val;
+          // eslint-disable-next-line @typescript-eslint/no-unsafe-return
+          return acc;
+        }, {});
+
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-return
+      const objectToArray = (obj: any): any[] => Array.from(headers.values()).map((prop) => obj[prop]);
+
       // Define the processing and writing logic as a constant function
-      const processAndWriteRecords = async (records: any[], columns = true): Promise<void> => {
+      const processAndWriteRecords = async (records: any[], header = true): Promise<void> => {
         // Process each record
         const processedRecords = [];
 
@@ -767,10 +780,12 @@ export class MetadataUtils<T> {
           recordCount++;
           if (params.recordCallback) {
             // Process the record using the callback function
-            const processedRecord = params.recordCallback(record);
+            const recordObj = !columns ? arrayToObject(record) : record;
+            const processedRecord = params.recordCallback(recordObj);
             if (processedRecord) {
               filteredRecordCount++;
-              processedRecords.push(processedRecord);
+              const processedRecordOrArray = !columns ? objectToArray(processedRecord) : processedRecord;
+              processedRecords.push(processedRecordOrArray);
             }
           } else {
             processedRecords.push(record);
@@ -782,8 +797,8 @@ export class MetadataUtils<T> {
           // Convert processed records back to CSV strings
           const csvData = stringify(processedRecords, {
             ...Constants.CSV_STRINGIFY_OPTIONS,
-            header: columns,
-            bom: columns,
+            header,
+            bom: header,
           });
 
           for await (const chunk of csvData) {
@@ -807,7 +822,6 @@ export class MetadataUtils<T> {
       });
 
       // Process the data stream
-      let columns = true; // Flag to indicate if the first row contains column headers
 
       let lastIncompleteLine = '';
       let columnsCount = 0;
@@ -845,6 +859,12 @@ export class MetadataUtils<T> {
         };
 
         const records = parse(dataBuffer, options as any);
+        if (columns) {
+          headers = Object.keys(records[0]).reduce((acc, key, index) => {
+            acc.set(index, key);
+            return acc;
+          }, new Map<number, string>());
+        }
 
         await processAndWriteRecords(records, columns && writeHeaders);
 

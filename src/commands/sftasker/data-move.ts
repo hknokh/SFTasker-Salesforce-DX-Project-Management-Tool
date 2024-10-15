@@ -89,8 +89,8 @@ export default class SftaskerDataMove extends SFtaskerCommand<SftaskerDataMoveRe
 
     const metaUtils = new MetadataUtils(this, dataMoveUtils.tempDir);
     // eslint-disable-next-line @typescript-eslint/no-unsafe-return
-    const numb = await metaUtils.queryBulkToFileAsync({
-      query: 'SELECT Id, Name FROM Test_Big_Data_Volume__c',
+    const numb = await metaUtils.queryRestToFileAsync({
+      query: 'SELECT Id, Name FROM Test_Big_Data_Volume__c LIMIT 1000',
       filePath: './tmp/output.csv',
       appendToExistingFile: true,
       useSourceConnection: true,
