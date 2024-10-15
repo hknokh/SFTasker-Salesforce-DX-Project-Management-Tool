@@ -1,3 +1,5 @@
+import * as os from 'node:os';
+import { Options } from 'csv-stringify';
 import { AvailableMetadataTypes, FilenameRegexpReplacement, SftaskerCommandFlags } from './types.js';
 
 /** Constants used throughout the application. */
@@ -194,7 +196,7 @@ export class Constants {
   public static readonly FORCE_APP_SFDX_PROJECT_JSON = 'sfdx-project.json';
 
   /** The options to parse CSV files. */
-  public static readonly CSV_OPTIONS = {
+  public static readonly CSV_PARSE_OPTIONS = {
     columns: true, // First line contains headers
     delimiter: ',', // Specify the delimiter, assuming it's a comma
     quote: '"', // Specify the quote character for fields
@@ -204,6 +206,20 @@ export class Constants {
     skip_empty_lines: true, // Ignore empty lines in the CSV
     trim: true, // Trim whitespace around fields
     bom: true, // Handle byte order marks if present
+  };
+
+  /** The options to stringify CSV files. */
+  public static readonly CSV_STRINGIFY_OPTIONS: Options = {
+    header: true, // Include headers in the output
+    columns: undefined, // Infer columns from the first record
+    // eslint-disable-next-line camelcase
+    record_delimiter: os.EOL, // Use the OS-specific line ending
+    delimiter: ',', // Specify the delimiter, assuming it's a comma
+    quoted: true, // Quote all fields
+    eof: true, // Include an end-of-file marker
+    bom: true, // Include a byte order mark
+    encoding: Constants.DEFAULT_ENCODING,
+    quote: '"', // Specify the quote character for fields
   };
 
   public static readonly BULK_POLLING_INTERVAL = 5000;
@@ -240,5 +256,13 @@ export class Constants {
       ['User', 'Username'],
       ['RecordType', 'DeveloperName;NamespacePrefix;SobjectType'],
     ]),
+
+    /** The maximum number of records to fetch in a single query. */
+    MAX_FETCH_LIMIT: 100_000,
+
+    /** The http request headers for Salesforce API calls. */
+    SFORCE_API_CALL_HEADERS: {
+      'Sforce-Call-Options': 'client=sftasker',
+    },
   };
 }

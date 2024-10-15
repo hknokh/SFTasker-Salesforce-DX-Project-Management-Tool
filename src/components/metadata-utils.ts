@@ -8,7 +8,6 @@ import { stringify } from 'csv-stringify';
 import { parse } from 'csv-parse/sync';
 
 import { Connection } from '@salesforce/core';
-
 import * as unzipper from 'unzipper';
 
 import { XMLParser, XMLBuilder } from 'fast-xml-parser';
@@ -693,7 +692,7 @@ export class MetadataUtils<T> {
   }
 
   /**
-   * Asynchronously runs a query against a database or an API and writes the results to a CSV file.
+   * Asynchronously runs a bulk query against a database or an API and writes the results to a CSV file.
    * Supports large datasets by processing records in chunks and writing them to the file incrementally.
    * Support optional record stream realtime transformation and progress reporting.
    *
@@ -705,7 +704,7 @@ export class MetadataUtils<T> {
    * @param progressCallback - Optional callback function to report progress.
    * @returns A promise that resolves with the number of records processed or `undefined` if an error occurs.
    */
-  public async queryAsync(params: QueryAsyncParameters): Promise<number | undefined> {
+  public async queryBulkAsync(params: QueryAsyncParameters): Promise<number | undefined> {
     // Utility for logging messages and handling errors
     const utils = new CommandUtils(this.command);
 
@@ -754,7 +753,6 @@ export class MetadataUtils<T> {
         // Immediately report the initial progress
         reportProgress(recordCount);
       }
-
       const recordStream = await connection.bulk.query(params.query);
       const queryStream = recordStream.stream();
       queryStream.setEncoding(Constants.DEFAULT_ENCODING);
@@ -775,8 +773,8 @@ export class MetadataUtils<T> {
         if (processedRecords.length > 0) {
           // Convert processed records back to CSV strings
           const csvData = stringify(processedRecords, {
+            ...Constants.CSV_STRINGIFY_OPTIONS,
             header: columns,
-            columns: undefined, // Infer columns from the first record
           });
 
           for await (const chunk of csvData) {
@@ -816,23 +814,23 @@ export class MetadataUtils<T> {
         const lines = dataBuffer.split(/[\n\r]+/g);
 
         if (columns) {
-          columnsCount = lines[0].split(Constants.CSV_OPTIONS.delimiter).length;
+          columnsCount = lines[0].split(Constants.CSV_PARSE_OPTIONS.delimiter).length;
         }
 
         const lastLine = lines[lines.length - 1];
 
         if (
-          (!lastLine.endsWith('\n') && !lastLine.endsWith(Constants.CSV_OPTIONS.quote)) ||
+          (!lastLine.endsWith('\n') && !lastLine.endsWith(Constants.CSV_PARSE_OPTIONS.quote)) ||
           lastLine.endsWith('\n"') ||
-          lastLine.endsWith(`,${Constants.CSV_OPTIONS.quote}`) ||
-          lastLine.split(Constants.CSV_OPTIONS.delimiter).length < columnsCount
+          lastLine.endsWith(`,${Constants.CSV_PARSE_OPTIONS.quote}`) ||
+          lastLine.split(Constants.CSV_PARSE_OPTIONS.delimiter).length < columnsCount
         ) {
           lastIncompleteLine = lines.pop() as string;
           dataBuffer = lines.join(os.EOL);
         }
 
         const options = {
-          ...Constants.CSV_OPTIONS,
+          ...Constants.CSV_PARSE_OPTIONS,
           columns,
           encoding: Constants.DEFAULT_ENCODING, // Specify the encoding of the CSV file
         };
@@ -868,6 +866,128 @@ export class MetadataUtils<T> {
         await new Promise((resolve) => fs.fsync(writeStream.fd as number, resolve));
       }
 
+      utils.logComponentMessage('success.querying-records', label, recordCount.toString());
+
+      return recordCount;
+    } catch (err) {
+      // Handle any errors that occur during the query or file writing process
+      utils.throwWithErrorMessage(err as Error, 'error.querying-records', label);
+    } finally {
+      // Clear the progress reporting timeout if it was set
+      if (timeout) {
+        clearInterval(timeout);
+      }
+    }
+  }
+
+  public async queryRestAsync(params: QueryAsyncParameters): Promise<number | undefined> {
+    // Utility for logging messages and handling errors
+    const utils = new CommandUtils(this.command);
+
+    // Determine which connection label to use for logging
+    const label = params.useSourceConnection ? this.command.sourceConnectionLabel : this.command.targetConnectionLabel;
+
+    // Select the appropriate connection (source or target) based on the flag
+    const connection: Connection = params.useSourceConnection ? this.command.sourceConnection : this.command.connection;
+
+    let timeout: NodeJS.Timeout | undefined;
+
+    try {
+      // Log a message indicating the start of the query process
+      utils.logComponentMessage('progress.querying-records', label, params.query);
+
+      // Resolve the file path to an absolute path if it is not already
+      const resolvedFilePath = path.isAbsolute(params.filePath)
+        ? params.filePath
+        : path.resolve(process.cwd(), params.filePath);
+
+      // Check if the file already exists and decide whether to write headers
+      const fileExists = fs.existsSync(resolvedFilePath);
+      const writeHeaders = !params.appendToExistingFile || !fileExists;
+
+      // Create a write stream to write the query results to the file
+      const writeStream = fs.createWriteStream(resolvedFilePath, {
+        flags: writeHeaders ? 'w' : 'a',
+        highWaterMark: Constants.DEFAULT_FILE_WRITE_STREAM_HIGH_WATER_MARK,
+        encoding: Constants.DEFAULT_ENCODING,
+      }) as fs.WriteStream & { fd?: number };
+
+      // Track the number of records processed
+      let recordCount = 0;
+      let lastRecordsCountReported = -1;
+
+      const reportProgress = (count: number): void => {
+        if (params.progressCallback && count !== lastRecordsCountReported) {
+          params.progressCallback(count);
+          lastRecordsCountReported = count;
+        }
+      };
+
+      if (params.progressCallback) {
+        // Set a timeout to report progress every specified interval
+        timeout = setInterval(() => reportProgress(recordCount), Constants.BULK_POLLING_INTERVAL);
+        // Immediately report the initial progress
+        reportProgress(recordCount);
+      }
+
+      // Perform the query using the REST API with event handlers
+      const data = (
+        await new Promise<any[]>((resolve, reject) => {
+          const records: any[] = [];
+          const queryOptions = {
+            autoFetch: true,
+            maxFetch: Constants.DATA_MOVE_CONSTANTS.MAX_FETCH_LIMIT,
+            headers: Constants.DATA_MOVE_CONSTANTS.SFORCE_API_CALL_HEADERS,
+          };
+          void connection
+            .query(params.query)
+            .on('record', (record) => {
+              recordCount++;
+              records.push(record);
+            })
+            .on('end', () => {
+              resolve(records);
+            })
+            .on('error', (err) => {
+              reject(err);
+            })
+            .run(queryOptions);
+        })
+      ).map((record: any): any => {
+        delete record.attributes;
+        return record;
+      });
+
+      const csvString = await new Promise<string>((resolve, reject) => {
+        stringify(
+          data,
+          {
+            ...Constants.CSV_STRINGIFY_OPTIONS,
+            header: writeHeaders,
+          },
+          (err, output) => {
+            if (err) {
+              reject(err);
+            } else {
+              resolve(output); // Возвращаем CSV-строку
+            }
+          }
+        );
+      });
+
+      await new Promise<void>((resolve, reject) => {
+        // Write the data into the stream
+        writeStream.write(csvString, (err) => {
+          if (err) {
+            return reject(err);
+          }
+          writeStream.end(() => {
+            resolve();
+          });
+        });
+      });
+
+      // Log a success message indicating the number of records processed
       utils.logComponentMessage('success.querying-records', label, recordCount.toString());
 
       return recordCount;
