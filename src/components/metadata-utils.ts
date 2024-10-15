@@ -693,7 +693,7 @@ export class MetadataUtils<T> {
 
   /**
    * Asynchronously runs a bulk query against a database or an API and writes the results to a CSV file.
-   * Supports large datasets by processing records in chunks and writing them to the file incrementally.
+   * Uses streaming so can handle large datasets without running out of memory.
    * Support optional record stream realtime transformation and progress reporting.
    *
    * @param query - The query string to execute.
@@ -741,6 +741,7 @@ export class MetadataUtils<T> {
       let filteredRecordCount = 0;
       let lastRecordsCountReported = -1;
 
+      // Function to report progress at regular intervals
       const reportProgress = (): void => {
         if (params.progressCallback && recordCount !== lastRecordsCountReported) {
           params.progressCallback(recordCount, filteredRecordCount);
@@ -761,6 +762,7 @@ export class MetadataUtils<T> {
       let headers: Map<number, string> = new Map();
       let columns = true; // Flag to indicate if the first row contains column headers
 
+      // Function to convert an array of values to an object with column headers as keys
       const arrayToObject = (arr: any[]): any =>
         arr.reduce((acc, val, index) => {
           acc[headers.get(index) as string] = val;
@@ -768,6 +770,7 @@ export class MetadataUtils<T> {
           return acc;
         }, {});
 
+      // Function to convert an object to an array of values using column headers
       // eslint-disable-next-line @typescript-eslint/no-unsafe-return
       const objectToArray = (obj: any): any[] => Array.from(headers.values()).map((prop) => obj[prop]);
 
