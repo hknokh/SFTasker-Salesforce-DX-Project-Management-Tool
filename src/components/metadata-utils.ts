@@ -903,7 +903,9 @@ export class MetadataUtils<T> {
 
   /**
    * Asynchronously runs a REST query against a database or an API and writes the results to a CSV file.
-   * This method does not use streaming and is suitable for small datasets.
+   * Suitable for small datasets.
+   * Does not use streaming so may run out of memory for large datasets.
+   * Supports progress reporting and optional record transformation.
    * @param params  The parameters for the query operation.
    * @returns  A promise that resolves with the number of records processed or `undefined` if an error occurs.
    */
@@ -1047,7 +1049,7 @@ export class MetadataUtils<T> {
 
   /**
    * Asynchronously runs a REST query against a database or an API and returns the results as an array.
-   * Suitable for small and medium datasets.
+   * Suitable for small datasets.
    * Supports progress reporting and optional record transformation.
    * @param params  The parameters for the query operation.
    * @returns  A promise that resolves with the number of records processed or `undefined` if an error occurs.
@@ -1147,9 +1149,9 @@ export class MetadataUtils<T> {
 
   /**
    *  Asynchronously runs a REST query against a database or an API and  returns the results as an array.
+   *  Good for fast data retrieval.
    *  Uses the simple query method to retrieve data.
-   *  Suitable for tiny datasets.
-   *  Provide optional support for records transformation, but not for progress reporting.
+   * Supports records transformation and initial and final progress reporting.
    * @param params
    * @returns
    */
@@ -1163,9 +1165,27 @@ export class MetadataUtils<T> {
     // Select the appropriate connection (source or target) based on the flag
     const connection: Connection = params.useSourceConnection ? this.command.sourceConnection : this.command.connection;
 
+    await connection.sobject('Account').update([], {
+      allOrNone: true,
+      allowRecursive: true,
+      headers: Constants.DATA_MOVE_CONSTANTS.SFORCE_API_CALL_HEADERS,
+    });
+
     try {
       // Log a message indicating the start of the query process
       utils.logComponentMessage('progress.querying-records', label, params.query);
+
+      // Track the number of records processed
+      let recordCount = 0;
+      let filteredRecordCount = 0;
+      let lastRecordsCountReported = -1;
+
+      const reportProgress = (): void => {
+        if (params.progressCallback && recordCount !== lastRecordsCountReported) {
+          params.progressCallback(recordCount, filteredRecordCount);
+          lastRecordsCountReported = recordCount;
+        }
+      };
 
       const queryOptions = {
         autoFetch: true,
@@ -1173,17 +1193,26 @@ export class MetadataUtils<T> {
         headers: Constants.DATA_MOVE_CONSTANTS.SFORCE_API_CALL_HEADERS,
       };
 
+      // Report initial progress
+      reportProgress();
+
       const res = await connection.query(params.query, queryOptions);
       const data = res.records
         .map((record: any): any => {
+          recordCount++;
           delete record.attributes;
           if (params.recordCallback) {
+            filteredRecordCount++;
             return params.recordCallback(record);
           } else {
+            filteredRecordCount++;
             return record;
           }
         })
         .filter((record: any) => !!record);
+
+      // Final progress report
+      reportProgress();
 
       // Log a success message indicating the number of records processed
       utils.logComponentMessage('success.querying-records', label, data.length.toString());

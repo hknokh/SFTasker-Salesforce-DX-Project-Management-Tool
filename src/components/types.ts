@@ -297,3 +297,19 @@ export type QueryAsyncParameters = {
   recordCallback?: (rawRecord: any) => any;
   progressCallback?: (recordCount: number, filteredRecordCount: number) => void;
 };
+
+/**
+ * Represents parameters for an asynchronous update operation.
+ * @property sobjectType - The type of the sObject to update.
+ * @property operation - The operation to perform (insert, update, or delete).
+ * @property records - The records to update.
+ * @property useSourceConnection - Indicates whether to use the source connection.
+ * @property progressCallback - A callback function to report progress.
+ */
+export type UpdateAsyncParameters = {
+  sobjectType: string;
+  operation: 'insert' | 'update' | 'delete';
+  records: any[];
+  useSourceConnection?: boolean;
+  progressCallback?: (recordCount: number) => void;
+};
