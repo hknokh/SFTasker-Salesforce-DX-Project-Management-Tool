@@ -22,11 +22,26 @@ export class Constants {
   /** The timeout duration for polling metadata retrieval in milliseconds. */
   public static readonly POLL_TIMEOUT = 300_000;
 
+  /** The default polling interval for metadata retrieval in milliseconds. */
+  public static readonly POLL_INTERVAL = 3000;
+
+  /** The timeout duration for polling bulk API job status checks in milliseconds */
+  public static readonly BULK_POLL_TIMEOUT = 300_000;
+
+  /** The default polling interval for bulk API job status checks in milliseconds. */
+  public static readonly BULK_POLL_INTERVAL = 5000;
+
+  /**  The default polling interval for Salesforce API job status checks in milliseconds. */
+  public static readonly API_JOB_POLLING_INTERVAL = 5000;
+
   /** The default encoding used for reading and writing files. */
   public static readonly DEFAULT_ENCODING = 'utf8';
 
-  /** The default high water mark for read streams. */
+  /** The default high water mark for write streams. */
   public static readonly DEFAULT_FILE_WRITE_STREAM_HIGH_WATER_MARK = 64 * 1024;
+
+  /** The default high water mark for read streams. */
+  public static readonly DEFAULT_FILE_READ_STREAM_HIGH_WATER_MARK = 64 * 1024;
 
   /** Maps metadata types to their corresponding section keys in the metadata file. */
   public static readonly METADATA_SECTION_KEY_MAPPING = {
@@ -215,15 +230,12 @@ export class Constants {
     // eslint-disable-next-line camelcase
     record_delimiter: os.EOL, // Use the OS-specific line ending
     delimiter: ',', // Specify the delimiter, assuming it's a comma
-    quoted: true, // Quote all fields
-    eof: true, // Include an end-of-file marker
+    //quoted: true, // Quote all fields
+    //eof: true, // Include an end-of-file marker
     bom: true, // Include a byte order mark
     encoding: Constants.DEFAULT_ENCODING,
     quote: '"', // Specify the quote character for fields
   };
-
-  /** The default polling interval for bulk operations in milliseconds. */
-  public static readonly BULK_POLLING_INTERVAL = 5000;
 
   /** The maximum number of characters allowed in a SOQL WHERE clause. */
   public static readonly MAX_SOQL_WHERE_CLAUSE_CHARACTER_LENGTH = 3900;

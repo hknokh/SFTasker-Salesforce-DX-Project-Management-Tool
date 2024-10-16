@@ -65,6 +65,14 @@ export class SFtaskerCommand<T> extends SfCommand<T> {
     this._connection = value;
     if (this._connection) {
       this._connection.metadata.pollTimeout = Constants.POLL_TIMEOUT as number;
+      this._connection.metadata.pollInterval = Constants.POLL_INTERVAL as number;
+
+      this._connection.bulk.pollTimeout = Constants.BULK_POLL_TIMEOUT as number;
+      this._connection.bulk.pollInterval = Constants.BULK_POLL_INTERVAL as number;
+
+      this._connection.bulk2.pollTimeout = Constants.BULK_POLL_TIMEOUT as number;
+      this._connection.bulk2.pollInterval = Constants.BULK_POLL_INTERVAL as number;
+
       this.orgUsername = this._connection.getUsername() as string;
       this.targetDataOriginType = DataOriginType.org;
     }

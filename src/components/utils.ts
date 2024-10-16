@@ -374,6 +374,20 @@ export class Utils {
     return stringToReplace.replace(regex, (substring) => predicate(substring));
   }
 
+  /**
+   * Capitalizes the first letter of a string.
+   *
+   * @param str The string to capitalize.
+   * @returns The string with the first letter capitalized.
+   */
+  public static capitalizeFirstLetter(str: string): string {
+    // eslint-disable-next-line eqeqeq
+    if (str == undefined || str.length === 0) {
+      return str;
+    }
+    return str.charAt(0).toUpperCase() + str.slice(1);
+  }
+
   // --- Private methods ---
   /**
    * Merges two arrays of objects, combining elements with the same keys.

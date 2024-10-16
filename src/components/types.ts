@@ -189,6 +189,23 @@ export type FastSafeStringify = (
   space?: string | number
 ) => string;
 
+/**
+ * Represent status of the Bulk API V2 job.
+ * @param recordCount - The total number of records processed.
+ * @param filteredRecordCount - The number of records that match the filter criteria.
+ * @param numberRecordsProcessed - The number of records processed.
+ * @param numberRecordsFailed - The number of records failed.
+ * @param state - The state of the job.
+ * @param errorMessage - The error message if the job failed.
+ */
+export type JobInfo = {
+  recordCount: number;
+  numberRecordsProcessed: number;
+  numberRecordsFailed: number;
+  state: 'Init' | 'Open' | 'UploadComplete' | 'InProgress' | 'JobComplete' | 'Aborted' | 'Failed';
+  errorMessage?: string;
+};
+
 // Metadata Types ----------------------------------------------------------------
 
 /**
@@ -294,12 +311,25 @@ export type QueryAsyncParameters = {
   filePath: string;
   appendToExistingFile?: boolean;
   useSourceConnection?: boolean;
+  /**
+   *  A callback function to process each record.
+   * @param rawRecord  - The raw record returned by the query.
+   * @returns  The transformed record to write to the output file or array.
+   *          If not provided, the raw record will be ignored.
+   */
   recordCallback?: (rawRecord: any) => any;
+  /**
+   * A callback function to report progress.
+   * @param recordCount - The number of records processed.
+   * @param filteredRecordCount - The number of records that match the filter criteria.
+   */
   progressCallback?: (recordCount: number, filteredRecordCount: number) => void;
 };
 
 /**
  * Represents parameters for an asynchronous update operation.
+ * @property filePath - The path to the file to write the results to.
+ * @property statusFilePath - The path to the file to write the job status to.
  * @property sobjectType - The type of the sObject to update.
  * @property operation - The operation to perform (insert, update, or delete).
  * @property records - The records to update.
@@ -307,9 +337,17 @@ export type QueryAsyncParameters = {
  * @property progressCallback - A callback function to report progress.
  */
 export type UpdateAsyncParameters = {
+  filePath: string;
+  statusFilePath?: string;
   sobjectType: string;
   operation: 'insert' | 'update' | 'delete';
-  records: any[];
+  records?: any[];
   useSourceConnection?: boolean;
-  progressCallback?: (recordCount: number) => void;
+  /**
+   * A callback function to report progress.
+   * @param recordCount - The number of records processed.
+   * @param succededRecordCount - The number of records that succeeded. Optional, not supported for all operations.
+   * @param failedRecordCount - The number of records that failed. Optional, not supported for all operations.
+   */
+  progressCallback?: (jobInfo: JobInfo) => void;
 };

@@ -93,3 +93,15 @@ Target
 # error.querying-records
 
 [%s] An error occurred while querying records. %s.
+
+# progress.updating-records
+
+[%s : %s] %s records using the file '%s'...
+
+# error.updating-records
+
+[%s : %s] An error occurred while updating records. %s.
+
+# error.file-not-found
+
+The file '%s' was not found.
