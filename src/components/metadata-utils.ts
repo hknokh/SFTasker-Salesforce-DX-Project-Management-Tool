@@ -1,3 +1,4 @@
+/* eslint-disable camelcase */
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import * as fs from 'node:fs';
 import * as path from 'node:path';
@@ -1301,7 +1302,6 @@ export class MetadataUtils<T> {
     const csvStatusFileWriteStream = resolvedStatusFilePath
       ? Utils.createCsvWritableFileStream(
           resolvedStatusFilePath,
-          // eslint-disable-next-line camelcase
           Object.keys({
             sf__Id: 'sf__Id',
             sf__Created: 'false',
@@ -1413,7 +1413,6 @@ export class MetadataUtils<T> {
         ) {
           const resSuccessful = await job.getSuccessfulResults();
           for (const rec of resSuccessful) {
-            // eslint-disable-next-line camelcase
             csvStatusFileWriteStream.writeObjects({
               sf__Id: rec.sf__Id,
               sf__Created: rec.sf__Created,
@@ -1427,7 +1426,6 @@ export class MetadataUtils<T> {
         const resFailed = await job.getFailedResults();
         // Write failed statuses
         for (const rec of resFailed) {
-          // eslint-disable-next-line camelcase
           csvStatusFileWriteStream.writeObjects({
             sf__Id: rec.sf__Id,
             sf__Created: 'false',
