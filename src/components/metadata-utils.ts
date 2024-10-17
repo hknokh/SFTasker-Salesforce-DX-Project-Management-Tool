@@ -1233,8 +1233,9 @@ export class MetadataUtils<T> {
   }
 
   /**
-   *  Asynchronously runs a bulk update operation against a database or an API.
-   *  Uses bulk V2 API to update records.
+   * Asynchronously runs a bulk update operation from a CSV file.
+   * Uses bulk V2 API to update records.
+   * Supports large datasets and progress reporting.
    * @param params  The parameters for the update operation.
    * @returns  A promise that resolves with the number of records processed or `undefined` if an error occurs.
    */
@@ -1290,7 +1291,7 @@ export class MetadataUtils<T> {
         const recordCount = jobInfo.numberRecordsProcessed! + jobInfo.numberRecordsFailed!;
         if (
           params.progressCallback &&
-          (recordCount !== lastJobInfo.recordCount || jobInfo.state !== lastJobInfo.state)
+          (recordCount > lastJobInfo.recordCount! || jobInfo.state !== lastJobInfo.state)
         ) {
           lastJobInfo = { ...(jobInfo as JobInfoV2), recordCount };
           lastJobInfo.recordCount = recordCount;
