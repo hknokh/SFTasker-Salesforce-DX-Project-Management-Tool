@@ -4,7 +4,7 @@ import { Constants } from '../constants.js';
 import { DataOriginType } from '../types.js';
 import { SFtaskerCommand, SObjectDescribe, SObjectFieldDescribe } from '../models.js';
 import { Utils } from '../utils.js';
-import { MetadataUtils } from '../metadata-utils.js';
+import { ApiUtils } from '../api-utils.js';
 import { Script, ScriptObject, ScriptObjectSet } from './data-move-models.js';
 import { DataMoveUtilsStatic } from './data-move-utils-static.js';
 import { OPERATION } from './data-move-types.js';
@@ -57,7 +57,7 @@ export class DataMoveUtils<T> {
    */
   public async describeObjectAsync(object: ScriptObject): Promise<void> {
     // Initialize metadata and command utilities
-    const metaUtils = new MetadataUtils(this.command, this.tempDir);
+    const apiUtils = new ApiUtils(this.command, this.tempDir);
     const comUtils = new CommandUtils(this.command);
 
     // Describe the source object if the data origin is an org and not already described
@@ -68,7 +68,7 @@ export class DataMoveUtils<T> {
       ) {
         try {
           // Fetch and store the source object metadata
-          const sourceDescribe = (await metaUtils.getSObjectMetadataAsync(
+          const sourceDescribe = (await apiUtils.getSObjectMetadataAsync(
             object.extraData.objectName,
             this.command.sourceDataOriginType === DataOriginType.org
           )) as SObjectDescribe;
@@ -103,7 +103,7 @@ export class DataMoveUtils<T> {
       ) {
         try {
           // Fetch and store the target object metadata
-          const targetDescribe = (await metaUtils.getSObjectMetadataAsync(
+          const targetDescribe = (await apiUtils.getSObjectMetadataAsync(
             object.extraData.targetObjectName,
             !(this.command.targetDataOriginType === DataOriginType.org)
           )) as SObjectDescribe;

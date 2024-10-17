@@ -46,14 +46,14 @@ type XmlSectionKey = {
 };
 
 /**
- * Utility class for metadata-related operations.
+ *  Utility class for common API operations.
  */
-export class MetadataUtils<T> {
+export class ApiUtils<T> {
   /** Default path for force-app project main folder. */
   private static _forceAppProjectMainDefaultPath: string;
 
   /**
-   * Creates a new instance of the MetadataUtils class.
+   * Creates a new instance of the ApiUtils class.
    * @param command The command object used to retrieve metadata.
    * @param outputDir The output directory for the retrieved metadata.
    */
@@ -75,11 +75,11 @@ export class MetadataUtils<T> {
    */
   public static getForceAppProjectMainDefaultPath(): string {
     // Use the cached value if it exists
-    if (MetadataUtils._forceAppProjectMainDefaultPath) {
-      return MetadataUtils._forceAppProjectMainDefaultPath;
+    if (ApiUtils._forceAppProjectMainDefaultPath) {
+      return ApiUtils._forceAppProjectMainDefaultPath;
     }
     // Check if the project is a force-app project
-    if (MetadataUtils.isForceAppProject()) {
+    if (ApiUtils.isForceAppProject()) {
       // Read the sfdx-project.json file
       const sfdxProjectJsonPath = path.join(process.cwd(), Constants.FORCE_APP_SFDX_PROJECT_JSON);
       const sfdxProjectJson = fs.readFileSync(sfdxProjectJsonPath, Constants.DEFAULT_ENCODING);
@@ -91,13 +91,13 @@ export class MetadataUtils<T> {
       );
       if (forceAppProjectMainDefaultPath) {
         // Cache the value and return it
-        MetadataUtils._forceAppProjectMainDefaultPath = forceAppProjectMainDefaultPath.path;
-        return MetadataUtils._forceAppProjectMainDefaultPath;
+        ApiUtils._forceAppProjectMainDefaultPath = forceAppProjectMainDefaultPath.path;
+        return ApiUtils._forceAppProjectMainDefaultPath;
       }
     }
     // Set the default path to the force-app project main folder
-    MetadataUtils._forceAppProjectMainDefaultPath = Constants.FORCE_APP_PROJECT_ROOT_MAIN_DEFAULT_PATH;
-    return MetadataUtils._forceAppProjectMainDefaultPath;
+    ApiUtils._forceAppProjectMainDefaultPath = Constants.FORCE_APP_PROJECT_ROOT_MAIN_DEFAULT_PATH;
+    return ApiUtils._forceAppProjectMainDefaultPath;
   }
 
   /**
@@ -522,7 +522,7 @@ export class MetadataUtils<T> {
 
         for (let i = 0; i < targetSectionArray.length; i++) {
           const section = targetSectionArray[i];
-          const sectionKeyObj = MetadataUtils._extractSectionKey(section, sectionKeyMapping);
+          const sectionKeyObj = ApiUtils._extractSectionKey(section, sectionKeyMapping);
           const sectionKey = sectionKeyObj.key;
           const sectionName = sectionKeyObj.sectionName;
 
@@ -571,7 +571,7 @@ export class MetadataUtils<T> {
 
       for (let sectionIndex = targetSectionArray.length - 1; sectionIndex >= 0; sectionIndex--) {
         const targetObject = targetSectionArray[sectionIndex];
-        const sectionKey = MetadataUtils._extractSectionKey(targetObject, sectionKeyMapping);
+        const sectionKey = ApiUtils._extractSectionKey(targetObject, sectionKeyMapping);
         if (sectionKey.key) {
           targetSectionMap[sectionKey.key] = targetObject;
         } else if (!sectionKey.isSectionExist) {
@@ -582,7 +582,7 @@ export class MetadataUtils<T> {
       }
 
       sourceSectionArray.forEach((sourceObject) => {
-        const sectionKey = MetadataUtils._extractSectionKey(sourceObject, sectionKeyMapping);
+        const sectionKey = ApiUtils._extractSectionKey(sourceObject, sectionKeyMapping);
         if (!sectionKey.isSectionExist) {
           utils.throwError('error.merging-metadata-xml.no-section', JSON.stringify(sourceObject), logSourcefilePath);
         }
@@ -590,7 +590,7 @@ export class MetadataUtils<T> {
         if (targetObject) {
           if (this.command.flags['merge-props']) {
             // Merge properties from sourceObject into targetObject
-            const isEquals = MetadataUtils._mergeMetadataProperties(
+            const isEquals = ApiUtils._mergeMetadataProperties(
               targetObject[sectionKey.sectionName ?? ''],
               sourceObject[sectionKey.sectionName ?? '']
             );
@@ -688,7 +688,7 @@ export class MetadataUtils<T> {
         Constants.PACKAGE_XML_METADATA_NAME_TO_SFDX_PROJECT_FOLDER_MAPPING[metadataTypeName]
       );
     }
-    const sfdxMainDefaultPath = MetadataUtils.getForceAppProjectMainDefaultPath();
+    const sfdxMainDefaultPath = ApiUtils.getForceAppProjectMainDefaultPath();
     let rootFolder = (this.command.flags['source-dir'] as string) || sfdxMainDefaultPath;
     rootFolder = path.join(rootFolder, Constants.FORCE_APP_MAIN_DEFAULT_PATH);
     return path.join(
@@ -792,7 +792,7 @@ export class MetadataUtils<T> {
         reportProgress();
       }
 
-      const pollingSettings = MetadataUtils.calculatePollingSettings();
+      const pollingSettings = ApiUtils.calculatePollingSettings();
       connection.bulk.pollTimeout = pollingSettings.pollTimeout;
 
       const recordStream = await connection.bulk.query(params.query);
@@ -1281,10 +1281,10 @@ export class MetadataUtils<T> {
     const connection: Connection = params.useSourceConnection ? this.command.sourceConnection : this.command.connection;
 
     // Set the default report level to 'Errors'
-    params.reportLevel = params.reportLevel || ApiOperationReportLevel.Errors;
+    params.reportLevel = params.reportLevel || ApiOperationReportLevel.None;
 
     // Calculate the polling settings for the bulk2 API
-    const pollingSettings = MetadataUtils.calculatePollingSettings(params.projectedCsvRecordsCount);
+    const pollingSettings = ApiUtils.calculatePollingSettings(params.projectedCsvRecordsCount);
 
     // Dynamically set the polling settings for the bulk2 API
     connection.bulk2.pollTimeout = pollingSettings.pollTimeout;

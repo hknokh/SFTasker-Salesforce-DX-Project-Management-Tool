@@ -1,7 +1,7 @@
 import { Flags } from '@salesforce/sf-plugins-core';
 import { CommandUtils } from '../../components/command-utils.js';
 import { Constants } from '../../components/constants.js';
-import { MetadataUtils } from '../../components/metadata-utils.js';
+import { ApiUtils } from '../../components/api-utils.js';
 import { SFtaskerCommand } from '../../components/models.js';
 import { FindMatchingFilesResult } from '../../components/types.js';
 import { Utils } from '../../components/utils.js';
@@ -101,8 +101,8 @@ export default class SftaskerMergeMeta extends SFtaskerCommand<SftaskerMergeMeta
     // Create a temporary directory for the command execution.
     const tempPath = commandUtils.createTempDirectory();
 
-    // Initialize MetadataUtils with the current command instance and temporary path.
-    const metadataUtils = new MetadataUtils(this, tempPath);
+    // Initialize ApiUtils with the current command instance and temporary path.
+    const metadataUtils = new ApiUtils(this, tempPath);
 
     // Get the root folder for the specified metadata type.
     const forceAppMetadataRootFolder = metadataUtils.getMetadataRootFolder(flags.type);

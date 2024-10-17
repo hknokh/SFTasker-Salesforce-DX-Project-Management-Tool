@@ -3,7 +3,7 @@ import { CommandUtils } from '../../components/command-utils.js';
 import { SFtaskerCommand } from '../../components/models.js';
 import { Constants } from '../../components/constants.js';
 import { DataMoveUtils } from '../../components/data-move/data-move-utils.js';
-import { MetadataUtils } from '../../components/metadata-utils.js';
+import { ApiUtils } from '../../components/api-utils.js';
 import { ApiOperationReportLevel, JobInfoV2 } from '../../components/types.js';
 import { DataMoveUtilsStatic } from '../../components/data-move/data-move-utils-static.js';
 import { ObjectExtraData } from '../../components/data-move/data-move-models.js';
@@ -92,9 +92,9 @@ export default class SftaskerDataMove extends SFtaskerCommand<SftaskerDataMoveRe
     // Initialize and process the data move command asynchronously.
     //await dataMoveUtils.initializeCommandAsync();
 
-    const metaUtils = new MetadataUtils(this, dataMoveUtils.tempDir);
+    const apiUtils = new ApiUtils(this, dataMoveUtils.tempDir);
     // eslint-disable-next-line @typescript-eslint/no-unsafe-return
-    const numb = await metaUtils.queryBulkToFileAsync({
+    const numb = await apiUtils.queryBulkToFileAsync({
       query: 'SELECT Id, Name FROM Test_Big_Data_Volume__c LIMIT 100',
       filePath: './tmp/import.csv',
       appendToExistingFile: false,
@@ -114,7 +114,7 @@ export default class SftaskerDataMove extends SFtaskerCommand<SftaskerDataMoveRe
 
     this.info(`Number of records: ${numb}`);
 
-    const jobInfo = await metaUtils.updateBulk2Async({
+    const jobInfo = await apiUtils.updateBulk2Async({
       filePath: './tmp/import.csv',
       statusFilePath: './tmp/status.csv',
       operation: 'update',

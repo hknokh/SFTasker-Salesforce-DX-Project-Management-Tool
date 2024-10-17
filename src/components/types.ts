@@ -407,9 +407,7 @@ export type QueryAsyncParameters = {
  * @property statusFilePath - The path to the file to write the job status to.
  * @property sobjectType - The type of the sObject to update.
  * @property operation -  The operation to perform (insert, update, delete, hardDelete).
- * @property writeAllSuccessfulRecords - Indicates whether to report status of all successful records.
- *          If not povided, report of only new  records will be written.
- *          Note, that statuses of failed records will always be written.
+ * @property reportLevel - The level of records to report after the operation completes. Default is 'None'.
  * @property records - The records use for the operation.
  * @property projectedRecordsCount - The projected number of records to update.
  *            Used to optionally calculate optimal polling settings if csv file is used as a source.
