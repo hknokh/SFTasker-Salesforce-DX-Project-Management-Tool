@@ -1413,8 +1413,8 @@ export class MetadataUtils<T> {
         ) {
           const resSuccessful = await job.getSuccessfulResults();
           for (const rec of resSuccessful) {
+            // eslint-disable-next-line camelcase
             csvStatusFileWriteStream.writeObjects({
-              // eslint-disable-next-line camelcase
               sf__Id: rec.sf__Id,
               sf__Created: rec.sf__Created,
               sf__Error: '',
@@ -1427,8 +1427,8 @@ export class MetadataUtils<T> {
         const resFailed = await job.getFailedResults();
         // Write failed statuses
         for (const rec of resFailed) {
+          // eslint-disable-next-line camelcase
           csvStatusFileWriteStream.writeObjects({
-            // eslint-disable-next-line camelcase
             sf__Id: rec.sf__Id,
             sf__Created: 'false',
             sf__Error: rec.sf__Error,
