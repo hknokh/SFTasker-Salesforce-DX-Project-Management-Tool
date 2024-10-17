@@ -3,8 +3,8 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { once } from 'node:events';
 import * as os from 'node:os';
-
 import { stringify } from 'csv-stringify';
+
 import { parse } from 'csv-parse/sync';
 
 import { Connection } from '@salesforce/core';
@@ -17,7 +17,8 @@ import { CommandUtils } from './command-utils.js';
 import { Utils } from './utils.js';
 import {
   DescribeSObjectResult,
-  JobInfo,
+  IngestJobV2,
+  JobInfoV2,
   PackageXmlContent,
   PackageXmlType,
   QueryAsyncParameters,
@@ -854,8 +855,9 @@ export class MetadataUtils<T> {
         const lastLine = lines[lines.length - 1];
 
         if (
-          (!lastLine.endsWith('\n') && !lastLine.endsWith(Constants.CSV_PARSE_OPTIONS.quote)) ||
-          lastLine.endsWith('\n"') ||
+          (!lastLine.endsWith(Constants.BULK_API_QUERY_CSV_LINE_SEPARATOR) &&
+            !lastLine.endsWith(Constants.CSV_PARSE_OPTIONS.quote)) ||
+          lastLine.endsWith(`${Constants.BULK_API_QUERY_CSV_LINE_SEPARATOR}${Constants.CSV_PARSE_OPTIONS.quote}`) ||
           lastLine.endsWith(`,${Constants.CSV_PARSE_OPTIONS.quote}`) ||
           lastLine.split(Constants.CSV_PARSE_OPTIONS.delimiter).length < columnsCount
         ) {
@@ -1236,7 +1238,7 @@ export class MetadataUtils<T> {
    * @param params  The parameters for the update operation.
    * @returns  A promise that resolves with the number of records processed or `undefined` if an error occurs.
    */
-  public async updateBulk2Async(params: UpdateAsyncParameters): Promise<JobInfo | undefined> {
+  public async updateBulk2Async(params: UpdateAsyncParameters): Promise<JobInfoV2 | undefined> {
     // Utility for logging messages and handling errors
     const utils = new CommandUtils(this.command);
 
@@ -1254,7 +1256,7 @@ export class MetadataUtils<T> {
         : path.resolve(process.cwd(), params.statusFilePath)
       : undefined;
 
-    const csvStatusStream = resolvedStatusFilePath
+    const csvStatusFileWriteStream = resolvedStatusFilePath
       ? fs.createWriteStream(resolvedStatusFilePath, {
           flags: 'w',
           highWaterMark: Constants.DEFAULT_FILE_WRITE_STREAM_HIGH_WATER_MARK,
@@ -1263,6 +1265,8 @@ export class MetadataUtils<T> {
       : undefined;
 
     try {
+      let job: IngestJobV2;
+
       // Log a message indicating the start of the query process
       utils.logComponentMessage(
         'progress.updating-records',
@@ -1273,34 +1277,30 @@ export class MetadataUtils<T> {
       );
 
       // Track the number of records processed
-      let lastJobInfo = {
+      let lastJobInfo: JobInfoV2 = {
         numberRecordsProcessed: 0,
         numberRecordsFailed: 0,
-        recordCount: 0,
-        state: 'Init',
-      } as JobInfo;
-      let lastRecordsCountReported = -1;
-
-      const reportProgress = (jobInfo?: Partial<JobInfo>): void => {
-        lastJobInfo = { ...lastJobInfo, ...jobInfo };
-        const recordCount = lastJobInfo.numberRecordsProcessed + lastJobInfo.numberRecordsFailed;
-        if (params.progressCallback && recordCount !== lastRecordsCountReported) {
-          params.progressCallback(jobInfo as JobInfo);
-          lastRecordsCountReported = recordCount;
-        }
+        recordCount: -1,
+        state: 'Initializing',
       };
 
-      if (params.progressCallback) {
-        // Set a timeout to report progress every specified interval
-        timeout = setInterval(() => reportProgress(), Constants.API_JOB_POLLING_INTERVAL);
-        // Immediately report the initial progress
-        reportProgress();
-      }
+      // Function to report progress
+      const reportProgress = (jobInfo?: Partial<JobInfoV2>): void => {
+        jobInfo = { ...lastJobInfo, ...jobInfo };
+        const recordCount = jobInfo.numberRecordsProcessed! + jobInfo.numberRecordsFailed!;
+        if (
+          params.progressCallback &&
+          (recordCount !== lastJobInfo.recordCount || jobInfo.state !== lastJobInfo.state)
+        ) {
+          lastJobInfo = { ...(jobInfo as JobInfoV2), recordCount };
+          lastJobInfo.recordCount = recordCount;
+          params.progressCallback(lastJobInfo);
+        }
+      };
 
       // Initial progress report
       reportProgress();
 
-      // Logic....
       // Resolve the file path to an absolute path if it is not already
       const resolvedFilePath = path.isAbsolute(params.filePath)
         ? params.filePath
@@ -1312,45 +1312,70 @@ export class MetadataUtils<T> {
         utils.throwError('error.file-not-found', Utils.shortenFilePath(resolvedFilePath));
       }
 
-      const csvStream = fs.createReadStream(resolvedFilePath, {
-        encoding: Constants.DEFAULT_ENCODING,
-        highWaterMark: Constants.DEFAULT_FILE_READ_STREAM_HIGH_WATER_MARK,
-      });
+      const csvSourceFileReadStream = Utils.createCsvFileStream(resolvedFilePath);
 
-      const job = connection.bulk2.createJob({
+      // eslint-disable-next-line prefer-const
+      job = connection.bulk2.createJob({
         operation: params.operation,
         object: params.sobjectType,
         lineEnding: os.EOL === '\n' ? 'LF' : 'CRLF',
       });
 
-      job.on('inProgress', (jobInfo: JobInfo) => {
-        reportProgress(jobInfo);
+      await job.open();
+
+      reportProgress({
+        state: 'Uploading',
       });
 
-      await job.open();
-      await job.uploadData(csvStream);
+      await job.uploadData(csvSourceFileReadStream);
       await job.close();
-      await job.poll();
 
-      // Write csv header
-      if (csvStatusStream) {
-        csvStatusStream.write('"Id","Created","Status","Error"\n');
+      reportProgress({
+        state: 'InProgress',
+      });
 
-        const resSuccessful = await job.getSuccessfulResults();
+      // Poll the job status until it is completed
+      await new Promise<void>((resolve) => {
+        timeout = setInterval(() => {
+          void (async (): Promise<void> => {
+            const state = await job.check();
+            reportProgress(state);
+            if (state.state === 'JobComplete' || state.state === 'Failed' || state.state === 'Aborted') {
+              resolve();
+              clearInterval(timeout);
+              timeout = undefined;
+            }
+          })();
+        }, Constants.API_JOB_POLLING_INTERVAL);
+      });
 
-        // Write successful statuses
-        for (const rec of resSuccessful) {
-          csvStatusStream.write(`"${rec.sf__Id}",${rec.sf__Created},"Success",""\n`);
+      // Report the successful completion of the job in csv file
+      if (csvStatusFileWriteStream) {
+        reportProgress({
+          state: 'CreatingReports',
+        });
+
+        csvStatusFileWriteStream.write('"Id","Created","Status","Error"\n');
+
+        if (params.operation === 'insert') {
+          // We need to get the successful results for insert operation because we need to get the newly created Ids
+          // For update operation, we don't need to get the successful results because we already have the Ids
+          // eslint-disable-next-line @typescript-eslint/no-unsafe-call
+          const resSuccessful = await job.getSuccessfulResults();
+          // Write successful statuses
+          for (const rec of resSuccessful) {
+            csvStatusFileWriteStream.write(`"${rec.sf__Id}",${rec.sf__Created},"Success",""\n`);
+          }
         }
 
+        // For failed results, we need to get the failed results for both insert and update operations
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-call
         const resFailed = await job.getFailedResults();
-
         // Write failed statuses
         for (const rec of resFailed) {
-          csvStatusStream.write(`"${rec.sf__Id}",false,"Failed","${rec.sf__Error}"\n`);
+          csvStatusFileWriteStream.write(`"${rec.sf__Id}",false,"Failed","${rec.sf__Error}"\n`);
         }
-
-        csvStatusStream.end();
+        csvStatusFileWriteStream.end();
       }
 
       // Final progress report
@@ -1358,10 +1383,10 @@ export class MetadataUtils<T> {
 
       return lastJobInfo;
     } catch (err) {
-      // Write empty status file
-      if (csvStatusStream) {
-        csvStatusStream.write('');
-        csvStatusStream.end();
+      // Write empty status file to status csv file
+      if (csvStatusFileWriteStream) {
+        csvStatusFileWriteStream.write('');
+        csvStatusFileWriteStream.end();
       }
       // Handle any errors that occur during the query or file writing process
       utils.throwWithErrorMessage(err as Error, 'error.updating-records', params.sobjectType, label);

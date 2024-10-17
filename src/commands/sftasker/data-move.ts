@@ -4,6 +4,7 @@ import { SFtaskerCommand } from '../../components/models.js';
 import { Constants } from '../../components/constants.js';
 import { DataMoveUtils } from '../../components/data-move/data-move-utils.js';
 import { MetadataUtils } from '../../components/metadata-utils.js';
+import { JobInfoV2 } from '../../components/types.js';
 //import { ObjectExtraData } from '../../components/data-move/data-move-models.js';
 //import { DataMoveUtilsStatic } from '../../components/data-move/data-move-utils-static.js';
 
@@ -91,13 +92,15 @@ export default class SftaskerDataMove extends SFtaskerCommand<SftaskerDataMoveRe
 
     const metaUtils = new MetadataUtils(this, dataMoveUtils.tempDir);
     // eslint-disable-next-line @typescript-eslint/no-unsafe-return
-    const numb = await metaUtils.queryRestToFileAsync({
-      query: 'SELECT Id, Name FROM Test_Big_Data_Volume__c LIMIT 2',
-      filePath: './tmp/output.csv',
+    const numb = await metaUtils.queryBulkToFileAsync({
+      query: 'SELECT Id, Name FROM Test_Big_Data_Volume__c LIMIT 100',
+      filePath: './tmp/import.csv',
       appendToExistingFile: false,
       useSourceConnection: true,
       recordCallback: (record): any => {
-        record.Name = record.Name + ' - Updated' + '"';
+        record.Name =
+          record.Name +
+          'lorem ipsum dolor sit amet consectetur adipiscing elit sed do eiusmod tempor incididunt ut labore et dolore magna aliqua';
         // eslint-disable-next-line @typescript-eslint/no-unsafe-return
         return record;
       },
@@ -109,10 +112,16 @@ export default class SftaskerDataMove extends SFtaskerCommand<SftaskerDataMoveRe
     this.info(`Number of records: ${numb}`);
 
     const jobInfo = await metaUtils.updateBulk2Async({
-      filePath: './tmp/output.csv',
+      filePath: './tmp/import.csv',
+      statusFilePath: './tmp/status.csv',
       operation: 'update',
       sobjectType: 'Test_Big_Data_Volume__c',
       useSourceConnection: true,
+      progressCallback: (state: JobInfoV2) => {
+        this.info(
+          `State: ${state.state},  Records processed: ${state.numberRecordsProcessed}, Filtered records: ${state.numberRecordsFailed}`
+        );
+      },
     });
 
     this.info(`Job ID: ${jobInfo?.recordCount}`);

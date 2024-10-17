@@ -1,3 +1,4 @@
+import { Readable } from 'node:stream';
 import { Connection, Messages } from '@salesforce/core';
 
 // ------ Command Types ------
@@ -198,12 +199,87 @@ export type FastSafeStringify = (
  * @param state - The state of the job.
  * @param errorMessage - The error message if the job failed.
  */
-export type JobInfo = {
-  recordCount: number;
+export type JobInfoV2 = {
+  recordCount?: number;
   numberRecordsProcessed: number;
   numberRecordsFailed: number;
-  state: 'Init' | 'Open' | 'UploadComplete' | 'InProgress' | 'JobComplete' | 'Aborted' | 'Failed';
+  state:
+    | 'Initializing'
+    | 'Uploading'
+    | 'CreatingReports'
+    | 'Open'
+    | 'UploadComplete'
+    | 'InProgress'
+    | 'JobComplete'
+    | 'Aborted'
+    | 'Failed';
   errorMessage?: string;
+};
+
+/**
+ * Represents a successful result record.
+ */
+export type SuccessfulResult = {
+  sf__Id: string;
+  sf__Created: 'true' | 'false';
+};
+
+/**
+ * Represents a failed result record.
+ */
+export type FailedResult = {
+  sf__Id: string;
+  sf__Error: string;
+};
+
+/**
+ * Defines the structure and methods of a Bulk2 Job.
+ */
+export type IngestJobV2 = {
+  /**
+   * Opens the job for data upload.
+   * @returns A promise that resolves when the job is successfully opened.
+   */
+  open(): Promise<Partial<JobInfoV2>>;
+
+  /**
+   * Checks the current status of the job.
+   * @returns A promise that resolves with the job's current information.
+   */
+  check(): Promise<JobInfoV2>;
+
+  /**
+   * Uploads data to the job from a readable stream.
+   * @param stream - The readable stream containing CSV data.
+   * @returns A promise that resolves when the data upload is complete.
+   */
+  uploadData(stream: Readable): Promise<void>;
+
+  /**
+   * Closes the job after data upload.
+   * @returns A promise that resolves when the job is successfully closed.
+   */
+  close(): Promise<void>;
+
+  /**
+   * Polls the job status at specified intervals until completion or timeout.
+   * @param interval - The polling interval in milliseconds.
+   * @param timeout - The maximum time to wait for job completion in milliseconds.
+   * @returns A promise that resolves when polling is complete.
+   */
+  poll(interval: number, timeout: number): Promise<void>;
+
+  /**
+   * Retrieves the successful results of the job.
+   * @returns A promise that resolves with an array of successful result records.
+   */
+  getSuccessfulResults(): Promise<SuccessfulResult[]>;
+
+  /**
+   * Retrieves the failed results of the job.
+   * @returns A promise that resolves with an array of failed result records.
+   */
+  getFailedResults(): Promise<FailedResult[]>;
 };
 
 // Metadata Types ----------------------------------------------------------------
@@ -331,7 +407,7 @@ export type QueryAsyncParameters = {
  * @property filePath - The path to the file to write the results to.
  * @property statusFilePath - The path to the file to write the job status to.
  * @property sobjectType - The type of the sObject to update.
- * @property operation - The operation to perform (insert, update, or delete).
+ * @property operation -  The operation to perform (insert, update, delete, hardDelete).
  * @property records - The records to update.
  * @property useSourceConnection - Indicates whether to use the source connection.
  * @property progressCallback - A callback function to report progress.
@@ -340,7 +416,7 @@ export type UpdateAsyncParameters = {
   filePath: string;
   statusFilePath?: string;
   sobjectType: string;
-  operation: 'insert' | 'update' | 'delete';
+  operation: 'insert' | 'update' | 'delete' | 'hardDelete';
   records?: any[];
   useSourceConnection?: boolean;
   /**
@@ -349,5 +425,5 @@ export type UpdateAsyncParameters = {
    * @param succededRecordCount - The number of records that succeeded. Optional, not supported for all operations.
    * @param failedRecordCount - The number of records that failed. Optional, not supported for all operations.
    */
-  progressCallback?: (jobInfo: JobInfo) => void;
+  progressCallback?: (jobInfo: JobInfoV2) => void;
 };

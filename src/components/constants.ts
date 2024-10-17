@@ -210,6 +210,9 @@ export class Constants {
   /** The name of the sfdx-project.json configuration file. */
   public static readonly FORCE_APP_SFDX_PROJECT_JSON = 'sfdx-project.json';
 
+  /** The separarator used in CSV files when streaming data from Salesforce bulk API. */
+  public static BULK_API_QUERY_CSV_LINE_SEPARATOR = '\n';
+
   /** The options to parse CSV files. */
   public static readonly CSV_PARSE_OPTIONS = {
     columns: true, // First line contains headers
@@ -218,8 +221,10 @@ export class Constants {
     // eslint-disable-next-line camelcase
     relax_quotes: true, // Allow quotes to be escaped
     // eslint-disable-next-line camelcase
+    //record_delimiter: os.EOL, // Use the OS-specific line ending
+    // eslint-disable-next-line camelcase
     skip_empty_lines: true, // Ignore empty lines in the CSV
-    trim: true, // Trim whitespace around fields
+    //trim: true, // Trim whitespace around fields
     bom: true, // Handle byte order marks if present
   };
 
@@ -227,14 +232,14 @@ export class Constants {
   public static readonly CSV_STRINGIFY_OPTIONS: Options = {
     header: true, // Include headers in the output
     columns: undefined, // Infer columns from the first record
+    delimiter: ',', // Specify the delimiter, assuming it's a comma
+    quote: '"', // Specify the quote character for fields
     // eslint-disable-next-line camelcase
     record_delimiter: os.EOL, // Use the OS-specific line ending
-    delimiter: ',', // Specify the delimiter, assuming it's a comma
     //quoted: true, // Quote all fields
     //eof: true, // Include an end-of-file marker
     bom: true, // Include a byte order mark
-    encoding: Constants.DEFAULT_ENCODING,
-    quote: '"', // Specify the quote character for fields
+    encoding: Constants.DEFAULT_ENCODING, // Use the default encoding
   };
 
   /** The maximum number of characters allowed in a SOQL WHERE clause. */

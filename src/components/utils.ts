@@ -1,10 +1,15 @@
 import path from 'node:path';
 import fs from 'node:fs';
+import os from 'node:os';
+import { Readable } from 'node:stream';
 import { readFile } from 'node:fs/promises';
 import { createRequire } from 'node:module';
+import csvParser from 'csv-parser';
+import { stringify as stringifySync } from 'csv-stringify/sync';
 import 'reflect-metadata';
 import { plainToInstance, instanceToPlain } from 'class-transformer';
 import { XMLParser } from 'fast-xml-parser';
+
 import {
   FindMatchingFilesResult,
   MatchingFiles,
@@ -386,6 +391,57 @@ export class Utils {
       return str;
     }
     return str.charAt(0).toUpperCase() + str.slice(1);
+  }
+
+  /**
+   * Converts a CSV file to a readable stream.
+   *
+   * @param filePath The path to the CSV file.
+   * @returns The readable stream of the CSV data.
+   */
+  public static createCsvFileStream(filePath: string): Readable {
+    const inputStream = fs
+      .createReadStream(filePath, {
+        encoding: Constants.DEFAULT_ENCODING,
+        highWaterMark: Constants.DEFAULT_FILE_READ_STREAM_HIGH_WATER_MARK,
+      })
+      .pipe(
+        csvParser({
+          ...Constants.CSV_PARSE_OPTIONS,
+        })
+      );
+
+    // Create a new readable stream to transform objects into Buffer or string
+    let firstRow = true;
+    const outputStream = new Readable({
+      // eslint-disable-next-line @typescript-eslint/explicit-function-return-type
+      read() {
+        inputStream.on('data', (row: Record<string, string>) => {
+          let csvData = stringifySync([row], {
+            ...Constants.CSV_STRINGIFY_OPTIONS,
+            header: firstRow,
+            bom: false,
+          });
+          // Remove BOM from the first row
+          if (firstRow) {
+            csvData = csvData.replace(/^\uFEFF/gm, '').replace(/^\u00BB\u00BF/gm, '');
+          }
+          this.push(csvData + os.EOL);
+          firstRow = false;
+        });
+
+        inputStream.on('end', () => {
+          // Signal end of the stream
+          this.push(null);
+        });
+
+        inputStream.on('error', (err: Error) => {
+          // Handle error and close the stream
+          this.destroy(err);
+        });
+      },
+    });
+    return outputStream;
   }
 
   // --- Private methods ---
