@@ -20,19 +20,28 @@ export class Constants {
   public static readonly DEFAULT_MANIFEST_PATH = 'manifest/package.xml';
 
   /** The timeout duration for polling metadata retrieval in milliseconds. */
-  public static readonly POLL_TIMEOUT = 300_000;
+  public static readonly METADATA_API_POLL_TIMEOUT = 300_000;
 
   /** The default polling interval for metadata retrieval in milliseconds. */
-  public static readonly POLL_INTERVAL = 3000;
+  public static readonly METADATA_API_POLL_INTERVAL = 3000;
 
   /** The timeout duration for polling bulk API job status checks in milliseconds */
-  public static readonly BULK_POLL_TIMEOUT = 300_000;
+  public static readonly BULK_API_POLL_MAX_TIMEOUT = 300_000;
 
-  /** The default polling interval for bulk API job status checks in milliseconds. */
-  public static readonly BULK_POLL_INTERVAL = 5000;
+  /** The minimum polling interval for bulk API job status checks in milliseconds. */
+  public static readonly BULK_API_POLL_MIN_INTERVAL = 10_000;
 
-  /**  The default polling interval for Salesforce API job status checks in milliseconds. */
-  public static readonly API_JOB_POLLING_INTERVAL = 5000;
+  /** The maximum polling interval for bulk API job status checks in milliseconds. */
+  public static readonly BULK_API_POLL_MAX_INTERVAL = 30_000;
+
+  /** The scale factor used for bulk API job record polling. */
+  public static readonly BULK_API_POLL_RECORD_SCALE_FACTOR = 100_000;
+
+  /**
+   * The timeout duration for polling job code execution in milliseconds.
+   *  Used in internal api operations which does not require remote api calls. while polling for job completion.
+   */
+  public static readonly API_JOB_INTERNAL_POLLING_INTERVAL = 5000;
 
   /** The default encoding used for reading and writing files. */
   public static readonly DEFAULT_ENCODING = 'utf8';

@@ -97,6 +97,30 @@ export class MetadataUtils<T> {
     return MetadataUtils._forceAppProjectMainDefaultPath;
   }
 
+  /**
+   * Calculates the polling settings based on the number of records to process.
+   * @param recordCount The number of records to process.
+   * @returns The polling settings for the bulk job.
+   */
+  public static calculatePollingSettings(recordCount?: number): { pollInterval: number; pollTimeout: number } {
+    recordCount = recordCount || Constants.BULK_API_POLL_RECORD_SCALE_FACTOR;
+
+    // Define base interval and timeout for small jobs (under 100K records)
+    const basePollInterval = Constants.BULK_API_POLL_MIN_INTERVAL; // Min 10 seconds
+    const basePollTimeout = Constants.BULK_API_POLL_MAX_TIMEOUT; // Max 1 hour
+
+    // Scale factor based on the number of records
+    const scaleFactor = Math.ceil(recordCount / Constants.BULK_API_POLL_RECORD_SCALE_FACTOR); // Scale every 100K records
+
+    // Calculate pollInterval (increase interval as records grow, max at 30 seconds)
+    const pollInterval = Math.min(basePollInterval * scaleFactor, Constants.BULK_API_POLL_MAX_INTERVAL); // max 30 seconds
+
+    // Calculate pollTimeout (increase timeout proportionally to record count)
+    const pollTimeout = basePollTimeout * scaleFactor;
+
+    return { pollInterval, pollTimeout };
+  }
+
   // Private static methods ----------------------------------------------------------
 
   /**
@@ -760,7 +784,7 @@ export class MetadataUtils<T> {
 
       if (params.progressCallback) {
         // Set a timeout to report progress at regular intervals
-        timeout = setInterval(() => reportProgress(), Constants.API_JOB_POLLING_INTERVAL);
+        timeout = setInterval(() => reportProgress(), Constants.API_JOB_INTERNAL_POLLING_INTERVAL);
         // Immediately report the initial progress
         reportProgress();
       }
@@ -964,7 +988,7 @@ export class MetadataUtils<T> {
 
       if (params.progressCallback) {
         // Set a timeout to report progress every specified interval
-        timeout = setInterval(() => reportProgress(), Constants.API_JOB_POLLING_INTERVAL);
+        timeout = setInterval(() => reportProgress(), Constants.API_JOB_INTERNAL_POLLING_INTERVAL);
         // Immediately report the initial progress
         reportProgress();
       }
@@ -1093,7 +1117,7 @@ export class MetadataUtils<T> {
 
       if (params.progressCallback) {
         // Set a timeout to report progress every specified interval
-        timeout = setInterval(() => reportProgress(), Constants.API_JOB_POLLING_INTERVAL);
+        timeout = setInterval(() => reportProgress(), Constants.API_JOB_INTERNAL_POLLING_INTERVAL);
         // Immediately report the initial progress
         reportProgress();
       }
@@ -1249,7 +1273,14 @@ export class MetadataUtils<T> {
     // Select the appropriate connection (source or target) based on the flag
     const connection: Connection = params.useSourceConnection ? this.command.sourceConnection : this.command.connection;
 
-    let timeout: NodeJS.Timeout | undefined;
+    // Calculate the polling settings for the bulk2 API
+    const pollingSettings = MetadataUtils.calculatePollingSettings(params.projectedRecordsCount);
+
+    // Dynamically set the polling settings for the bulk2 API
+    connection.bulk2.pollTimeout = pollingSettings.pollTimeout;
+
+    // Set the polling interval for the bulk2 API
+    let pollingIntervalTimeout: NodeJS.Timeout | undefined;
 
     const resolvedStatusFilePath = params.statusFilePath
       ? path.isAbsolute(params.statusFilePath)
@@ -1257,12 +1288,8 @@ export class MetadataUtils<T> {
         : path.resolve(process.cwd(), params.statusFilePath)
       : undefined;
 
-    const csvStatusFileWriteStream = resolvedStatusFilePath
-      ? fs.createWriteStream(resolvedStatusFilePath, {
-          flags: 'w',
-          highWaterMark: Constants.DEFAULT_FILE_WRITE_STREAM_HIGH_WATER_MARK,
-          encoding: Constants.DEFAULT_ENCODING,
-        })
+    const csvStatusFileWriteStream = params.statusFilePath
+      ? Utils.createCsvWritableStream(resolvedStatusFilePath as string)
       : undefined;
 
     try {
@@ -1313,6 +1340,7 @@ export class MetadataUtils<T> {
         utils.throwError('error.file-not-found', Utils.shortenFilePath(resolvedFilePath));
       }
 
+      // Create a read stream to read the CSV file
       const csvSourceFileReadStream = Utils.createCsvFileStream(resolvedFilePath);
 
       // eslint-disable-next-line prefer-const
@@ -1322,13 +1350,17 @@ export class MetadataUtils<T> {
         lineEnding: os.EOL === '\n' ? 'LF' : 'CRLF',
       });
 
+      // Open the job
       await job.open();
 
+      // Upload the data to the job
       reportProgress({
         state: 'Uploading',
       });
 
       await job.uploadData(csvSourceFileReadStream);
+
+      // Close the job
       await job.close();
 
       reportProgress({
@@ -1337,17 +1369,17 @@ export class MetadataUtils<T> {
 
       // Poll the job status until it is completed
       await new Promise<void>((resolve) => {
-        timeout = setInterval(() => {
+        pollingIntervalTimeout = setInterval(() => {
           void (async (): Promise<void> => {
             const state = await job.check();
             reportProgress(state);
             if (state.state === 'JobComplete' || state.state === 'Failed' || state.state === 'Aborted') {
               resolve();
-              clearInterval(timeout);
-              timeout = undefined;
+              clearInterval(pollingIntervalTimeout);
+              pollingIntervalTimeout = undefined;
             }
           })();
-        }, Constants.API_JOB_POLLING_INTERVAL);
+        }, pollingSettings.pollInterval);
       });
 
       // Report the successful completion of the job in csv file
@@ -1356,26 +1388,31 @@ export class MetadataUtils<T> {
           state: 'CreatingReports',
         });
 
-        csvStatusFileWriteStream.write('"Id","Created","Status","Error"\n');
-
-        if (params.operation === 'insert') {
-          // We need to get the successful results for insert operation because we need to get the newly created Ids
-          // For update operation, we don't need to get the successful results because we already have the Ids
-          // eslint-disable-next-line @typescript-eslint/no-unsafe-call
+        if (params.operation === 'insert' || params.reportAllSuccessfulRecords) {
           const resSuccessful = await job.getSuccessfulResults();
-          // Write successful statuses
           for (const rec of resSuccessful) {
-            csvStatusFileWriteStream.write(`"${rec.sf__Id}",${rec.sf__Created},"Success",""\n`);
+            csvStatusFileWriteStream.writeObjects({
+              Id: rec.sf__Id,
+              Created: rec.sf__Created === 'true' ? 'TRUE' : 'FALSE',
+              Status: 'Success',
+              Error: '',
+            });
           }
         }
 
         // For failed results, we need to get the failed results for both insert and update operations
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-call
         const resFailed = await job.getFailedResults();
         // Write failed statuses
         for (const rec of resFailed) {
-          csvStatusFileWriteStream.write(`"${rec.sf__Id}",false,"Failed","${rec.sf__Error}"\n`);
+          csvStatusFileWriteStream.writeObjects({
+            Id: rec.sf__Id,
+            Created: 'FALSE',
+            Status: 'Failed',
+            Error: rec.sf__Error,
+          });
         }
+
+        // Close the write stream
         csvStatusFileWriteStream.end();
       }
 
@@ -1393,8 +1430,8 @@ export class MetadataUtils<T> {
       utils.throwWithErrorMessage(err as Error, 'error.updating-records', params.sobjectType, label);
     } finally {
       // Clear the progress reporting timeout if it was set
-      if (timeout) {
-        clearInterval(timeout);
+      if (pollingIntervalTimeout) {
+        clearInterval(pollingIntervalTimeout);
       }
     }
   }

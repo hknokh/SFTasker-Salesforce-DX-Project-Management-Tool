@@ -93,14 +93,15 @@ export default class SftaskerDataMove extends SFtaskerCommand<SftaskerDataMoveRe
     const metaUtils = new MetadataUtils(this, dataMoveUtils.tempDir);
     // eslint-disable-next-line @typescript-eslint/no-unsafe-return
     const numb = await metaUtils.queryBulkToFileAsync({
-      query: 'SELECT Id, Name FROM Test_Big_Data_Volume__c LIMIT 100',
+      query: 'SELECT Id, Name FROM Test_Big_Data_Volume__c LIMIT 1000',
       filePath: './tmp/import.csv',
       appendToExistingFile: false,
       useSourceConnection: true,
+      // eslint-disable-next-line arrow-body-style
       recordCallback: (record): any => {
-        record.Name =
-          record.Name +
-          'lorem ipsum dolor sit amet consectetur adipiscing elit sed do eiusmod tempor incididunt ut labore et dolore magna aliqua';
+        //record.Name =
+        //record.Name +
+        //'lorem ipsum dolor sit amet consectetur adipiscing elit sed do eiusmod tempor incididunt ut labore et dolore magna aliqua';
         // eslint-disable-next-line @typescript-eslint/no-unsafe-return
         return record;
       },
@@ -115,7 +116,9 @@ export default class SftaskerDataMove extends SFtaskerCommand<SftaskerDataMoveRe
       filePath: './tmp/import.csv',
       statusFilePath: './tmp/status.csv',
       operation: 'update',
+      reportAllSuccessfulRecords: true,
       sobjectType: 'Test_Big_Data_Volume__c',
+      projectedRecordsCount: 1000,
       useSourceConnection: true,
       progressCallback: (state: JobInfoV2) => {
         this.info(

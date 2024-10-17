@@ -404,11 +404,16 @@ export type QueryAsyncParameters = {
 
 /**
  * Represents parameters for an asynchronous update operation.
- * @property filePath - The path to the file to write the results to.
+ * @property filePath - The path to the file to write the results to. If `records` is provided, `filePath` will be ignored.
  * @property statusFilePath - The path to the file to write the job status to.
  * @property sobjectType - The type of the sObject to update.
  * @property operation -  The operation to perform (insert, update, delete, hardDelete).
- * @property records - The records to update.
+ * @property writeAllSuccessfulRecords - Indicates whether to report status of all successful records.
+ *          If not povided, report of only new  records will be written.
+ *          Note, that statuses of failed records will always be written.
+ * @property records - The records use for the operation.
+ * @property projectedRecordsCount - The projected number of records to update.
+ *            Used to optionally calculate optimal polling settings if csv file is used as a source.
  * @property useSourceConnection - Indicates whether to use the source connection.
  * @property progressCallback - A callback function to report progress.
  */
@@ -417,7 +422,9 @@ export type UpdateAsyncParameters = {
   statusFilePath?: string;
   sobjectType: string;
   operation: 'insert' | 'update' | 'delete' | 'hardDelete';
+  reportAllSuccessfulRecords?: boolean;
   records?: any[];
+  projectedRecordsCount?: number;
   useSourceConnection?: boolean;
   /**
    * A callback function to report progress.

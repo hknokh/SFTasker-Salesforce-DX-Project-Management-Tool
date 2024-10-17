@@ -1,7 +1,7 @@
 import path from 'node:path';
 import fs from 'node:fs';
 import os from 'node:os';
-import { Readable } from 'node:stream';
+import { Readable, Writable } from 'node:stream';
 import { readFile } from 'node:fs/promises';
 import { createRequire } from 'node:module';
 import csvParser from 'csv-parser';
@@ -394,10 +394,10 @@ export class Utils {
   }
 
   /**
-   * Converts a CSV file to a readable stream.
+   *  Creates a readable stream for reading objects from a CSV file.
    *
-   * @param filePath The path to the CSV file.
-   * @returns The readable stream of the CSV data.
+   * @param filePath  The path to the CSV file.
+   * @returns  The readable stream for reading objects from the CSV file.
    */
   public static createCsvFileStream(filePath: string): Readable {
     const inputStream = fs
@@ -442,6 +442,70 @@ export class Utils {
       },
     });
     return outputStream;
+  }
+
+  /**
+   * Creates a writable stream for writing objects to a CSV file.
+   *
+   * @param filePath  The path to the CSV file.
+   * @returns  The writable stream for writing objects to the CSV file.
+   */
+  public static createCsvWritableStream(filePath: string): Writable & {
+    /**
+     *  Writes objects to the CSV file.
+     * @param data  The object or array of objects to write to the CSV file.
+     */
+    writeObjects(data: any): void;
+  } {
+    const outputStream = fs.createWriteStream(filePath, {
+      flags: 'w',
+      encoding: Constants.DEFAULT_ENCODING,
+      highWaterMark: Constants.DEFAULT_FILE_WRITE_STREAM_HIGH_WATER_MARK,
+    });
+
+    let firstRow = true;
+
+    // Create a writable stream in object mode
+    const writableStream = new Writable({
+      objectMode: true,
+      // eslint-disable-next-line @typescript-eslint/explicit-function-return-type
+      write(chunk, encoding, callback) {
+        // Since we're handling writes via writeObjects, this can be left empty
+        callback();
+      },
+    });
+
+    // Add the writeObjects method to the writable stream
+    // eslint-disable-next-line @typescript-eslint/explicit-function-return-type
+    (writableStream as any).writeObjects = function (data: any) {
+      const dataArray = Array.isArray(data) ? data : [data];
+
+      let csvData = stringifySync(dataArray, {
+        ...Constants.CSV_STRINGIFY_OPTIONS,
+        header: firstRow,
+        bom: firstRow,
+      });
+
+      // Remove BOM from the first row if necessary
+      if (firstRow) {
+        csvData = csvData.replace(/^\uFEFF/, '').replace(/^\u00BB\u00BF/, '');
+      }
+
+      outputStream.write(csvData);
+      firstRow = false;
+    };
+
+    // When the writable stream ends, end the output stream as well
+    writableStream.on('finish', () => {
+      outputStream.end();
+    });
+
+    // Forward any errors from the output stream to the writable stream
+    outputStream.on('error', (err) => {
+      writableStream.destroy(err);
+    });
+
+    return writableStream as Writable & { writeObjects(data: any): void };
   }
 
   // --- Private methods ---

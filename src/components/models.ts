@@ -63,16 +63,22 @@ export class SFtaskerCommand<T> extends SfCommand<T> {
   /** The Salesforce connection setter. */
   public set connection(value: Connection) {
     this._connection = value;
+
     if (this._connection) {
-      this._connection.metadata.pollTimeout = Constants.POLL_TIMEOUT as number;
-      this._connection.metadata.pollInterval = Constants.POLL_INTERVAL as number;
+      // Set default poll timeouts and intervals for metadata and bulk APIs.
+      // These values can be overridden by the command.
 
-      this._connection.bulk.pollTimeout = Constants.BULK_POLL_TIMEOUT as number;
-      this._connection.bulk.pollInterval = Constants.BULK_POLL_INTERVAL as number;
+      // Set the metadata API poll timeouts and intervals.
+      this._connection.metadata.pollTimeout = Constants.METADATA_API_POLL_TIMEOUT as number;
+      this._connection.metadata.pollInterval = Constants.METADATA_API_POLL_INTERVAL as number;
 
-      this._connection.bulk2.pollTimeout = Constants.BULK_POLL_TIMEOUT as number;
-      this._connection.bulk2.pollInterval = Constants.BULK_POLL_INTERVAL as number;
+      // Set the bulk API poll timeouts and intervals.
+      this._connection.bulk.pollTimeout = this._connection.bulk2.pollTimeout =
+        Constants.BULK_API_POLL_MAX_TIMEOUT as number;
+      this._connection.bulk.pollInterval = this._connection.bulk2.pollInterval =
+        Constants.BULK_API_POLL_MIN_INTERVAL as number;
 
+      // Set the org ID and username.
       this.orgUsername = this._connection.getUsername() as string;
       this.targetDataOriginType = DataOriginType.org;
     }
