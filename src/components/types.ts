@@ -413,7 +413,6 @@ export type QueryAsyncParameters = {
  *            Used to optionally calculate optimal polling settings if csv file is used as a source.
  * @property useSourceConnection - Indicates whether to use the source connection.
  * @property progressCallback - A callback function to report progress.
- * @returns The final job information.
  */
 export type UpdateAsyncParameters = {
   filePath: string;
