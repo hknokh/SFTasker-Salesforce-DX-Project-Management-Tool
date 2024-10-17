@@ -257,13 +257,13 @@ export type IngestJobV2 = {
    * Retrieves the successful results of the job.
    * @returns A promise that resolves with an array of successful result records.
    */
-  getSuccessfulResults(): Promise<IngestJobResultV2[]>;
+  getSuccessfulResults(): Promise<JobResultV2[]>;
 
   /**
    * Retrieves the failed results of the job.
    * @returns A promise that resolves with an array of failed result records.
    */
-  getFailedResults(): Promise<IngestJobResultV2[]>;
+  getFailedResults(): Promise<JobResultV2[]>;
 };
 
 // Metadata Types ----------------------------------------------------------------
@@ -437,7 +437,7 @@ export type UpdateAsyncParameters = {
 /**
  *  Represents the result of an ingest job.
  */
-export type IngestJobResultV2 = {
+export type JobResultV2 = {
   sf__Id: string;
   sf__Created?: 'true' | 'false';
   sf__Error?: string;
