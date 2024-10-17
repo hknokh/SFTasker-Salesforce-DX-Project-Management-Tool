@@ -18,7 +18,7 @@ import { CommandUtils } from './command-utils.js';
 import { Utils } from './utils.js';
 import {
   ApiOperationReportLevel,
-  BulkStatusCsvRow,
+  IngestJobResultV2,
   DescribeSObjectResult,
   IngestJobV2,
   JobInfoV2,
@@ -1307,7 +1307,7 @@ export class MetadataUtils<T> {
             sf__Created: 'false',
             sf__Error: 'sf__Error',
             Status: 'Success',
-          } as BulkStatusCsvRow)
+          } as IngestJobResultV2)
         )
       : undefined;
 
@@ -1418,7 +1418,7 @@ export class MetadataUtils<T> {
               sf__Created: rec.sf__Created,
               sf__Error: '',
               Status: 'Success',
-            } as BulkStatusCsvRow);
+            } as IngestJobResultV2);
           }
         }
 
@@ -1431,7 +1431,7 @@ export class MetadataUtils<T> {
             sf__Created: 'false',
             sf__Error: rec.sf__Error,
             Status: 'Error',
-          } as BulkStatusCsvRow);
+          } as IngestJobResultV2);
         }
         // Close the write stream
         csvStatusFileWriteStream.end();

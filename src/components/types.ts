@@ -217,22 +217,6 @@ export type JobInfoV2 = {
 };
 
 /**
- * Represents a successful result record.
- */
-export type SuccessfulResult = {
-  sf__Id: string;
-  sf__Created: 'true' | 'false';
-};
-
-/**
- * Represents a failed result record.
- */
-export type FailedResult = {
-  sf__Id: string;
-  sf__Error: string;
-};
-
-/**
  * Defines the structure and methods of a Bulk2 Job.
  */
 export type IngestJobV2 = {
@@ -273,13 +257,13 @@ export type IngestJobV2 = {
    * Retrieves the successful results of the job.
    * @returns A promise that resolves with an array of successful result records.
    */
-  getSuccessfulResults(): Promise<SuccessfulResult[]>;
+  getSuccessfulResults(): Promise<IngestJobResultV2[]>;
 
   /**
    * Retrieves the failed results of the job.
    * @returns A promise that resolves with an array of failed result records.
    */
-  getFailedResults(): Promise<FailedResult[]>;
+  getFailedResults(): Promise<IngestJobResultV2[]>;
 };
 
 // Metadata Types ----------------------------------------------------------------
@@ -451,11 +435,11 @@ export type UpdateAsyncParameters = {
 };
 
 /**
- *  Represents the report status file row of the Bulk API V2 job.
+ *  Represents the result of an ingest job.
  */
-export type BulkStatusCsvRow = {
+export type IngestJobResultV2 = {
   sf__Id: string;
-  sf__Created: 'true' | 'false';
-  sf__Error: string;
-  Status: 'Success' | 'Error';
+  sf__Created?: 'true' | 'false';
+  sf__Error?: string;
+  Status?: 'Success' | 'Error';
 };
