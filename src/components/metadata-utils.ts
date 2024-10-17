@@ -16,6 +16,8 @@ import { SFtaskerCommand, SObjectDescribe } from './models.js';
 import { CommandUtils } from './command-utils.js';
 import { Utils } from './utils.js';
 import {
+  ApiOperationReportLevel,
+  BulkStatusCsvRow,
   DescribeSObjectResult,
   IngestJobV2,
   JobInfoV2,
@@ -788,6 +790,10 @@ export class MetadataUtils<T> {
         // Immediately report the initial progress
         reportProgress();
       }
+
+      const pollingSettings = MetadataUtils.calculatePollingSettings();
+      connection.bulk.pollTimeout = pollingSettings.pollTimeout;
+
       const recordStream = await connection.bulk.query(params.query);
       const queryStream = recordStream.stream();
       queryStream.setEncoding(Constants.DEFAULT_ENCODING);
@@ -1273,8 +1279,11 @@ export class MetadataUtils<T> {
     // Select the appropriate connection (source or target) based on the flag
     const connection: Connection = params.useSourceConnection ? this.command.sourceConnection : this.command.connection;
 
+    // Set the default report level to 'Errors'
+    params.reportLevel = params.reportLevel || ApiOperationReportLevel.Errors;
+
     // Calculate the polling settings for the bulk2 API
-    const pollingSettings = MetadataUtils.calculatePollingSettings(params.projectedRecordsCount);
+    const pollingSettings = MetadataUtils.calculatePollingSettings(params.projectedCsvRecordsCount);
 
     // Dynamically set the polling settings for the bulk2 API
     connection.bulk2.pollTimeout = pollingSettings.pollTimeout;
@@ -1282,14 +1291,26 @@ export class MetadataUtils<T> {
     // Set the polling interval for the bulk2 API
     let pollingIntervalTimeout: NodeJS.Timeout | undefined;
 
-    const resolvedStatusFilePath = params.statusFilePath
-      ? path.isAbsolute(params.statusFilePath)
-        ? params.statusFilePath
-        : path.resolve(process.cwd(), params.statusFilePath)
-      : undefined;
+    const resolvedStatusFilePath =
+      params.statusFilePath && params.reportLevel !== ApiOperationReportLevel.None
+        ? path.isAbsolute(params.statusFilePath)
+          ? params.statusFilePath
+          : path.resolve(process.cwd(), params.statusFilePath)
+        : undefined;
 
-    const csvStatusFileWriteStream = params.statusFilePath
-      ? Utils.createCsvWritableStream(resolvedStatusFilePath as string)
+    const csvStatusFileWriteStream = resolvedStatusFilePath
+      ? Utils.createCsvWritableFileStream(
+          resolvedStatusFilePath,
+          Object.keys({
+            // eslint-disable-next-line camelcase
+            sf__Id: 'sf__Id',
+            // eslint-disable-next-line camelcase
+            sf__Created: 'false',
+            // eslint-disable-next-line camelcase
+            sf__Error: 'sf__Error',
+            Status: 'Success',
+          } as BulkStatusCsvRow)
+        )
       : undefined;
 
     try {
@@ -1341,7 +1362,7 @@ export class MetadataUtils<T> {
       }
 
       // Create a read stream to read the CSV file
-      const csvSourceFileReadStream = Utils.createCsvFileStream(resolvedFilePath);
+      const csvSourceFileReadStream = Utils.createCsvReadableFileStream(resolvedFilePath);
 
       // eslint-disable-next-line prefer-const
       job = connection.bulk2.createJob({
@@ -1388,15 +1409,21 @@ export class MetadataUtils<T> {
           state: 'CreatingReports',
         });
 
-        if (params.operation === 'insert' || params.reportAllSuccessfulRecords) {
+        if (
+          (params.operation === 'insert' && params.reportLevel === ApiOperationReportLevel.Inserts) ||
+          (params.operation !== 'insert' && params.reportLevel !== ApiOperationReportLevel.Errors)
+        ) {
           const resSuccessful = await job.getSuccessfulResults();
           for (const rec of resSuccessful) {
             csvStatusFileWriteStream.writeObjects({
-              Id: rec.sf__Id,
-              Created: rec.sf__Created === 'true' ? 'TRUE' : 'FALSE',
+              // eslint-disable-next-line camelcase
+              sf__Id: rec.sf__Id,
+              // eslint-disable-next-line camelcase
+              sf__Created: rec.sf__Created,
+              // eslint-disable-next-line camelcase
+              sf__Error: '',
               Status: 'Success',
-              Error: '',
-            });
+            } as BulkStatusCsvRow);
           }
         }
 
@@ -1405,11 +1432,14 @@ export class MetadataUtils<T> {
         // Write failed statuses
         for (const rec of resFailed) {
           csvStatusFileWriteStream.writeObjects({
-            Id: rec.sf__Id,
-            Created: 'FALSE',
-            Status: 'Failed',
-            Error: rec.sf__Error,
-          });
+            // eslint-disable-next-line camelcase
+            sf__Id: rec.sf__Id,
+            // eslint-disable-next-line camelcase
+            sf__Created: 'false',
+            // eslint-disable-next-line camelcase
+            sf__Error: rec.sf__Error,
+            Status: 'Error',
+          } as BulkStatusCsvRow);
         }
 
         // Close the write stream

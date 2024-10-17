@@ -4,7 +4,9 @@ import { SFtaskerCommand } from '../../components/models.js';
 import { Constants } from '../../components/constants.js';
 import { DataMoveUtils } from '../../components/data-move/data-move-utils.js';
 import { MetadataUtils } from '../../components/metadata-utils.js';
-import { JobInfoV2 } from '../../components/types.js';
+import { ApiOperationReportLevel, JobInfoV2 } from '../../components/types.js';
+import { DataMoveUtilsStatic } from '../../components/data-move/data-move-utils-static.js';
+import { ObjectExtraData } from '../../components/data-move/data-move-models.js';
 //import { ObjectExtraData } from '../../components/data-move/data-move-models.js';
 //import { DataMoveUtilsStatic } from '../../components/data-move/data-move-utils-static.js';
 
@@ -93,7 +95,7 @@ export default class SftaskerDataMove extends SFtaskerCommand<SftaskerDataMoveRe
     const metaUtils = new MetadataUtils(this, dataMoveUtils.tempDir);
     // eslint-disable-next-line @typescript-eslint/no-unsafe-return
     const numb = await metaUtils.queryBulkToFileAsync({
-      query: 'SELECT Id, Name FROM Test_Big_Data_Volume__c LIMIT 1000',
+      query: 'SELECT Id, Name FROM Test_Big_Data_Volume__c LIMIT 100',
       filePath: './tmp/import.csv',
       appendToExistingFile: false,
       useSourceConnection: true,
@@ -116,9 +118,9 @@ export default class SftaskerDataMove extends SFtaskerCommand<SftaskerDataMoveRe
       filePath: './tmp/import.csv',
       statusFilePath: './tmp/status.csv',
       operation: 'update',
-      reportAllSuccessfulRecords: true,
+      reportLevel: ApiOperationReportLevel.Errors,
       sobjectType: 'Test_Big_Data_Volume__c',
-      projectedRecordsCount: 1000,
+      projectedCsvRecordsCount: 1000,
       useSourceConnection: true,
       progressCallback: (state: JobInfoV2) => {
         this.info(
@@ -129,31 +131,51 @@ export default class SftaskerDataMove extends SFtaskerCommand<SftaskerDataMoveRe
 
     this.info(`Job ID: ${jobInfo?.recordCount}`);
 
-    // const extraData: ObjectExtraData = new ObjectExtraData({
-    //   where: "Name <> 'ExcludedName'",
-    // });
+    const extraData: ObjectExtraData = new ObjectExtraData({
+      where: "Name <> 'ExcludedName'",
+    });
 
-    // // Inline generation of 30,000 names
-    // const whereInClauses = DataMoveUtilsStatic.constructWhereInClause(
-    //   'Name__c',
-    //   Array.from({ length: 30_000 }, () => {
-    //     const randomType = Math.floor(Math.random() * 3); // 0: string, 1: number, 2: date
-    //     if (randomType === 0) {
-    //       // Return a random string in the format 'nameX'
-    //       return `name${Math.floor(Math.random() * 10_000) + 1}`;
-    //     } else if (randomType === 1) {
-    //       // Return a random number
-    //       return Math.floor(Math.random() * 10_000);
-    //     } else {
-    //       // Return a random date within the past year
-    //       const randomDate = new Date();
-    //       randomDate.setDate(randomDate.getDate() - Math.floor(Math.random() * 365));
-    //       return randomDate;
-    //     }
-    //   }),
-    //   extraData.where
-    // );
-    // this.info(`Number of records: ${whereInClauses}`);
+    // Inline generation of 30,000 names
+    const whereInClauses = DataMoveUtilsStatic.constructWhereInClause(
+      'Name__c',
+      Array.from({ length: 30_000 }, () => {
+        const randomType = Math.floor(Math.random() * 3); // 0: string, 1: number, 2: date
+        if (randomType === 0) {
+          // Return a random string in the format 'nameX'
+          return `name${Math.floor(Math.random() * 10_000) + 1}`;
+        } else if (randomType === 1) {
+          // Return a random number
+          return Math.floor(Math.random() * 10_000);
+        } else {
+          // Return a random date within the past year
+          const randomDate = new Date();
+          randomDate.setDate(randomDate.getDate() - Math.floor(Math.random() * 365));
+          return randomDate;
+        }
+      }),
+      extraData.where
+    );
+    this.info(`Number of WHERE clauses constucted: ${whereInClauses.length}`);
+
+    // Function to generate a random where clause in the format 'a=X AND b=Y'
+    const generateRandomWhereClause = (): string => {
+      const a = Math.floor(Math.random() * 1_000_000) + 1; // Random number between 1 and 1,000,000
+      const b = Math.floor(Math.random() * 1_000_000) + 1; // Random number between 1 and 1,000,000
+      return `a=${a} AND b=${b} AND (Account__c = '0012w00000J1Z3zAAF' OR Account__c = '0012w00000J1Z3zAAF')`;
+    };
+
+    // Generate an array of 30,000 random where clauses
+    const randomWheres: string[] = Array.from({ length: 30_000 }, generateRandomWhereClause);
+
+    // Construct the combined WHERE clauses using the 'OR' operand
+    const whereOrClauses: string[] = DataMoveUtilsStatic.constructWhereOrAndClause(
+      'OR', // Operand can be 'OR' or 'AND' based on your requirement
+      randomWheres,
+      extraData.where
+    );
+
+    // Log the number of constructed WHERE clauses
+    this.info(`Number of WHERE clauses constructed: ${whereOrClauses.length}`);
 
     // Log a message indicating the end of the command execution.
     commandUtils.logCommandEndMessage();

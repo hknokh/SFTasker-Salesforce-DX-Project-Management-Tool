@@ -374,6 +374,21 @@ export type DescribeSObjectResult = {
 
 // Method Parameters ----------------------------------------------------------------
 /**
+ *  which records should be reported after the api operation completes.
+ */
+export enum ApiOperationReportLevel {
+  'None' = 'None',
+  'All' = 'All',
+  'Errors' = 'Errors',
+  'Inserts' = 'Inserts',
+}
+
+/**
+ * Represents the type of an API operation.
+ */
+export type ApiOperation = 'insert' | 'update' | 'delete' | 'hardDelete';
+
+/**
  * Represetns parameters for an asynchronous query operation.
  * @property query - The query to run.
  * @property filePath - The path to the file to write the results to.
@@ -421,10 +436,10 @@ export type UpdateAsyncParameters = {
   filePath: string;
   statusFilePath?: string;
   sobjectType: string;
-  operation: 'insert' | 'update' | 'delete' | 'hardDelete';
-  reportAllSuccessfulRecords?: boolean;
+  operation: ApiOperation;
+  reportLevel?: ApiOperationReportLevel;
   records?: any[];
-  projectedRecordsCount?: number;
+  projectedCsvRecordsCount?: number;
   useSourceConnection?: boolean;
   /**
    * A callback function to report progress.
@@ -433,4 +448,14 @@ export type UpdateAsyncParameters = {
    * @param failedRecordCount - The number of records that failed. Optional, not supported for all operations.
    */
   progressCallback?: (jobInfo: JobInfoV2) => void;
+};
+
+/**
+ *  Represents the report status file row of the Bulk API V2 job.
+ */
+export type BulkStatusCsvRow = {
+  sf__Id: string;
+  sf__Created: 'true' | 'false';
+  sf__Error: string;
+  Status: 'Success' | 'Error';
 };

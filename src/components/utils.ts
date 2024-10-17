@@ -399,7 +399,7 @@ export class Utils {
    * @param filePath  The path to the CSV file.
    * @returns  The readable stream for reading objects from the CSV file.
    */
-  public static createCsvFileStream(filePath: string): Readable {
+  public static createCsvReadableFileStream(filePath: string): Readable {
     const inputStream = fs
       .createReadStream(filePath, {
         encoding: Constants.DEFAULT_ENCODING,
@@ -424,7 +424,7 @@ export class Utils {
           });
           // Remove BOM from the first row
           if (firstRow) {
-            csvData = csvData.replace(/^\uFEFF/gm, '').replace(/^\u00BB\u00BF/gm, '');
+            csvData = Utils.replaceBOM(csvData);
           }
           this.push(csvData + os.EOL);
           firstRow = false;
@@ -447,10 +447,16 @@ export class Utils {
   /**
    * Creates a writable stream for writing objects to a CSV file.
    *
-   * @param filePath  The path to the CSV file.
+   * @param filePath The path to the CSV file.
+   * @param columns  The optional array of column names for the CSV file. If not provided or empty, columns will be auto-detected from the objects.
+   *                 If provided, the columns will be always written as the first row in the CSV file event no objects are written.
+   *                 If not provided and no rows are written, the CSV file will be empty.
    * @returns  The writable stream for writing objects to the CSV file.
    */
-  public static createCsvWritableStream(filePath: string): Writable & {
+  public static createCsvWritableFileStream(
+    filePath: string,
+    columns?: string[]
+  ): Writable & {
     /**
      *  Writes objects to the CSV file.
      * @param data  The object or array of objects to write to the CSV file.
@@ -463,8 +469,6 @@ export class Utils {
       highWaterMark: Constants.DEFAULT_FILE_WRITE_STREAM_HIGH_WATER_MARK,
     });
 
-    let firstRow = true;
-
     // Create a writable stream in object mode
     const writableStream = new Writable({
       objectMode: true,
@@ -475,6 +479,20 @@ export class Utils {
       },
     });
 
+    let firstRow = true;
+
+    if (columns && columns.length > 0) {
+      let csvData = stringifySync([], {
+        ...Constants.CSV_STRINGIFY_OPTIONS,
+        header: true,
+        bom: false,
+        columns,
+      });
+      csvData = Utils.replaceBOM(csvData);
+      outputStream.write(csvData);
+      firstRow = false;
+    }
+
     // Add the writeObjects method to the writable stream
     // eslint-disable-next-line @typescript-eslint/explicit-function-return-type
     (writableStream as any).writeObjects = function (data: any) {
@@ -483,14 +501,13 @@ export class Utils {
       let csvData = stringifySync(dataArray, {
         ...Constants.CSV_STRINGIFY_OPTIONS,
         header: firstRow,
-        bom: firstRow,
+        bom: false,
       });
 
       // Remove BOM from the first row if necessary
       if (firstRow) {
-        csvData = csvData.replace(/^\uFEFF/, '').replace(/^\u00BB\u00BF/, '');
+        csvData = Utils.replaceBOM(csvData);
       }
-
       outputStream.write(csvData);
       firstRow = false;
     };
@@ -506,6 +523,16 @@ export class Utils {
     });
 
     return writableStream as Writable & { writeObjects(data: any): void };
+  }
+
+  /**
+   * Replaces the BOM (Byte Order Mark) from a string.
+   *
+   * @param str The string to replace the BOM from.
+   * @returns The string with the BOM replaced.
+   */
+  public static replaceBOM(str: string): string {
+    return str.replace(/^\uFEFF/gm, '').replace(/^\u00BB\u00BF/gm, '');
   }
 
   // --- Private methods ---

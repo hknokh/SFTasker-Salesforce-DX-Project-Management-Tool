@@ -375,13 +375,61 @@ export class DataMoveUtilsStatic {
     return whereClauses;
   }
 
-  // Private methods -----------------------------------------------------------
+  /**
+   *  Constructs a WHERE OR/AND clause with the given where clauses, splitting into multiple clauses if necessary.
+   * @param operand  Operand to use to concatenate WHERE clauses (OR/AND)
+   * @param wheres  Array of WHERE clauses to combine
+   * @param where  Existing WHERE clause to append to the WHERE clauses
+   * @returns  Array of splitted WHERE OR/AND clauses
+   */
+  public static constructWhereOrAndClause(operand: 'OR' | 'AND', wheres: string[], where: string): string[] {
+    const whereClauses: string[] = [];
+
+    const initialPart = where ? `(${where}) AND (` : '';
+    const closingPart = where ? ')' : '';
+    const overheadLength = initialPart.length + closingPart.length;
+
+    let currentWheres: string[] = [];
+    let currentLength = overheadLength;
+
+    for (const whereClause of wheres) {
+      const separatorLength =
+        (currentWheres.length > 0 ? operand.length + 2 : 0) + // ' operand ' is operand.length + 2 spaces
+        2; // '(' and ')' are 1 character each
+      const clauseLength = whereClause.length + separatorLength;
+
+      if (currentLength + clauseLength > Constants.MAX_SOQL_WHERE_CLAUSE_CHARACTER_LENGTH) {
+        // Construct the where clause with currentWheres
+        const combinedWheres = currentWheres.join(` ${operand} `);
+        const finalClause = `${initialPart}${combinedWheres}${closingPart}`;
+        whereClauses.push(finalClause);
+
+        // Reset currentWheres and currentLength
+        currentWheres = [];
+        currentLength = overheadLength;
+      }
+
+      // Add the whereClause to currentWheres and update currentLength
+      currentWheres.push('(' + whereClause + ')');
+      currentLength += clauseLength;
+    }
+
+    // After the loop, if currentWheres is not empty, construct the final clause
+    if (currentWheres.length > 0) {
+      const combinedWheres = currentWheres.join(` ${operand} `);
+      const finalClause = `${initialPart}${combinedWheres}${closingPart}`;
+      whereClauses.push(finalClause);
+    }
+
+    return whereClauses;
+  }
+
   /**
    *  Converts a value to a SOQL-compatible string.
    * @param value  Value to convert
    * @returns  SOQL-compatible string representation of the value
    */
-  private static valueToSOQL(value: any): string {
+  public static valueToSOQL(value: any): string {
     if (typeof value === 'string') {
       // Escape single quotes by replacing ' with \'
       const escapedValue = value.replace(/'/g, "\\'");
