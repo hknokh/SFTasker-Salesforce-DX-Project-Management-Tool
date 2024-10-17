@@ -1301,12 +1301,10 @@ export class MetadataUtils<T> {
     const csvStatusFileWriteStream = resolvedStatusFilePath
       ? Utils.createCsvWritableFileStream(
           resolvedStatusFilePath,
+          // eslint-disable-next-line camelcase
           Object.keys({
-            // eslint-disable-next-line camelcase
             sf__Id: 'sf__Id',
-            // eslint-disable-next-line camelcase
             sf__Created: 'false',
-            // eslint-disable-next-line camelcase
             sf__Error: 'sf__Error',
             Status: 'Success',
           } as BulkStatusCsvRow)
@@ -1418,9 +1416,7 @@ export class MetadataUtils<T> {
             csvStatusFileWriteStream.writeObjects({
               // eslint-disable-next-line camelcase
               sf__Id: rec.sf__Id,
-              // eslint-disable-next-line camelcase
               sf__Created: rec.sf__Created,
-              // eslint-disable-next-line camelcase
               sf__Error: '',
               Status: 'Success',
             } as BulkStatusCsvRow);
@@ -1434,14 +1430,11 @@ export class MetadataUtils<T> {
           csvStatusFileWriteStream.writeObjects({
             // eslint-disable-next-line camelcase
             sf__Id: rec.sf__Id,
-            // eslint-disable-next-line camelcase
             sf__Created: 'false',
-            // eslint-disable-next-line camelcase
             sf__Error: rec.sf__Error,
             Status: 'Error',
           } as BulkStatusCsvRow);
         }
-
         // Close the write stream
         csvStatusFileWriteStream.end();
       }
