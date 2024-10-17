@@ -1444,7 +1444,6 @@ export class ApiUtils<T> {
     } catch (err) {
       // Write empty status file to status csv file
       if (csvStatusFileWriteStream) {
-        csvStatusFileWriteStream.write('');
         csvStatusFileWriteStream.end();
       }
       // Handle any errors that occur during the query or file writing process
