@@ -413,6 +413,7 @@ export type QueryAsyncParameters = {
  *            Used to optionally calculate optimal polling settings if csv file is used as a source.
  * @property useSourceConnection - Indicates whether to use the source connection.
  * @property progressCallback - A callback function to report progress.
+ * @returns The final job information.
  */
 export type UpdateAsyncParameters = {
   filePath: string;
@@ -425,9 +426,7 @@ export type UpdateAsyncParameters = {
   useSourceConnection?: boolean;
   /**
    * A callback function to report progress.
-   * @param recordCount - The number of records processed.
-   * @param succededRecordCount - The number of records that succeeded. Optional, not supported for all operations.
-   * @param failedRecordCount - The number of records that failed. Optional, not supported for all operations.
+   * @param jobInfo - The current job information.
    */
   progressCallback?: (jobInfo: JobInfoV2) => void;
 };
