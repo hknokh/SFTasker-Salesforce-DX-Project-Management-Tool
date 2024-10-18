@@ -5,7 +5,7 @@ import * as path from 'node:path';
 import { once } from 'node:events';
 import * as os from 'node:os';
 import { stringify } from 'csv-stringify';
-
+import csvParser from 'csv-parser';
 import { parse } from 'csv-parse/sync';
 
 import { Connection } from '@salesforce/core';
@@ -18,7 +18,7 @@ import { CommandUtils } from './command-utils.js';
 import { Utils } from './utils.js';
 import {
   ApiOperationReportLevel,
-  JobResultV2,
+  JobResult,
   DescribeSObjectResult,
   IngestJobV2,
   JobInfoV2,
@@ -1270,7 +1270,7 @@ export class ApiUtils<T> {
    * @param params  The parameters for the update operation.
    * @returns  A promise that resolves with the number of records processed or `undefined` if an error occurs.
    */
-  public async updateBulk2Async(params: UpdateAsyncParameters): Promise<JobInfoV2 | undefined> {
+  public async updateBulk2FromFileAsync(params: UpdateAsyncParameters): Promise<JobInfoV2 | undefined> {
     // Utility for logging messages and handling errors
     const utils = new CommandUtils(this.command);
 
@@ -1307,7 +1307,7 @@ export class ApiUtils<T> {
             sf__Created: 'false',
             sf__Error: 'sf__Error',
             Status: 'Success',
-          } as JobResultV2)
+          } as JobResult)
         )
       : undefined;
 
@@ -1316,11 +1316,11 @@ export class ApiUtils<T> {
 
       // Log a message indicating the start of the query process
       utils.logComponentMessage(
-        'progress.updating-records',
+        'progress.updating-records-from-file',
         params.sobjectType,
         label,
         Utils.capitalizeFirstLetter(params.operation),
-        Utils.shortenFilePath(params.filePath)
+        Utils.shortenFilePath(params.filePath!)
       );
 
       // Track the number of records processed
@@ -1349,18 +1349,18 @@ export class ApiUtils<T> {
       reportProgress();
 
       // Resolve the file path to an absolute path if it is not already
-      const resolvedFilePath = path.isAbsolute(params.filePath)
+      const resolvedFilePath = path.isAbsolute(params.filePath!)
         ? params.filePath
-        : path.resolve(process.cwd(), params.filePath);
+        : path.resolve(process.cwd(), params.filePath!);
 
       // Check if the file already exists and decide whether to write headers
-      const fileExists = fs.existsSync(resolvedFilePath);
+      const fileExists = fs.existsSync(resolvedFilePath!);
       if (!fileExists) {
-        utils.throwError('error.file-not-found', Utils.shortenFilePath(resolvedFilePath));
+        utils.throwError('error.file-not-found', Utils.shortenFilePath(resolvedFilePath!));
       }
 
       // Create a read stream to read the CSV file
-      const csvSourceFileReadStream = Utils.createCsvReadableFileStream(resolvedFilePath);
+      const csvSourceFileReadStream = Utils.createCsvReadableFileStream(resolvedFilePath!);
 
       // eslint-disable-next-line prefer-const
       job = connection.bulk2.createJob({
@@ -1418,7 +1418,7 @@ export class ApiUtils<T> {
               sf__Created: rec.sf__Created,
               sf__Error: '',
               Status: 'Success',
-            } as JobResultV2);
+            } as JobResult);
           }
         }
 
@@ -1431,7 +1431,7 @@ export class ApiUtils<T> {
             sf__Created: 'false',
             sf__Error: rec.sf__Error,
             Status: 'Error',
-          } as JobResultV2);
+          } as JobResult);
         }
         // Close the write stream
         csvStatusFileWriteStream.end();
@@ -1453,6 +1453,232 @@ export class ApiUtils<T> {
       if (pollingIntervalTimeout) {
         clearInterval(pollingIntervalTimeout);
       }
+    }
+  }
+
+  /**
+   * Asynchronously runs an update operation using the REST API.
+   * Uses sObject Collection API to update records.
+   * Uses `records` array to update records.
+   * Supports only small datasets and progress reporting.
+   * @param params  The parameters for the update operation.
+   * @returns  A promise that resolves with the job information or `undefined` if an error occurs.
+   */
+  // eslint-disable-next-line complexity
+  public async updateRestFromArrayAsync(params: UpdateAsyncParameters): Promise<JobInfoV2 | undefined> {
+    // Utility for logging messages and handling errors
+    const utils = new CommandUtils(this.command);
+
+    // Determine which connection label to use for logging
+    const label = params.useSourceConnection ? this.command.sourceConnectionLabel : this.command.targetConnectionLabel;
+
+    // Select the appropriate connection (source or target) based on the flag
+    const connection: Connection = params.useSourceConnection ? this.command.sourceConnection : this.command.connection;
+
+    // Extract parameters
+    const sobjectType = params.sobjectType;
+    const operation = params.operation;
+    const records = params.records;
+
+    // Set the default report level to 'None'
+    params.reportLevel = params.reportLevel || ApiOperationReportLevel.None;
+
+    // Resolve the status file path if provided
+    const resolvedStatusFilePath =
+      params.statusFilePath && params.reportLevel !== ApiOperationReportLevel.None
+        ? path.isAbsolute(params.statusFilePath)
+          ? params.statusFilePath
+          : path.resolve(process.cwd(), params.statusFilePath)
+        : undefined;
+
+    // Create a CSV write stream if a status file path is provided
+    const csvStatusFileWriteStream = resolvedStatusFilePath
+      ? Utils.createCsvWritableFileStream(resolvedStatusFilePath, ['sf__Id', 'sf__Created', 'sf__Error', 'Status'])
+      : undefined;
+
+    // Validate that records are provided
+    if (!records || records.length === 0) {
+      utils.throwError('error.no-records-provided');
+    }
+
+    try {
+      // Log a message indicating the start of the update process
+      utils.logComponentMessage(
+        'progress.updating-records-from-array',
+        sobjectType,
+        label,
+        Utils.capitalizeFirstLetter(operation)
+      );
+
+      // Create initial job information
+      const jobInfo: JobInfoV2 = {
+        numberRecordsProcessed: 0,
+        numberRecordsFailed: 0,
+        recordCount: records?.length,
+        state: 'InProgress',
+      };
+
+      // Report progress at the start
+      if (params.progressCallback) {
+        params.progressCallback(jobInfo);
+      }
+
+      let result;
+
+      // Perform the operation using the appropriate method
+      switch (operation) {
+        case 'insert':
+          result = await connection.sobject(sobjectType).create(records!, { allowRecursive: true });
+          break;
+        case 'update':
+          result = await connection.sobject(sobjectType).update(records!, { allowRecursive: true });
+          break;
+        case 'delete':
+          result = await connection.sobject(sobjectType).del(records!, { allowRecursive: true });
+          break;
+        default:
+          utils.throwError('error.invalid-operation', operation);
+      }
+
+      // Initialize counters
+      let numberRecordsProcessed = 0;
+      let numberRecordsFailed = 0;
+
+      // Process the results
+      if (Array.isArray(result)) {
+        for (const res of result) {
+          if (res.success) {
+            numberRecordsProcessed++;
+            // Write successful records if required
+            if (
+              csvStatusFileWriteStream &&
+              ((operation === 'insert' && params.reportLevel === ApiOperationReportLevel.Inserts) ||
+                (operation !== 'insert' && params.reportLevel !== ApiOperationReportLevel.Errors) ||
+                params.reportLevel === ApiOperationReportLevel.All)
+            ) {
+              csvStatusFileWriteStream.writeObjects({
+                sf__Id: res.id,
+                sf__Created: res.success ? 'true' : 'false',
+                sf__Error: '',
+                Status: 'Success',
+              } as JobResult);
+            }
+          } else {
+            numberRecordsFailed++;
+            // Write failed records if required
+            if (
+              csvStatusFileWriteStream &&
+              ((operation === 'insert' && params.reportLevel !== ApiOperationReportLevel.Inserts) ||
+                (operation !== 'insert' && params.reportLevel !== ApiOperationReportLevel.Inserts))
+            ) {
+              const errorMessage = res.errors && res.errors.length > 0 ? res.errors.join('; ') : '';
+              csvStatusFileWriteStream.writeObjects({
+                sf__Id: res.id || '',
+                sf__Created: 'false',
+                sf__Error: errorMessage,
+                Status: 'Error',
+              } as JobResult);
+            }
+          }
+        }
+      }
+
+      // Update job information
+      jobInfo.numberRecordsProcessed = numberRecordsProcessed;
+      jobInfo.numberRecordsFailed = numberRecordsFailed;
+      jobInfo.state = 'JobComplete';
+
+      // Report progress at the end
+      if (params.progressCallback) {
+        params.progressCallback(jobInfo);
+      }
+
+      // Close the CSV write stream if it exists
+      if (csvStatusFileWriteStream) {
+        csvStatusFileWriteStream.end();
+      }
+
+      return jobInfo;
+    } catch (err) {
+      // Close the CSV write stream if it exists
+      if (csvStatusFileWriteStream) {
+        csvStatusFileWriteStream.end();
+      }
+      // Handle any errors that occur during the operation
+      if (!params.isInnerMetod) {
+        utils.throwWithErrorMessage(err as Error, 'error.updating-records', sobjectType, label);
+      } else {
+        throw err;
+      }
+    }
+  }
+
+  /**
+   * Asynchronously runs an update operation using the REST API.
+   * Uses sObject Collection API to update records from a CSV file.
+   * Supports only small datasets and progress reporting.
+   * @param params  The parameters for the update operation.
+   * @returns  A promise that resolves with the job information or `undefined` if an error occurs.
+   */
+  // eslint-disable-next-line complexity
+  public async updateRestFromFileAsync(params: UpdateAsyncParameters): Promise<JobInfoV2 | undefined> {
+    // Utility for logging messages and handling errors
+    const utils = new CommandUtils(this.command);
+
+    // Determine which connection label to use for logging
+    const label = params.useSourceConnection ? this.command.sourceConnectionLabel : this.command.targetConnectionLabel;
+
+    // Extract parameters
+    const { filePath, sobjectType, operation } = params;
+
+    // Resolve the file path to an absolute path if it is not already
+    const resolvedFilePath = path.isAbsolute(filePath!) ? filePath : path.resolve(process.cwd(), filePath!);
+
+    // Check if the file exists
+    if (!fs.existsSync(resolvedFilePath!)) {
+      utils.throwError('error.file-not-found', Utils.shortenFilePath(resolvedFilePath!));
+    }
+
+    try {
+      // Log a message indicating the start of the update process
+      utils.logComponentMessage(
+        'progress.updating-records-from-file',
+        sobjectType,
+        label,
+        Utils.capitalizeFirstLetter(operation),
+        Utils.shortenFilePath(resolvedFilePath!)
+      );
+
+      // Create a read stream to read the CSV file
+      const inputStream = Utils.createCsvReadableFileStream(resolvedFilePath!).pipe(
+        csvParser({
+          ...Constants.CSV_PARSE_OPTIONS,
+        })
+      );
+
+      // Array to hold the records
+      const records: any[] = [];
+
+      // Read and parse the CSV file
+      for await (const row of inputStream) {
+        if (Object.keys(row).length > 0) {
+          records.push(row);
+        }
+      }
+
+      inputStream.end();
+
+      // Call the updateRestFromArrayAsync method with the records
+      const jobInfo = await this.updateRestFromArrayAsync({
+        ...params,
+        records,
+        isInnerMetod: true,
+      });
+
+      return jobInfo;
+    } catch (err) {
+      // Handle any errors that occur during the operation
+      utils.throwWithErrorMessage(err as Error, 'error.updating-records', sobjectType, label);
     }
   }
 }

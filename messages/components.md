@@ -94,9 +94,13 @@ Target
 
 [%s] An error occurred while querying records. %s.
 
-# progress.updating-records
+# progress.updating-records-from-file
 
 [%s : %s] %s records using the file '%s'...
+
+# progress.updating-records-from-array
+
+[%s : %s] %s records...
 
 # error.updating-records
 
@@ -105,3 +109,11 @@ Target
 # error.file-not-found
 
 The file '%s' was not found.
+
+# error.no-records-provided
+
+No records provided for updating.
+
+# error.invalid-operation
+
+Invalid operation: %s.

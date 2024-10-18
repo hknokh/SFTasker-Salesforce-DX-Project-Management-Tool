@@ -257,13 +257,13 @@ export type IngestJobV2 = {
    * Retrieves the successful results of the job.
    * @returns A promise that resolves with an array of successful result records.
    */
-  getSuccessfulResults(): Promise<JobResultV2[]>;
+  getSuccessfulResults(): Promise<JobResult[]>;
 
   /**
    * Retrieves the failed results of the job.
    * @returns A promise that resolves with an array of failed result records.
    */
-  getFailedResults(): Promise<JobResultV2[]>;
+  getFailedResults(): Promise<JobResult[]>;
 };
 
 // Metadata Types ----------------------------------------------------------------
@@ -412,10 +412,11 @@ export type QueryAsyncParameters = {
  * @property projectedRecordsCount - The projected number of records to update.
  *            Used to optionally calculate optimal polling settings if csv file is used as a source.
  * @property useSourceConnection - Indicates whether to use the source connection.
+ * @property isInnerMetod - Indicates whether the method is inner and should not be called directly.
  * @property progressCallback - A callback function to report progress.
  */
 export type UpdateAsyncParameters = {
-  filePath: string;
+  filePath?: string;
   statusFilePath?: string;
   sobjectType: string;
   operation: ApiOperation;
@@ -423,6 +424,7 @@ export type UpdateAsyncParameters = {
   records?: any[];
   projectedCsvRecordsCount?: number;
   useSourceConnection?: boolean;
+  isInnerMetod?: boolean;
   /**
    * A callback function to report progress.
    * @param jobInfo - The current job information.
@@ -433,7 +435,7 @@ export type UpdateAsyncParameters = {
 /**
  *  Represents the result of an ingest job.
  */
-export type JobResultV2 = {
+export type JobResult = {
   sf__Id: string;
   sf__Created?: 'true' | 'false';
   sf__Error?: string;

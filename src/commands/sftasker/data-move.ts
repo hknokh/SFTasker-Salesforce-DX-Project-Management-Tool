@@ -95,7 +95,7 @@ export default class SftaskerDataMove extends SFtaskerCommand<SftaskerDataMoveRe
     const apiUtils = new ApiUtils(this, dataMoveUtils.tempDir);
     // eslint-disable-next-line @typescript-eslint/no-unsafe-return
     const numb = await apiUtils.queryBulkToFileAsync({
-      query: 'SELECT Id, Name FROM Test_Big_Data_Volume__c LIMIT 100',
+      query: 'SELECT Id, Name FROM Test_Big_Data_Volume__c LIMIT 5',
       filePath: './tmp/import.csv',
       appendToExistingFile: false,
       useSourceConnection: true,
@@ -114,11 +114,47 @@ export default class SftaskerDataMove extends SFtaskerCommand<SftaskerDataMoveRe
 
     this.info(`Number of records: ${numb}`);
 
-    const jobInfo = await apiUtils.updateBulk2Async({
-      filePath: './tmp/import.csv',
-      statusFilePath: './tmp/status.csv',
+    // const jobInfo = await apiUtils.updateBulk2Async({
+    //   filePath: './tmp/import.csv',
+    //   statusFilePath: './tmp/status.csv',
+    //   operation: 'update',
+    //   reportLevel: ApiOperationReportLevel.Errors,
+    //   sobjectType: 'Test_Big_Data_Volume__c',
+    //   projectedCsvRecordsCount: 1000,
+    //   useSourceConnection: true,
+    //   progressCallback: (state: JobInfoV2) => {
+    //     this.info(
+    //       `State: ${state.state},  Records processed: ${state.numberRecordsProcessed}, Filtered records: ${state.numberRecordsFailed}`
+    //     );
+    //   },
+    // });
+
+    // this.info(`Job ID: ${jobInfo?.recordCount}`);
+
+    const jobInfo2 = await apiUtils.updateRestFromArrayAsync({
+      records: [
+        { Id: 'a1OJ7000001SYq8MAG', Name: 'TestName1' },
+        { Id: 'a1OJ7000001SYq9MAG', Name: 'TestName2' },
+      ],
+      statusFilePath: './tmp/status2.csv',
       operation: 'update',
       reportLevel: ApiOperationReportLevel.Errors,
+      sobjectType: 'Test_Big_Data_Volume__c',
+      useSourceConnection: true,
+      progressCallback: (state: JobInfoV2) => {
+        this.info(
+          `State: ${state.state},  Records processed: ${state.numberRecordsProcessed}, Filtered records: ${state.numberRecordsFailed}`
+        );
+      },
+    });
+
+    this.info(`Job2 ID: ${jobInfo2?.recordCount}`);
+
+    const jobInfo3 = await apiUtils.updateRestFromFileAsync({
+      filePath: './tmp/import.csv',
+      statusFilePath: './tmp/status3.csv',
+      operation: 'insert',
+      reportLevel: ApiOperationReportLevel.All,
       sobjectType: 'Test_Big_Data_Volume__c',
       projectedCsvRecordsCount: 1000,
       useSourceConnection: true,
@@ -129,7 +165,7 @@ export default class SftaskerDataMove extends SFtaskerCommand<SftaskerDataMoveRe
       },
     });
 
-    this.info(`Job ID: ${jobInfo?.recordCount}`);
+    this.info(`Job ID: ${jobInfo3?.recordCount}`);
 
     const extraData: ObjectExtraData = new ObjectExtraData({
       where: "Name <> 'ExcludedName'",
