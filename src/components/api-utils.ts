@@ -126,6 +126,7 @@ export class ApiUtils<T> {
 
   /**
    * Suggests whether to use Bulk API or REST API and whether to query all records or a subset.
+   * Calculates based on Bulk V1 specifications.
    * @param totalRecordsCountForObject Total number of records in the object.
    * @param subsetRecordsCountForObject Number of records in the subset to query.
    * @param queryAmountsForSubset Number of API jobs needed to query the subset.
@@ -136,15 +137,11 @@ export class ApiUtils<T> {
     subsetRecordsCountForObject: number,
     queryAmountsForSubset: number
   ): { shouldUseBulkApi: boolean; shouldQueryAllRecords: boolean } {
-    // Constants defining API limitations
-    const REST_API_MAX_RECORDS_PER_CALL = 2000;
-    const BULK_API_MAX_RECORDS_PER_BATCH = 10_000;
-
     // Calculate the number of REST API jobs needed to query all records
-    const restApiJobsForAll = Math.ceil(totalRecordsCountForObject / REST_API_MAX_RECORDS_PER_CALL);
+    const restApiJobsForAll = Math.ceil(totalRecordsCountForObject / Constants.REST_API_MAX_RECORDS_PER_CALL);
 
     // Number of Bulk API jobs needed to query all records
-    const bulkApiJobsForAll = Math.ceil(totalRecordsCountForObject / BULK_API_MAX_RECORDS_PER_BATCH);
+    const bulkApiJobsForAll = Math.ceil(totalRecordsCountForObject / Constants.BULK_API_MAX_RECORDS_PER_BATCH);
 
     // Penalty for processing extra records when querying all records instead of the subset
     const extraRecordsPenalty = (totalRecordsCountForObject - subsetRecordsCountForObject) / totalRecordsCountForObject;
