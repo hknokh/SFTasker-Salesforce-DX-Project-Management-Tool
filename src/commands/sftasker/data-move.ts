@@ -4,7 +4,7 @@ import { SFtaskerCommand } from '../../components/models.js';
 import { Constants } from '../../components/constants.js';
 import { DataMoveUtils } from '../../components/data-move/data-move-utils.js';
 import { ApiUtils } from '../../components/api-utils.js';
-import { ApiOperationReportLevel, JobInfoV2 } from '../../components/types.js';
+import { ApiOperationReportLevel, IngestJobInfo } from '../../components/types.js';
 import { DataMoveUtilsStatic } from '../../components/data-move/data-move-utils-static.js';
 import { ObjectExtraData } from '../../components/data-move/data-move-models.js';
 //import { ObjectExtraData } from '../../components/data-move/data-move-models.js';
@@ -122,7 +122,7 @@ export default class SftaskerDataMove extends SFtaskerCommand<SftaskerDataMoveRe
     //   sobjectType: 'Test_Big_Data_Volume__c',
     //   projectedCsvRecordsCount: 1000,
     //   useSourceConnection: true,
-    //   progressCallback: (state: JobInfoV2) => {
+    //   progressCallback: (state: IngestJobInfo) => {
     //     this.info(
     //       `State: ${state.state},  Records processed: ${state.numberRecordsProcessed}, Filtered records: ${state.numberRecordsFailed}`
     //     );
@@ -141,7 +141,7 @@ export default class SftaskerDataMove extends SFtaskerCommand<SftaskerDataMoveRe
       reportLevel: ApiOperationReportLevel.Errors,
       sobjectType: 'Test_Big_Data_Volume__c',
       useSourceConnection: true,
-      progressCallback: (state: JobInfoV2) => {
+      progressCallback: (state: IngestJobInfo) => {
         this.info(
           `State: ${state.state},  Records processed: ${state.numberRecordsProcessed}, Filtered records: ${state.numberRecordsFailed}`
         );
@@ -158,7 +158,7 @@ export default class SftaskerDataMove extends SFtaskerCommand<SftaskerDataMoveRe
       sobjectType: 'Test_Big_Data_Volume__c',
       projectedCsvRecordsCount: 1000,
       useSourceConnection: true,
-      progressCallback: (state: JobInfoV2) => {
+      progressCallback: (state: IngestJobInfo) => {
         this.info(
           `State: ${state.state},  Records processed: ${state.numberRecordsProcessed}, Filtered records: ${state.numberRecordsFailed}`
         );

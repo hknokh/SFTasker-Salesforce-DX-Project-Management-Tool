@@ -191,7 +191,7 @@ export type FastSafeStringify = (
 ) => string;
 
 /**
- * Represent status of the Bulk API V2 job.
+ * Represent status of the Bulk API job.
  * @param recordCount - The total number of records processed.
  * @param filteredRecordCount - The number of records that match the filter criteria.
  * @param numberRecordsProcessed - The number of records processed.
@@ -199,7 +199,7 @@ export type FastSafeStringify = (
  * @param state - The state of the job.
  * @param errorMessage - The error message if the job failed.
  */
-export type JobInfoV2 = {
+export type IngestJobInfo = {
   recordCount?: number;
   numberRecordsProcessed: number;
   numberRecordsFailed: number;
@@ -219,18 +219,18 @@ export type JobInfoV2 = {
 /**
  * Defines the structure and methods of a Bulk2 Job.
  */
-export type IngestJobV2 = {
+export type IngestJob = {
   /**
    * Opens the job for data upload.
    * @returns A promise that resolves when the job is successfully opened.
    */
-  open(): Promise<Partial<JobInfoV2>>;
+  open(): Promise<Partial<IngestJobInfo>>;
 
   /**
    * Checks the current status of the job.
    * @returns A promise that resolves with the job's current information.
    */
-  check(): Promise<JobInfoV2>;
+  check(): Promise<IngestJobInfo>;
 
   /**
    * Uploads data to the job from a readable stream.
@@ -257,13 +257,13 @@ export type IngestJobV2 = {
    * Retrieves the successful results of the job.
    * @returns A promise that resolves with an array of successful result records.
    */
-  getSuccessfulResults(): Promise<JobResult[]>;
+  getSuccessfulResults(): Promise<IngestJobResult[]>;
 
   /**
    * Retrieves the failed results of the job.
    * @returns A promise that resolves with an array of failed result records.
    */
-  getFailedResults(): Promise<JobResult[]>;
+  getFailedResults(): Promise<IngestJobResult[]>;
 };
 
 // Metadata Types ----------------------------------------------------------------
@@ -415,7 +415,7 @@ export type QueryAsyncParameters = {
  * @property isInnerMetod - Indicates whether the method is inner and should not be called directly.
  * @property progressCallback - A callback function to report progress.
  */
-export type UpdateAsyncParameters = {
+export type UpdateJobParameters = {
   filePath?: string;
   statusFilePath?: string;
   sobjectType: string;
@@ -429,13 +429,13 @@ export type UpdateAsyncParameters = {
    * A callback function to report progress.
    * @param jobInfo - The current job information.
    */
-  progressCallback?: (jobInfo: JobInfoV2) => void;
+  progressCallback?: (jobInfo: IngestJobInfo) => void;
 };
 
 /**
  *  Represents the result of an ingest job.
  */
-export type JobResult = {
+export type IngestJobResult = {
   sf__Id: string;
   sf__Created?: 'true' | 'false';
   sf__Error?: string;

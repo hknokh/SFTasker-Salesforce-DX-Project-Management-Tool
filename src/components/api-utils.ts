@@ -18,14 +18,14 @@ import { CommandUtils } from './command-utils.js';
 import { Utils } from './utils.js';
 import {
   ApiOperationReportLevel,
-  JobResult,
+  IngestJobResult,
   DescribeSObjectResult,
-  IngestJobV2,
-  JobInfoV2,
+  IngestJob,
+  IngestJobInfo,
   PackageXmlContent,
   PackageXmlType,
   QueryAsyncParameters,
-  UpdateAsyncParameters,
+  UpdateJobParameters,
 } from './types.js';
 
 /**
@@ -122,6 +122,66 @@ export class ApiUtils<T> {
     const pollTimeout = basePollTimeout * scaleFactor;
 
     return { pollInterval, pollTimeout };
+  }
+
+  /**
+   * Suggests whether to use Bulk API or REST API and whether to query all records or a subset.
+   * @param totalRecordsCountForObject Total number of records in the object.
+   * @param subsetRecordsCountForObject Number of records in the subset to query.
+   * @param queryAmountsForSubset Number of API jobs needed to query the subset.
+   * @returns An object indicating whether to use Bulk API and whether to query all records.
+   */
+  public static suggestEngine(
+    totalRecordsCountForObject: number,
+    subsetRecordsCountForObject: number,
+    queryAmountsForSubset: number
+  ): { shouldUseBulkApi: boolean; shouldQueryAllRecords: boolean } {
+    // Constants defining API limitations
+    const REST_API_MAX_RECORDS_PER_CALL = 2000;
+    const BULK_API_MAX_RECORDS_PER_BATCH = 10_000;
+
+    // Calculate the number of REST API jobs needed to query all records
+    const restApiJobsForAll = Math.ceil(totalRecordsCountForObject / REST_API_MAX_RECORDS_PER_CALL);
+
+    // Number of Bulk API jobs needed to query all records
+    const bulkApiJobsForAll = Math.ceil(totalRecordsCountForObject / BULK_API_MAX_RECORDS_PER_BATCH);
+
+    // Penalty for processing extra records when querying all records instead of the subset
+    const extraRecordsPenalty = (totalRecordsCountForObject - subsetRecordsCountForObject) / totalRecordsCountForObject;
+
+    // Cost functions for each option
+    const costRestApiSubset = queryAmountsForSubset;
+    const costBulkApiSubset = queryAmountsForSubset;
+
+    const costRestApiAll = restApiJobsForAll + extraRecordsPenalty;
+    const costBulkApiAll = bulkApiJobsForAll + extraRecordsPenalty;
+
+    // Determine the minimum cost option
+    const minCost = Math.min(costRestApiSubset, costBulkApiSubset, costRestApiAll, costBulkApiAll);
+
+    // Suggest the best API and query strategy based on the minimum cost
+    if (minCost === costRestApiSubset) {
+      return {
+        shouldUseBulkApi: false,
+        shouldQueryAllRecords: false,
+      };
+    } else if (minCost === costBulkApiSubset) {
+      return {
+        shouldUseBulkApi: true,
+        shouldQueryAllRecords: false,
+      };
+    } else if (minCost === costRestApiAll) {
+      return {
+        shouldUseBulkApi: false,
+        shouldQueryAllRecords: true,
+      };
+    } else {
+      // minCost === costBulkApiAll
+      return {
+        shouldUseBulkApi: true,
+        shouldQueryAllRecords: true,
+      };
+    }
   }
 
   // Private static methods ----------------------------------------------------------
@@ -1265,12 +1325,12 @@ export class ApiUtils<T> {
 
   /**
    * Asynchronously runs a bulk update operation from a CSV file.
-   * Uses bulk V2 API to update records.
+   * Uses bulk API to update records.
    * Supports large datasets and progress reporting.
    * @param params  The parameters for the update operation.
    * @returns  A promise that resolves with the number of records processed or `undefined` if an error occurs.
    */
-  public async updateBulk2FromFileAsync(params: UpdateAsyncParameters): Promise<JobInfoV2 | undefined> {
+  public async updateBulk2FromFileAsync(params: UpdateJobParameters): Promise<IngestJobInfo | undefined> {
     // Utility for logging messages and handling errors
     const utils = new CommandUtils(this.command);
 
@@ -1307,12 +1367,12 @@ export class ApiUtils<T> {
             sf__Created: 'false',
             sf__Error: 'sf__Error',
             Status: 'Success',
-          } as JobResult)
+          } as IngestJobResult)
         )
       : undefined;
 
     try {
-      let job: IngestJobV2;
+      let job: IngestJob;
 
       // Log a message indicating the start of the query process
       utils.logComponentMessage(
@@ -1324,7 +1384,7 @@ export class ApiUtils<T> {
       );
 
       // Track the number of records processed
-      let lastJobInfo: JobInfoV2 = {
+      let lastJobInfo: IngestJobInfo = {
         numberRecordsProcessed: 0,
         numberRecordsFailed: 0,
         recordCount: -1,
@@ -1332,14 +1392,14 @@ export class ApiUtils<T> {
       };
 
       // Function to report progress
-      const reportProgress = (jobInfo?: Partial<JobInfoV2>): void => {
+      const reportProgress = (jobInfo?: Partial<IngestJobInfo>): void => {
         jobInfo = { ...lastJobInfo, ...jobInfo };
         const recordCount = jobInfo.numberRecordsProcessed! + jobInfo.numberRecordsFailed!;
         if (
           params.progressCallback &&
           (recordCount > lastJobInfo.recordCount! || jobInfo.state !== lastJobInfo.state)
         ) {
-          lastJobInfo = { ...(jobInfo as JobInfoV2), recordCount };
+          lastJobInfo = { ...(jobInfo as IngestJobInfo), recordCount };
           lastJobInfo.recordCount = recordCount;
           params.progressCallback(lastJobInfo);
         }
@@ -1419,7 +1479,7 @@ export class ApiUtils<T> {
               sf__Created: rec.sf__Created,
               sf__Error: '',
               Status: 'Success',
-            } as JobResult);
+            } as IngestJobResult);
           }
         }
 
@@ -1432,7 +1492,7 @@ export class ApiUtils<T> {
             sf__Created: 'false',
             sf__Error: rec.sf__Error,
             Status: 'Error',
-          } as JobResult);
+          } as IngestJobResult);
         }
         // Close the write stream
         csvStatusFileWriteStream.end();
@@ -1466,7 +1526,7 @@ export class ApiUtils<T> {
    * @returns  A promise that resolves with the job information or `undefined` if an error occurs.
    */
   // eslint-disable-next-line complexity
-  public async updateRestFromArrayAsync(params: UpdateAsyncParameters): Promise<JobInfoV2 | undefined> {
+  public async updateRestFromArrayAsync(params: UpdateJobParameters): Promise<IngestJobInfo | undefined> {
     // Utility for logging messages and handling errors
     const utils = new CommandUtils(this.command);
 
@@ -1512,7 +1572,7 @@ export class ApiUtils<T> {
       );
 
       // Create initial job information
-      const jobInfo: JobInfoV2 = {
+      const jobInfo: IngestJobInfo = {
         numberRecordsProcessed: 0,
         numberRecordsFailed: 0,
         recordCount: records?.length,
@@ -1562,7 +1622,7 @@ export class ApiUtils<T> {
                 sf__Created: res.success ? 'true' : 'false',
                 sf__Error: '',
                 Status: 'Success',
-              } as JobResult);
+              } as IngestJobResult);
             }
           } else {
             numberRecordsFailed++;
@@ -1578,7 +1638,7 @@ export class ApiUtils<T> {
                 sf__Created: 'false',
                 sf__Error: errorMessage,
                 Status: 'Error',
-              } as JobResult);
+              } as IngestJobResult);
             }
           }
         }
@@ -1622,7 +1682,7 @@ export class ApiUtils<T> {
    * @returns  A promise that resolves with the job information or `undefined` if an error occurs.
    */
   // eslint-disable-next-line complexity
-  public async updateRestFromFileAsync(params: UpdateAsyncParameters): Promise<JobInfoV2 | undefined> {
+  public async updateRestFromFileAsync(params: UpdateJobParameters): Promise<IngestJobInfo | undefined> {
     // Utility for logging messages and handling errors
     const utils = new CommandUtils(this.command);
 
