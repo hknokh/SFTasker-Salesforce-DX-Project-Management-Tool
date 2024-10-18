@@ -128,24 +128,24 @@ export class ApiUtils<T> {
   /**
    * Suggests whether to use Bulk API or REST API and whether to query all records or a subset.
    * Calculates based on Bulk V1 specifications.
-   * @param totalRecordsCountForObject Total number of records in the object.
-   * @param subsetRecordsCountForObject Number of records in the subset to query.
-   * @param queryAmountsForSubset Number of API jobs needed to query the subset.
+   * @param totalRecordsCount Total count of records to query.
+   * @param subsetRecordsCount Number of records  in the subset to query.
+   * @param queryAmountsForSubset Number of queries needed to query the subset.
    * @returns An object indicating whether to use Bulk API and whether to query all records.
    */
   public static suggestQueryEngine(
-    totalRecordsCountForObject: number,
-    subsetRecordsCountForObject: number,
+    totalRecordsCount: number,
+    subsetRecordsCount: number,
     queryAmountsForSubset: number
   ): EngineChoice {
     // Calculate the number of REST API jobs needed to query all records
-    const restApiJobsForAll = Math.ceil(totalRecordsCountForObject / Constants.REST_API_MAX_RECORDS_PER_CALL);
+    const restApiJobsForAll = Math.ceil(totalRecordsCount / Constants.REST_API_MAX_RECORDS_PER_CALL);
 
     // Number of Bulk API jobs needed to query all records
-    const bulkApiJobsForAll = Math.ceil(totalRecordsCountForObject / Constants.BULK_API_MAX_RECORDS_PER_BATCH);
+    const bulkApiJobsForAll = Math.ceil(totalRecordsCount / Constants.BULK_API_MAX_RECORDS_PER_BATCH);
 
     // Penalty for processing extra records when querying all records instead of the subset
-    const extraRecordsPenalty = (totalRecordsCountForObject - subsetRecordsCountForObject) / totalRecordsCountForObject;
+    const extraRecordsPenalty = (totalRecordsCount - subsetRecordsCount) / totalRecordsCount;
 
     // Cost functions for each option
     const costRestApiSubset = queryAmountsForSubset;
@@ -184,10 +184,10 @@ export class ApiUtils<T> {
 
   /**
    * Suggests whether to use Bulk API V2 or REST API for updating records.
-   * @param totalRecordsToUpdate Total number of records to update.
+   * @param totalRecordsCount Total count of records to update.
    * @returns An object indicating whether to use Bulk API.
    */
-  public static suggestUpdateEngine(totalRecordsToUpdate: number): EngineChoice {
+  public static suggestUpdateEngine(totalRecordsCount: number): EngineChoice {
     // Time or cost constants (arbitrary units for comparison)
     const REST_API_BASE_COST_PER_CALL = 0.1;
     const REST_API_COST_PER_RECORD = 0.001;
@@ -196,17 +196,16 @@ export class ApiUtils<T> {
     const BULK_API_COST_PER_RECORD = 0.0005;
 
     // Calculate the number of REST API calls needed
-    const restApiCalls = Math.ceil(totalRecordsToUpdate / Constants.REST_API_MAX_RECORDS_PER_BATCH);
+    const restApiCalls = Math.ceil(totalRecordsCount / Constants.REST_API_MAX_RECORDS_PER_BATCH);
 
     // Total cost for REST API
-    const totalRestApiCost =
-      restApiCalls * REST_API_BASE_COST_PER_CALL + totalRecordsToUpdate * REST_API_COST_PER_RECORD;
+    const totalRestApiCost = restApiCalls * REST_API_BASE_COST_PER_CALL + totalRecordsCount * REST_API_COST_PER_RECORD;
 
     // Calculate the number of Bulk API jobs needed
-    const bulkApiJobs = Math.ceil(totalRecordsToUpdate / Constants.BULK_API_MAX_RECORDS_PER_BATCH);
+    const bulkApiJobs = Math.ceil(totalRecordsCount / Constants.BULK_API_MAX_RECORDS_PER_BATCH);
 
     // Total cost for Bulk API
-    const totalBulkApiCost = bulkApiJobs * BULK_API_BASE_COST_PER_JOB + totalRecordsToUpdate * BULK_API_COST_PER_RECORD;
+    const totalBulkApiCost = bulkApiJobs * BULK_API_BASE_COST_PER_JOB + totalRecordsCount * BULK_API_COST_PER_RECORD;
 
     // Decide which API to use based on the total cost
     if (totalRestApiCost <= totalBulkApiCost) {
