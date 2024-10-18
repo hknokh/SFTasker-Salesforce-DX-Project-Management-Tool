@@ -132,11 +132,11 @@ export class ApiUtils<T> {
    * @param queryAmountsForSubset Number of API jobs needed to query the subset.
    * @returns An object indicating whether to use Bulk API and whether to query all records.
    */
-  public static suggestEngine(
+  public static suggestQueryEngine(
     totalRecordsCountForObject: number,
     subsetRecordsCountForObject: number,
     queryAmountsForSubset: number
-  ): { shouldUseBulkApi: boolean; shouldQueryAllRecords: boolean } {
+  ): { shouldUseBulkApi?: boolean; shouldQueryAllRecords?: boolean } {
     // Calculate the number of REST API jobs needed to query all records
     const restApiJobsForAll = Math.ceil(totalRecordsCountForObject / Constants.REST_API_MAX_RECORDS_PER_CALL);
 
@@ -178,6 +178,40 @@ export class ApiUtils<T> {
         shouldUseBulkApi: true,
         shouldQueryAllRecords: true,
       };
+    }
+  }
+
+  /**
+   * Suggests whether to use Bulk API V2 or REST API for updating records.
+   * @param totalRecordsToUpdate Total number of records to update.
+   * @returns An object indicating whether to use Bulk API.
+   */
+  public static suggestUpdateEngine(totalRecordsToUpdate: number): { shouldUseBulkApi?: boolean } {
+    // Time or cost constants (arbitrary units for comparison)
+    const REST_API_BASE_COST_PER_CALL = 0.1;
+    const REST_API_COST_PER_RECORD = 0.001;
+
+    const BULK_API_BASE_COST_PER_JOB = 1;
+    const BULK_API_COST_PER_RECORD = 0.0005;
+
+    // Calculate the number of REST API calls needed
+    const restApiCalls = Math.ceil(totalRecordsToUpdate / Constants.REST_API_MAX_RECORDS_PER_BATCH);
+
+    // Total cost for REST API
+    const totalRestApiCost =
+      restApiCalls * REST_API_BASE_COST_PER_CALL + totalRecordsToUpdate * REST_API_COST_PER_RECORD;
+
+    // Calculate the number of Bulk API jobs needed
+    const bulkApiJobs = Math.ceil(totalRecordsToUpdate / Constants.BULK_API_MAX_RECORDS_PER_BATCH);
+
+    // Total cost for Bulk API
+    const totalBulkApiCost = bulkApiJobs * BULK_API_BASE_COST_PER_JOB + totalRecordsToUpdate * BULK_API_COST_PER_RECORD;
+
+    // Decide which API to use based on the total cost
+    if (totalRestApiCost <= totalBulkApiCost) {
+      return { shouldUseBulkApi: false };
+    } else {
+      return { shouldUseBulkApi: true };
     }
   }
 

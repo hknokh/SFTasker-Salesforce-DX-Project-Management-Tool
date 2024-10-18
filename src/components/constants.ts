@@ -43,6 +43,9 @@ export class Constants {
   /** The maximum number of records allowed in a single bulk API batch. */
   public static readonly BULK_API_MAX_RECORDS_PER_BATCH = 10_000;
 
+  /** The maximum number of records allowed in a single rest API batch. */
+  public static readonly REST_API_MAX_RECORDS_PER_BATCH = 200;
+
   /**
    * The timeout duration for polling job code execution in milliseconds.
    *  Used in internal api operations which does not require remote api calls. while polling for job completion.
