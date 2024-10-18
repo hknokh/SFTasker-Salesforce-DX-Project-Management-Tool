@@ -89,7 +89,7 @@ export class ApiUtils<T> {
   /**
    * Suggests polling settings for a bulk job based on the number of records to process.
    * @param recordCount The number of records to process.
-   * @returns The polling settings for the bulk job.
+   * @returns An object containing the suggested polling interval and timeout.
    */
   public static suggestPollingSettings(recordCount?: number): PollingChoice {
     recordCount = recordCount || Constants.BULK_API_POLL_RECORD_SCALE_FACTOR;
@@ -116,7 +116,7 @@ export class ApiUtils<T> {
    * @param totalRecordsCount Total count of records to query.
    * @param subsetRecordsCount Number of records  in the subset to query.
    * @param queryAmountsForSubset Number of queries needed to query the subset.
-   * @returns An object indicating whether to use Bulk API and whether to query all records.
+   * @returns An object indicating the best API and query strategy to use.
    */
   public static suggestQueryEngine(
     totalRecordsCount: number,
@@ -170,7 +170,7 @@ export class ApiUtils<T> {
   /**
    * Suggests whether to use Bulk API V2 or REST API for updating records.
    * @param totalRecordsCount Total count of records to update.
-   * @returns An object indicating whether to use Bulk API.
+   * @returns An object indicating the best API to use for updating records.
    */
   public static suggestUpdateEngine(totalRecordsCount: number): EngineChoice {
     // Time or cost constants (arbitrary units for comparison)
