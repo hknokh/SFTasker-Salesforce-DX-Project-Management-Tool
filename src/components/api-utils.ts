@@ -841,7 +841,7 @@ export class ApiUtils<T> {
       const writeHeaders = !params.appendToExistingFile || !fileExists;
 
       // Create a write stream to write the query results to the file
-      const writeStream = fs.createWriteStream(resolvedFilePath, {
+      const csvTargetFileWriteStream = fs.createWriteStream(resolvedFilePath, {
         flags: writeHeaders ? 'w' : 'a',
         highWaterMark: Constants.DEFAULT_FILE_WRITE_STREAM_HIGH_WATER_MARK,
         encoding: Constants.DEFAULT_ENCODING,
@@ -921,16 +921,16 @@ export class ApiUtils<T> {
 
           for await (const chunk of csvData) {
             // eslint-disable-next-line @typescript-eslint/no-unsafe-call
-            if (!writeStream.write(chunk)) {
+            if (!csvTargetFileWriteStream.write(chunk)) {
               // Wait for the write stream to drain before continuing
-              await Promise.race([once(writeStream, 'drain'), writeStreamError]);
+              await Promise.race([once(csvTargetFileWriteStream, 'drain'), writeStreamError]);
             }
           }
         }
       };
 
       // Promises to handle 'error' events
-      const writeStreamError = once(writeStream, 'error').then(([err]) => {
+      const writeStreamError = once(csvTargetFileWriteStream, 'error').then(([err]) => {
         queryStream.destroy();
         throw err;
       });
@@ -991,10 +991,10 @@ export class ApiUtils<T> {
       }
 
       // End the write stream after processing
-      writeStream.end();
+      csvTargetFileWriteStream.end();
 
       // Wait for 'finish' event or handle errors
-      await Promise.race([once(writeStream, 'finish'), writeStreamError]);
+      await Promise.race([once(csvTargetFileWriteStream, 'finish'), writeStreamError]);
 
       // Destroy the query stream to prevent memory leaks
       queryStream.destroy();
@@ -1050,7 +1050,7 @@ export class ApiUtils<T> {
       const writeHeaders = !params.appendToExistingFile || !fileExists;
 
       // Create a write stream to write the query results to the file
-      const writeStream = fs.createWriteStream(resolvedFilePath, {
+      const csvTargetFileWriteStream = fs.createWriteStream(resolvedFilePath, {
         flags: writeHeaders ? 'w' : 'a',
         highWaterMark: Constants.DEFAULT_FILE_WRITE_STREAM_HIGH_WATER_MARK,
         encoding: Constants.DEFAULT_ENCODING,
@@ -1134,11 +1134,11 @@ export class ApiUtils<T> {
 
       await new Promise<void>((resolve, reject) => {
         // Write the data into the stream
-        writeStream.write(csvString, (err) => {
+        csvTargetFileWriteStream.write(csvString, (err) => {
           if (err) {
             return reject(err);
           }
-          writeStream.end(() => {
+          csvTargetFileWriteStream.end(() => {
             resolve();
           });
         });
@@ -1726,7 +1726,7 @@ export class ApiUtils<T> {
       );
 
       // Create a read stream to read the CSV file
-      const inputStream = Utils.createCsvReadableFileStream(resolvedFilePath!).pipe(
+      const csvSourceFileReadStream = Utils.createCsvReadableFileStream(resolvedFilePath!).pipe(
         csvParser({
           ...Constants.CSV_PARSE_OPTIONS,
         })
@@ -1736,13 +1736,13 @@ export class ApiUtils<T> {
       const records: any[] = [];
 
       // Read and parse the CSV file
-      for await (const row of inputStream) {
+      for await (const row of csvSourceFileReadStream) {
         if (Object.keys(row).length > 0) {
           records.push(row);
         }
       }
 
-      inputStream.end();
+      csvSourceFileReadStream.end();
 
       // Call the updateRestFromArrayAsync method with the records
       const jobInfo = await this.updateRestFromArrayAsync({
