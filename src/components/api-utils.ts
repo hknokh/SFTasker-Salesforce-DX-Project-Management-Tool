@@ -17,34 +17,18 @@ import { SFtaskerCommand, SObjectDescribe } from './models.js';
 import { CommandUtils } from './command-utils.js';
 import { Utils } from './utils.js';
 import {
-  ApiOperationReportLevel,
-  IngestJobResult,
   DescribeSObjectResult,
   IngestJob,
   IngestJobInfo,
+  IngestJobResult,
+  OperationReportLevel,
   PackageXmlContent,
   PackageXmlType,
   QueryAsyncParameters,
-  UpdateJobParameters,
+  UpdateAsyncParameters,
   EngineChoice,
+  XmlSectionKey,
 } from './types.js';
-
-/**
- * Represents a key section in XML metadata.
- *
- * @property key - The combined key identifier.
- * @property isSectionExist - Indicates if the section exists.
- * @property sectionName - The name of the section.
- * @property keyName - The name of the key.
- * @property keyValue - The value of the key.
- */
-type XmlSectionKey = {
-  key: string;
-  isSectionExist: boolean;
-  sectionName?: string;
-  keyName?: string;
-  keyValue?: string;
-};
 
 /**
  *  Utility class for common API operations.
@@ -1361,7 +1345,7 @@ export class ApiUtils<T> {
    * @param params  The parameters for the update operation.
    * @returns  A promise that resolves with the number of records processed or `undefined` if an error occurs.
    */
-  public async updateBulk2FromFileAsync(params: UpdateJobParameters): Promise<IngestJobInfo | undefined> {
+  public async updateBulk2FromFileAsync(params: UpdateAsyncParameters): Promise<IngestJobInfo | undefined> {
     // Utility for logging messages and handling errors
     const utils = new CommandUtils(this.command);
 
@@ -1372,7 +1356,7 @@ export class ApiUtils<T> {
     const connection: Connection = params.useSourceConnection ? this.command.sourceConnection : this.command.connection;
 
     // Set the default report level to 'Errors'
-    params.reportLevel = params.reportLevel || ApiOperationReportLevel.None;
+    params.reportLevel = params.reportLevel || OperationReportLevel.None;
 
     // Calculate the polling settings for the bulk2 API
     const pollingSettings = ApiUtils.calculatePollingSettings(params.projectedCsvRecordsCount);
@@ -1384,7 +1368,7 @@ export class ApiUtils<T> {
     let pollingIntervalTimeout: NodeJS.Timeout | undefined;
 
     const resolvedStatusFilePath =
-      params.statusFilePath && params.reportLevel !== ApiOperationReportLevel.None
+      params.statusFilePath && params.reportLevel !== OperationReportLevel.None
         ? path.isAbsolute(params.statusFilePath)
           ? params.statusFilePath
           : path.resolve(process.cwd(), params.statusFilePath)
@@ -1499,9 +1483,9 @@ export class ApiUtils<T> {
         });
 
         if (
-          (params.operation === 'insert' && params.reportLevel === ApiOperationReportLevel.Inserts) ||
-          (params.operation !== 'insert' && params.reportLevel !== ApiOperationReportLevel.Errors) ||
-          params.reportLevel === ApiOperationReportLevel.All
+          (params.operation === 'insert' && params.reportLevel === OperationReportLevel.Inserts) ||
+          (params.operation !== 'insert' && params.reportLevel !== OperationReportLevel.Errors) ||
+          params.reportLevel === OperationReportLevel.All
         ) {
           const resSuccessful = await job.getSuccessfulResults();
           for (const rec of resSuccessful) {
@@ -1557,7 +1541,7 @@ export class ApiUtils<T> {
    * @returns  A promise that resolves with the job information or `undefined` if an error occurs.
    */
   // eslint-disable-next-line complexity
-  public async updateRestFromArrayAsync(params: UpdateJobParameters): Promise<IngestJobInfo | undefined> {
+  public async updateRestFromArrayAsync(params: UpdateAsyncParameters): Promise<IngestJobInfo | undefined> {
     // Utility for logging messages and handling errors
     const utils = new CommandUtils(this.command);
 
@@ -1573,11 +1557,11 @@ export class ApiUtils<T> {
     const records = params.records;
 
     // Set the default report level to 'None'
-    params.reportLevel = params.reportLevel || ApiOperationReportLevel.None;
+    params.reportLevel = params.reportLevel || OperationReportLevel.None;
 
     // Resolve the status file path if provided
     const resolvedStatusFilePath =
-      params.statusFilePath && params.reportLevel !== ApiOperationReportLevel.None
+      params.statusFilePath && params.reportLevel !== OperationReportLevel.None
         ? path.isAbsolute(params.statusFilePath)
           ? params.statusFilePath
           : path.resolve(process.cwd(), params.statusFilePath)
@@ -1644,9 +1628,9 @@ export class ApiUtils<T> {
             // Write successful records if required
             if (
               csvStatusFileWriteStream &&
-              ((operation === 'insert' && params.reportLevel === ApiOperationReportLevel.Inserts) ||
-                (operation !== 'insert' && params.reportLevel !== ApiOperationReportLevel.Errors) ||
-                params.reportLevel === ApiOperationReportLevel.All)
+              ((operation === 'insert' && params.reportLevel === OperationReportLevel.Inserts) ||
+                (operation !== 'insert' && params.reportLevel !== OperationReportLevel.Errors) ||
+                params.reportLevel === OperationReportLevel.All)
             ) {
               csvStatusFileWriteStream.writeObjects({
                 sf__Id: res.id,
@@ -1660,8 +1644,8 @@ export class ApiUtils<T> {
             // Write failed records if required
             if (
               csvStatusFileWriteStream &&
-              ((operation === 'insert' && params.reportLevel !== ApiOperationReportLevel.Inserts) ||
-                (operation !== 'insert' && params.reportLevel !== ApiOperationReportLevel.Inserts))
+              ((operation === 'insert' && params.reportLevel !== OperationReportLevel.Inserts) ||
+                (operation !== 'insert' && params.reportLevel !== OperationReportLevel.Inserts))
             ) {
               const errorMessage = res.errors && res.errors.length > 0 ? res.errors.join('; ') : '';
               csvStatusFileWriteStream.writeObjects({
@@ -1713,7 +1697,7 @@ export class ApiUtils<T> {
    * @returns  A promise that resolves with the job information or `undefined` if an error occurs.
    */
   // eslint-disable-next-line complexity
-  public async updateRestFromFileAsync(params: UpdateJobParameters): Promise<IngestJobInfo | undefined> {
+  public async updateRestFromFileAsync(params: UpdateAsyncParameters): Promise<IngestJobInfo | undefined> {
     // Utility for logging messages and handling errors
     const utils = new CommandUtils(this.command);
 

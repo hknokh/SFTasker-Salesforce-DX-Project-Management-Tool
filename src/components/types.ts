@@ -370,7 +370,7 @@ export type DescribeSObjectResult = {
 /**
  *  which records should be reported after the api operation completes.
  */
-export enum ApiOperationReportLevel {
+export enum OperationReportLevel {
   'None' = 'None',
   'All' = 'All',
   'Errors' = 'Errors',
@@ -425,12 +425,12 @@ export type QueryAsyncParameters = {
  * @property isInnerMetod - Indicates whether the method is inner and should not be called directly.
  * @property progressCallback - A callback function to report progress.
  */
-export type UpdateJobParameters = {
+export type UpdateAsyncParameters = {
   filePath?: string;
   statusFilePath?: string;
   sobjectType: string;
   operation: ApiOperation;
-  reportLevel?: ApiOperationReportLevel;
+  reportLevel?: OperationReportLevel;
   records?: any[];
   projectedCsvRecordsCount?: number;
   useSourceConnection?: boolean;
@@ -450,4 +450,21 @@ export type UpdateJobParameters = {
 export type EngineChoice = {
   shouldUseBulkApi?: boolean;
   shouldQueryAllRecords?: boolean;
+};
+
+/**
+ * Represents a key section in XML metadata.
+ *
+ * @property key - The combined key identifier.
+ * @property isSectionExist - Indicates if the section exists.
+ * @property sectionName - The name of the section.
+ * @property keyName - The name of the key.
+ * @property keyValue - The value of the key.
+ */
+export type XmlSectionKey = {
+  key: string;
+  isSectionExist: boolean;
+  sectionName?: string;
+  keyName?: string;
+  keyValue?: string;
 };

@@ -4,7 +4,7 @@ import { SFtaskerCommand } from '../../components/models.js';
 import { Constants } from '../../components/constants.js';
 import { DataMoveUtils } from '../../components/data-move/data-move-utils.js';
 import { ApiUtils } from '../../components/api-utils.js';
-import { ApiOperationReportLevel, IngestJobInfo } from '../../components/types.js';
+import { OperationReportLevel, IngestJobInfo } from '../../components/types.js';
 import { DataMoveUtilsStatic } from '../../components/data-move/data-move-utils-static.js';
 import { ObjectExtraData } from '../../components/data-move/data-move-models.js';
 //import { ObjectExtraData } from '../../components/data-move/data-move-models.js';
@@ -118,7 +118,7 @@ export default class SftaskerDataMove extends SFtaskerCommand<SftaskerDataMoveRe
     //   filePath: './tmp/import.csv',
     //   statusFilePath: './tmp/status.csv',
     //   operation: 'update',
-    //   reportLevel: ApiOperationReportLevel.Errors,
+    //   reportLevel: OperationReportLevel.Errors,
     //   sobjectType: 'Test_Big_Data_Volume__c',
     //   projectedCsvRecordsCount: 1000,
     //   useSourceConnection: true,
@@ -138,7 +138,7 @@ export default class SftaskerDataMove extends SFtaskerCommand<SftaskerDataMoveRe
       ],
       statusFilePath: './tmp/status2.csv',
       operation: 'update',
-      reportLevel: ApiOperationReportLevel.Errors,
+      reportLevel: OperationReportLevel.Errors,
       sobjectType: 'Test_Big_Data_Volume__c',
       useSourceConnection: true,
       progressCallback: (state: IngestJobInfo) => {
@@ -154,7 +154,7 @@ export default class SftaskerDataMove extends SFtaskerCommand<SftaskerDataMoveRe
       filePath: './tmp/import.csv',
       statusFilePath: './tmp/status3.csv',
       operation: 'insert',
-      reportLevel: ApiOperationReportLevel.All,
+      reportLevel: OperationReportLevel.All,
       sobjectType: 'Test_Big_Data_Volume__c',
       projectedCsvRecordsCount: 1000,
       useSourceConnection: true,
