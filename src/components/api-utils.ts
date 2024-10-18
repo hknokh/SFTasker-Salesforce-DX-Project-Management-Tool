@@ -17,6 +17,7 @@ import { SFtaskerCommand, SObjectDescribe } from './models.js';
 import { CommandUtils } from './command-utils.js';
 import { Utils } from './utils.js';
 import {
+  XmlSectionKey,
   DescribeSObjectResult,
   IngestJob,
   IngestJobInfo,
@@ -27,7 +28,7 @@ import {
   QueryAsyncParameters,
   UpdateAsyncParameters,
   EngineChoice,
-  XmlSectionKey,
+  PollingChoice,
 } from './types.js';
 
 /**
@@ -86,11 +87,11 @@ export class ApiUtils<T> {
   }
 
   /**
-   * Calculates the polling settings based on the number of records to process.
+   * Suggests polling settings for a bulk job based on the number of records to process.
    * @param recordCount The number of records to process.
    * @returns The polling settings for the bulk job.
    */
-  public static calculatePollingSettings(recordCount?: number): { pollInterval: number; pollTimeout: number } {
+  public static suggestPollingSettings(recordCount?: number): PollingChoice {
     recordCount = recordCount || Constants.BULK_API_POLL_RECORD_SCALE_FACTOR;
 
     // Define base interval and timeout for small jobs (under 100K records)
@@ -867,7 +868,7 @@ export class ApiUtils<T> {
         reportProgress();
       }
 
-      const pollingSettings = ApiUtils.calculatePollingSettings();
+      const pollingSettings = ApiUtils.suggestPollingSettings();
       connection.bulk.pollTimeout = pollingSettings.pollTimeout;
 
       const recordStream = await connection.bulk.query(params.query);
@@ -1345,7 +1346,7 @@ export class ApiUtils<T> {
    * @param params  The parameters for the update operation.
    * @returns  A promise that resolves with the number of records processed or `undefined` if an error occurs.
    */
-  public async updateBulk2FromFileAsync(params: UpdateAsyncParameters): Promise<IngestJobInfo | undefined> {
+  public async updateBulkFromFileAsync(params: UpdateAsyncParameters): Promise<IngestJobInfo | undefined> {
     // Utility for logging messages and handling errors
     const utils = new CommandUtils(this.command);
 
@@ -1359,7 +1360,7 @@ export class ApiUtils<T> {
     params.reportLevel = params.reportLevel || OperationReportLevel.None;
 
     // Calculate the polling settings for the bulk2 API
-    const pollingSettings = ApiUtils.calculatePollingSettings(params.projectedCsvRecordsCount);
+    const pollingSettings = ApiUtils.suggestPollingSettings(params.projectedCsvRecordsCount);
 
     // Dynamically set the polling settings for the bulk2 API
     connection.bulk2.pollTimeout = pollingSettings.pollTimeout;
@@ -1487,11 +1488,11 @@ export class ApiUtils<T> {
           (params.operation !== 'insert' && params.reportLevel !== OperationReportLevel.Errors) ||
           params.reportLevel === OperationReportLevel.All
         ) {
-          const resSuccessful = await job.getSuccessfulResults();
-          for (const rec of resSuccessful) {
+          const successfulResults = await job.getSuccessfulResults();
+          for (const result of successfulResults) {
             csvStatusFileWriteStream.writeObjects({
-              sf__Id: rec.sf__Id,
-              sf__Created: rec.sf__Created,
+              sf__Id: result.sf__Id,
+              sf__Created: result.sf__Created,
               sf__Error: '',
               Status: 'Success',
             } as IngestJobResult);
@@ -1499,13 +1500,13 @@ export class ApiUtils<T> {
         }
 
         // For failed results, we need to get the failed results for both insert and update operations
-        const resFailed = await job.getFailedResults();
+        const failedResults = await job.getFailedResults();
         // Write failed statuses
-        for (const rec of resFailed) {
+        for (const result of failedResults) {
           csvStatusFileWriteStream.writeObjects({
-            sf__Id: rec.sf__Id,
+            sf__Id: result.sf__Id,
             sf__Created: 'false',
-            sf__Error: rec.sf__Error,
+            sf__Error: result.sf__Error,
             Status: 'Error',
           } as IngestJobResult);
         }

@@ -453,6 +453,16 @@ export type EngineChoice = {
 };
 
 /**
+ *  Represents the polling settings for the operation.
+ * @property pollInterval - The interval in milliseconds between each poll.
+ * @property pollTimeout - The maximum time to wait for the operation to complete.
+ */
+export type PollingChoice = {
+  pollInterval: number;
+  pollTimeout: number;
+};
+
+/**
  * Represents a key section in XML metadata.
  *
  * @property key - The combined key identifier.
