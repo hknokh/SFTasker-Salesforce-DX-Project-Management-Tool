@@ -1409,7 +1409,8 @@ export class ApiUtils<T> {
 
         if (
           (params.operation === 'insert' && params.reportLevel === ApiOperationReportLevel.Inserts) ||
-          (params.operation !== 'insert' && params.reportLevel !== ApiOperationReportLevel.Errors)
+          (params.operation !== 'insert' && params.reportLevel !== ApiOperationReportLevel.Errors) ||
+          params.reportLevel === ApiOperationReportLevel.All
         ) {
           const resSuccessful = await job.getSuccessfulResults();
           for (const rec of resSuccessful) {
