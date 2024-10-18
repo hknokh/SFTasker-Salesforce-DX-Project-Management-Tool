@@ -1635,7 +1635,7 @@ export class ApiUtils<T> {
             ) {
               csvStatusFileWriteStream.writeObjects({
                 sf__Id: res.id,
-                sf__Created: res.success ? 'true' : 'false',
+                sf__Created: operation === 'insert' ? 'true' : 'false',
                 sf__Error: '',
                 Status: 'Success',
               } as IngestJobResult);
