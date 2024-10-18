@@ -26,6 +26,7 @@ import {
   PackageXmlType,
   QueryAsyncParameters,
   UpdateJobParameters,
+  EngineChoice,
 } from './types.js';
 
 /**
@@ -136,7 +137,7 @@ export class ApiUtils<T> {
     totalRecordsCountForObject: number,
     subsetRecordsCountForObject: number,
     queryAmountsForSubset: number
-  ): { shouldUseBulkApi?: boolean; shouldQueryAllRecords?: boolean } {
+  ): EngineChoice {
     // Calculate the number of REST API jobs needed to query all records
     const restApiJobsForAll = Math.ceil(totalRecordsCountForObject / Constants.REST_API_MAX_RECORDS_PER_CALL);
 
@@ -186,7 +187,7 @@ export class ApiUtils<T> {
    * @param totalRecordsToUpdate Total number of records to update.
    * @returns An object indicating whether to use Bulk API.
    */
-  public static suggestUpdateEngine(totalRecordsToUpdate: number): { shouldUseBulkApi?: boolean } {
+  public static suggestUpdateEngine(totalRecordsToUpdate: number): EngineChoice {
     // Time or cost constants (arbitrary units for comparison)
     const REST_API_BASE_COST_PER_CALL = 0.1;
     const REST_API_COST_PER_RECORD = 0.001;

@@ -266,6 +266,16 @@ export type IngestJob = {
   getFailedResults(): Promise<IngestJobResult[]>;
 };
 
+/**
+ *  Represents the result of an ingest job.
+ */
+export type IngestJobResult = {
+  sf__Id: string;
+  sf__Created?: 'true' | 'false';
+  sf__Error?: string;
+  Status?: 'Success' | 'Error';
+};
+
 // Metadata Types ----------------------------------------------------------------
 
 /**
@@ -356,7 +366,7 @@ export type DescribeSObjectResult = {
   fields: Field[];
 };
 
-// Method Parameters ----------------------------------------------------------------
+// Method Types --------------------------------------------------
 /**
  *  which records should be reported after the api operation completes.
  */
@@ -433,11 +443,11 @@ export type UpdateJobParameters = {
 };
 
 /**
- *  Represents the result of an ingest job.
+ * Which engine to use for the operation.
+ * @property shouldUseBulkApi - Indicates whether to use the Bulk API.
+ * @property shouldQueryAllRecords - Indicates whether to query all records.
  */
-export type IngestJobResult = {
-  sf__Id: string;
-  sf__Created?: 'true' | 'false';
-  sf__Error?: string;
-  Status?: 'Success' | 'Error';
+export type EngineChoice = {
+  shouldUseBulkApi?: boolean;
+  shouldQueryAllRecords?: boolean;
 };
