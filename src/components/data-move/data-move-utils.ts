@@ -717,14 +717,21 @@ export class DataMoveUtils<T> {
 
     for (const objectName of objectSet.deleteObjectsOrder) {
       const object = objectSet.objects.find((obj) => obj.extraData.objectName === objectName) as ScriptObject;
+
       if (object.operation === OPERATION.Delete || object.deleteOldData) {
         // const deleteApiOperation: ApiOperation = object.hardDelete ? 'hardDelete' : 'delete';
+
         // Query deleted records
         const suggestedQueryEngine = ApiUtils.suggestQueryEngine(
           object.extraData.targetTotalRecords,
           object.extraData.targetTotalRecords,
           1
         );
+
+        if (suggestedQueryEngine.skipApiCall) {
+          continue;
+        }
+
         const deleteSourceFilename = path.join(
           objectSet.targetSubDirectory,
           object.getWorkingCSVFileName(OPERATION.Delete, 'target')
@@ -733,6 +740,7 @@ export class DataMoveUtils<T> {
           query: DataMoveUtilsStatic.composeQueryString(object.deleteParsedQuery),
           useSourceConnection: false,
           filePath: deleteSourceFilename,
+          columns: object.deleteParsedQuery.fields,
         } as QueryAsyncParameters;
 
         const deleteQueryResult = suggestedQueryEngine.shouldUseBulkApi

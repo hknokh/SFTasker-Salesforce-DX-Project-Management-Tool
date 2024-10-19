@@ -123,6 +123,12 @@ export class ApiUtils<T> {
     subsetRecordsCount: number,
     queryAmountsForSubset: number
   ): EngineChoice {
+    if (totalRecordsCount <= 0) {
+      return {
+        skipApiCall: true,
+      };
+    }
+
     // Calculate the number of REST API jobs needed to query all records
     const restApiJobsForAll = Math.ceil(totalRecordsCount / Constants.REST_API_MAX_RECORDS_PER_CALL);
 
@@ -173,6 +179,12 @@ export class ApiUtils<T> {
    * @returns An object indicating the best API to use for updating records.
    */
   public static suggestUpdateEngine(totalRecordsCount: number): EngineChoice {
+    if (totalRecordsCount <= 0) {
+      return {
+        skipApiCall: true,
+      };
+    }
+
     // Time or cost constants (arbitrary units for comparison)
     const REST_API_BASE_COST_PER_CALL = 0.1;
     const REST_API_COST_PER_RECORD = 0.001;
@@ -940,8 +952,11 @@ export class ApiUtils<T> {
         throw err;
       });
 
+      let completed = false;
       void once(queryStream, 'error').then(([err]) => {
-        throw err;
+        if (!completed) {
+          throw err;
+        }
       });
 
       // Process the data stream
@@ -950,6 +965,10 @@ export class ApiUtils<T> {
       let columnsCount = 0;
 
       for await (const chunk of queryStream) {
+        if (typeof chunk == 'string' && chunk.includes('Records not found')) {
+          csvTargetFileWriteStream.write(params.columns?.join(',') + os.EOL);
+          break;
+        }
         // eslint-disable-next-line @typescript-eslint/no-unsafe-call
         let dataBuffer: string = chunk.toString(Constants.DEFAULT_ENCODING);
         if (lastIncompleteLine) {
@@ -994,6 +1013,8 @@ export class ApiUtils<T> {
 
         columns = false;
       }
+
+      completed = true;
 
       // End the write stream after processing
       csvTargetFileWriteStream.end();

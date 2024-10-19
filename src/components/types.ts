@@ -405,6 +405,7 @@ export type ApiOperation = 'insert' | 'update' | 'delete' | 'hardDelete';
  * @property filePath - The path to the file to write the results to.
  * @property appendToExistingFile - Indicates whether to append to an existing file.
  * @property useSourceConnection - Indicates whether to use the source connection.
+ * @property columns - The columns to include in the query results.
  * @property recordCallback - A callback function to process each record.
  * @property progressCallback - A callback function to report progress.
  */
@@ -413,6 +414,7 @@ export type QueryAsyncParameters = {
   filePath?: string;
   appendToExistingFile?: boolean;
   useSourceConnection?: boolean;
+  columns?: string[];
   /**
    *  A callback function to process each record.
    * @param rawRecord  - The raw record returned by the query.
@@ -463,10 +465,12 @@ export type UpdateAsyncParameters = {
  * Which engine to use for the operation.
  * @property shouldUseBulkApi - Indicates whether to use the Bulk API.
  * @property shouldQueryAllRecords - Indicates whether to query all records.
+ * @property skipApiCall - Indicates whether to skip the API call.
  */
 export type EngineChoice = {
   shouldUseBulkApi?: boolean;
   shouldQueryAllRecords?: boolean;
+  skipApiCall?: boolean;
 };
 
 /**
