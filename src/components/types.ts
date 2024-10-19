@@ -198,6 +198,7 @@ export type FastSafeStringify = (
  * @param numberRecordsFailed - The number of records failed.
  * @param state - The state of the job.
  * @param errorMessage - The error message if the job failed.
+ * @param jobId - The ID of the job.
  */
 export type IngestJobInfo = {
   recordCount?: number;
@@ -214,12 +215,19 @@ export type IngestJobInfo = {
     | 'Aborted'
     | 'Failed';
   errorMessage?: string;
+  jobId?: string;
+  engine?: string;
 };
 
 /**
  * Defines the structure and methods of a Bulk2 Job.
  */
 export type IngestJob = {
+  /**
+   * The ID of the job.
+   */
+  id: string;
+
   /**
    * Opens the job for data upload.
    * @returns A promise that resolves when the job is successfully opened.
@@ -274,6 +282,15 @@ export type IngestJobResult = {
   sf__Created?: 'true' | 'false';
   sf__Error?: string;
   Status?: 'Success' | 'Error';
+};
+
+/**
+ *  Represents the info of a query job.
+ */
+export type QueryJobInfo = {
+  recordCount: number;
+  filteredRecordCount: number;
+  engine: string;
 };
 
 // Metadata Types ----------------------------------------------------------------
@@ -393,7 +410,7 @@ export type ApiOperation = 'insert' | 'update' | 'delete' | 'hardDelete';
  */
 export type QueryAsyncParameters = {
   query: string;
-  filePath: string;
+  filePath?: string;
   appendToExistingFile?: boolean;
   useSourceConnection?: boolean;
   /**
@@ -408,7 +425,7 @@ export type QueryAsyncParameters = {
    * @param recordCount - The number of records processed.
    * @param filteredRecordCount - The number of records that match the filter criteria.
    */
-  progressCallback?: (recordCount: number, filteredRecordCount: number) => void;
+  progressCallback?: (params: QueryJobInfo) => void;
 };
 
 /**

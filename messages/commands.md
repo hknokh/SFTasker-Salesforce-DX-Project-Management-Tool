@@ -50,13 +50,13 @@ Command %s started...
 
 Command %s finished!
 
+# command.source-and-target-org-is-same
+
+[NOTE] The same source and target orgs are detected.
+
 # errors.target-org-or-csv-required
 
 Either the --target-org or --csv-target flag is required.
-
-# errors.source-org-or-csv-required
-
-Either the --source-org or --csv-source flag is required.
 
 # errors.csv-source-and-target
 

@@ -1,6 +1,6 @@
 import { Constants } from '../constants.js';
 import { Utils } from '../utils.js';
-import { ObjectExtraData, ScriptObject } from './data-move-models.js';
+import { ObjectExtraData, ParsedQuery, ScriptObject } from './data-move-models.js';
 
 /**
  * Utility class containing static methods for data movement operations.
@@ -10,11 +10,12 @@ export class DataMoveUtilsStatic {
    * Parses the query string and returns the fields, object name, where clause, limit, offset, and any object name mappings.
    *
    * @param queryString - The query string to parse.
+   * @params ctor - The constructor function for the parsed query object.
    * @returns An object containing parsed query details.
    */
-  public static parseQueryString(queryString: string): ObjectExtraData {
+  public static parseQueryString<T extends ParsedQuery>(queryString: string, ctor: new (...args: any[]) => T): T {
     // Initialize a map for object name mappings
-    const lookupObjectMapping = new Map<string, string>();
+    const lookupObjectNameMapping = new Map<string, string>();
 
     // Initialize variables to hold query components
     let fields: string[] = [];
@@ -31,7 +32,7 @@ export class DataMoveUtilsStatic {
         // Check for polymorphic field separator and map object names if present
         if (field.includes(Constants.DATA_MOVE_CONSTANTS.POLYMORPHIC_FIELD_SEPARATOR)) {
           const fieldParts = field.split(Constants.DATA_MOVE_CONSTANTS.POLYMORPHIC_FIELD_SEPARATOR);
-          lookupObjectMapping.set(fieldParts[0], fieldParts[1]);
+          lookupObjectNameMapping.set(fieldParts[0], fieldParts[1]);
           field = fieldParts[0];
         }
         return field;
@@ -58,59 +59,102 @@ export class DataMoveUtilsStatic {
     }
 
     // Return the parsed query details encapsulated in an ObjectExtraData instance
-    return new ObjectExtraData({
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-call
+    return new ctor({
       fields,
       objectName,
       where,
       limit,
       offset,
-      lookupObjectNameMapping: lookupObjectMapping,
+      lookupObjectNameMapping,
     });
   }
 
   /**
    * Composes a query string from the parsed query object, optionally using target object names and fields.
    *
-   * @param object - The script object containing query details.
-   * @param useTarget - Whether to use the target object name and fields in the query. Defaults to false.
+   * @typeparam T - The type of the parsed query object.
+   * @param parsedQuery - The parsed query object to compose.
+   * @param useTarget - Whether to use target object names and fields.
+   * @param fields - The fields to use in the SELECT clause.
+   * @param removeLimits - Whether to remove the LIMIT and OFFSET clauses.
    * @returns The composed query string.
    */
-  public static composeQueryString(object: ScriptObject, useTarget: boolean = false): string {
+  public static composeQueryString<T extends ParsedQuery>(
+    parsedQuery: T,
+    useTarget: boolean = false,
+    fields?: string[],
+    removeLimits?: boolean
+  ): string {
     let queryString = '';
 
-    const query = object.extraData;
-    const fieldMapping = object.extraData.fieldMapping;
+    if (parsedQuery instanceof ObjectExtraData) {
+      const extraData: ObjectExtraData = parsedQuery as ObjectExtraData;
+      const fieldMapping = extraData.sourceToTargetFieldMapping;
 
-    // Add SELECT clause with fields or default to 'Id' if no fields are provided
-    if (query.fields && query.fields.length > 0) {
-      const fieldsString = !useTarget
-        ? query.fields.join(', ')
-        : query.fields.map((field) => fieldMapping.get(field) ?? field).join(', ');
-      queryString += `SELECT ${fieldsString}`;
+      // Add SELECT clause with fields or default to 'Id' if no fields are provided
+      const fieldsToUse = fields ?? extraData.fields;
+      if (fieldsToUse && fieldsToUse.length > 0) {
+        const fieldsString = !useTarget
+          ? fieldsToUse.join(', ')
+          : fieldsToUse.map((field) => fieldMapping.get(field) ?? field).join(', ');
+        queryString += `SELECT ${fieldsString}`;
+      } else {
+        queryString += 'SELECT Id'; // Default field
+      }
+
+      // Add FROM clause with the appropriate object name
+      if (extraData.objectName) {
+        queryString += ` FROM ${useTarget ? extraData.targetObjectName : extraData.objectName}`;
+      } else {
+        queryString += ' FROM Account'; // Default object
+      }
+
+      // Add WHERE clause if present
+      if (extraData.where) {
+        queryString += ` WHERE ${useTarget ? extraData.targetWhere : extraData.where} `;
+      }
+
+      // Add LIMIT clause if present
+      if (typeof extraData.limit === 'number' && extraData.limit > 0 && !removeLimits) {
+        queryString += ` LIMIT ${extraData.limit} `;
+      }
+
+      // Add OFFSET clause if present
+      if (typeof extraData.offset === 'number' && extraData.offset > 0 && !removeLimits) {
+        queryString += ` OFFSET ${extraData.offset} `;
+      }
     } else {
-      queryString += 'SELECT Id'; // Default field
-    }
+      const fieldsToUse = fields ?? parsedQuery.fields;
 
-    // Add FROM clause with the appropriate object name
-    if (query.objectName) {
-      queryString += ` FROM ${useTarget ? object.extraData.targetObjectName : query.objectName}`;
-    } else {
-      queryString += ' FROM Account'; // Default object
-    }
+      // Add SELECT clause with fields or default to 'Id' if no fields are provided
+      if (fieldsToUse && fieldsToUse.length > 0) {
+        queryString += `SELECT ${fieldsToUse.join(', ')}`;
+      } else {
+        queryString += 'SELECT Id'; // Default field
+      }
 
-    // Add WHERE clause if present
-    if (query.where) {
-      queryString += ` WHERE ${useTarget ? query.targetWhere : query.where} `;
-    }
+      // Add FROM clause with the appropriate object name
+      if (parsedQuery.objectName) {
+        queryString += ` FROM ${parsedQuery.objectName}`;
+      } else {
+        queryString += ' FROM Account'; // Default object
+      }
 
-    // Add LIMIT clause if present
-    if (typeof query.limit === 'number') {
-      queryString += ` LIMIT ${query.limit} `;
-    }
+      // Add WHERE clause if present
+      if (parsedQuery.where) {
+        queryString += ` WHERE ${parsedQuery.where} `;
+      }
 
-    // Add OFFSET clause if present
-    if (typeof query.offset === 'number') {
-      queryString += ` OFFSET ${query.offset} `;
+      // Add LIMIT clause if present
+      if (typeof parsedQuery.limit === 'number' && parsedQuery.limit > 0) {
+        queryString += ` LIMIT ${parsedQuery.limit} `;
+      }
+
+      // Add OFFSET clause if present
+      if (typeof parsedQuery.offset === 'number' && parsedQuery.offset > 0) {
+        queryString += ` OFFSET ${parsedQuery.offset} `;
+      }
     }
 
     // Return the composed query string, trimmed of any extra whitespace

@@ -84,11 +84,11 @@ Target
 
 # progress.querying-records
 
-[%s] Querying records... Query string: %s
+[%s : %s] Querying records... Query string: %s
 
 # success.querying-records
 
-[%s] %d records queried successfully.
+[%s : %s] %d records queried successfully.
 
 # error.querying-records
 
@@ -96,11 +96,11 @@ Target
 
 # progress.updating-records-from-file
 
-[%s : %s] %s records using the file '%s'...
+[%s : %s : %s] %s records using the file '%s'...
 
 # progress.updating-records-from-array
 
-[%s : %s] %s records...
+[%s : %s : %s] %s records...
 
 # error.updating-records
 

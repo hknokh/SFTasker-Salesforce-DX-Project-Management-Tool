@@ -53,6 +53,14 @@ Loading script file %s...
 
 [Object-Set #%s : %s] External ID field '%s' not found in metadata...
 
+# error.delete-query-object-mismatch
+
+[Object-Set #%s : %s] Delete query object mismatch. Expected '%s', found '%s'...
+
+# error.delete-query-missing-delete-old-data-and-update-operation
+
+[Object-Set #%s : %s] Delete query should be specified when operation is `Update` and `deleteOldData` is `true`...
+
 # process.processing-object-set-configurations
 
 Processing %s object set configurations...
@@ -72,3 +80,39 @@ Processing %s object set configurations...
 # error.missing-object-in-metadata
 
 [Object-Set #%s : %s] Object '%s' not found in metadata...
+
+# process.creating-object-process-order
+
+[Object-Set #%s] Creating object process order...
+
+# process.object-order-for-update
+
+[Object-Set #%s] Object order for update: %s
+
+# process.object-order-for-delete
+
+[Object-Set #%s] Object order for delete: %s
+
+# process.counting-total-records
+
+[Object-Set #%s : %s : %s] Counting total records...
+
+# process.counting-total-records
+
+[Object-Set #%s : %s : %s] Counting total records...
+
+# process.total-records-counted
+
+[Object-Set #%s : %s : %s] Total records counted: %s
+
+# error.lookup-field-referenced-object-delete-operation
+
+[Object-Set #%s : %s] Lookup field '%s' references an object that has a delete operation: '%s'.
+
+# process.no-objects-to-delete
+
+[Object-Set #%s] No objects to delete...
+
+# process.deleting-records
+
+[Object-Set #%s] Deleting records...

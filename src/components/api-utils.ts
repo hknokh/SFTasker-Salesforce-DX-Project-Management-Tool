@@ -830,19 +830,19 @@ export class ApiUtils<T> {
 
     try {
       // Log a message indicating the start of the query process
-      utils.logComponentMessage('progress.querying-records', label, params.query);
+      utils.logComponentMessage('progress.querying-records', Constants.SFORCE_API_ENGINES.BULK, label, params.query);
 
       // Resolve the file path to an absolute path if it is not already
-      const resolvedFilePath = path.isAbsolute(params.filePath)
+      const resolvedFilePath = path.isAbsolute(params.filePath!)
         ? params.filePath
-        : path.resolve(process.cwd(), params.filePath);
+        : path.resolve(process.cwd(), params.filePath!);
 
       // Check if the file already exists and decide whether to write headers
-      const fileExists = fs.existsSync(resolvedFilePath);
+      const fileExists = fs.existsSync(resolvedFilePath!);
       const writeHeaders = !params.appendToExistingFile || !fileExists;
 
       // Create a write stream to write the query results to the file
-      const csvTargetFileWriteStream = fs.createWriteStream(resolvedFilePath, {
+      const csvTargetFileWriteStream = fs.createWriteStream(resolvedFilePath!, {
         flags: writeHeaders ? 'w' : 'a',
         highWaterMark: Constants.DEFAULT_FILE_WRITE_STREAM_HIGH_WATER_MARK,
         encoding: Constants.DEFAULT_ENCODING,
@@ -856,7 +856,11 @@ export class ApiUtils<T> {
       // Function to report progress at regular intervals
       const reportProgress = (): void => {
         if (params.progressCallback && recordCount !== lastRecordsCountReported) {
-          params.progressCallback(recordCount, filteredRecordCount);
+          params.progressCallback({
+            recordCount,
+            filteredRecordCount,
+            engine: Constants.SFORCE_API_ENGINES.BULK,
+          });
           lastRecordsCountReported = recordCount;
         }
       };
@@ -1003,7 +1007,12 @@ export class ApiUtils<T> {
       // Final progress report
       reportProgress();
 
-      utils.logComponentMessage('success.querying-records', label, recordCount.toString());
+      utils.logComponentMessage(
+        'success.querying-records',
+        Constants.SFORCE_API_ENGINES.BULK,
+        label,
+        recordCount.toString()
+      );
 
       return recordCount;
     } catch (err) {
@@ -1039,19 +1048,19 @@ export class ApiUtils<T> {
 
     try {
       // Log a message indicating the start of the query process
-      utils.logComponentMessage('progress.querying-records', label, params.query);
+      utils.logComponentMessage('progress.querying-records', Constants.SFORCE_API_ENGINES.REST, label, params.query);
 
       // Resolve the file path to an absolute path if it is not already
-      const resolvedFilePath = path.isAbsolute(params.filePath)
+      const resolvedFilePath = path.isAbsolute(params.filePath!)
         ? params.filePath
-        : path.resolve(process.cwd(), params.filePath);
+        : path.resolve(process.cwd(), params.filePath!);
 
       // Check if the file already exists and decide whether to write headers
-      const fileExists = fs.existsSync(resolvedFilePath);
+      const fileExists = fs.existsSync(resolvedFilePath!);
       const writeHeaders = !params.appendToExistingFile || !fileExists;
 
       // Create a write stream to write the query results to the file
-      const csvTargetFileWriteStream = fs.createWriteStream(resolvedFilePath, {
+      const csvTargetFileWriteStream = fs.createWriteStream(resolvedFilePath!, {
         flags: writeHeaders ? 'w' : 'a',
         highWaterMark: Constants.DEFAULT_FILE_WRITE_STREAM_HIGH_WATER_MARK,
         encoding: Constants.DEFAULT_ENCODING,
@@ -1064,7 +1073,11 @@ export class ApiUtils<T> {
 
       const reportProgress = (): void => {
         if (params.progressCallback && recordCount !== lastRecordsCountReported) {
-          params.progressCallback(recordCount, filteredRecordCount);
+          params.progressCallback({
+            recordCount,
+            filteredRecordCount,
+            engine: Constants.SFORCE_API_ENGINES.REST,
+          });
           lastRecordsCountReported = recordCount;
         }
       };
@@ -1082,8 +1095,8 @@ export class ApiUtils<T> {
           const records: any[] = [];
           const queryOptions = {
             autoFetch: true,
-            maxFetch: Constants.DATA_MOVE_CONSTANTS.MAX_FETCH_LIMIT,
-            headers: Constants.DATA_MOVE_CONSTANTS.SFORCE_API_CALL_HEADERS,
+            maxFetch: Constants.MAX_FETCH_LIMIT,
+            headers: Constants.SFORCE_API_CALL_HEADERS,
           };
           void connection
             .query(params.query)
@@ -1149,7 +1162,12 @@ export class ApiUtils<T> {
       reportProgress();
 
       // Log a success message indicating the number of records processed
-      utils.logComponentMessage('success.querying-records', label, recordCount.toString());
+      utils.logComponentMessage(
+        'success.querying-records',
+        Constants.SFORCE_API_ENGINES.REST,
+        label,
+        recordCount.toString()
+      );
 
       return recordCount;
     } catch (err) {
@@ -1184,7 +1202,7 @@ export class ApiUtils<T> {
 
     try {
       // Log a message indicating the start of the query process
-      utils.logComponentMessage('progress.querying-records', label, params.query);
+      utils.logComponentMessage('progress.querying-records', Constants.SFORCE_API_ENGINES.REST, label, params.query);
 
       // Track the number of records processed
       let recordCount = 0;
@@ -1193,7 +1211,11 @@ export class ApiUtils<T> {
 
       const reportProgress = (): void => {
         if (params.progressCallback && recordCount !== lastRecordsCountReported) {
-          params.progressCallback(recordCount, filteredRecordCount);
+          params.progressCallback({
+            recordCount,
+            filteredRecordCount,
+            engine: Constants.SFORCE_API_ENGINES.REST,
+          });
           lastRecordsCountReported = recordCount;
         }
       };
@@ -1211,8 +1233,8 @@ export class ApiUtils<T> {
           const records: any[] = [];
           const queryOptions = {
             autoFetch: true,
-            maxFetch: Constants.DATA_MOVE_CONSTANTS.MAX_FETCH_LIMIT,
-            headers: Constants.DATA_MOVE_CONSTANTS.SFORCE_API_CALL_HEADERS,
+            maxFetch: Constants.MAX_FETCH_LIMIT,
+            headers: Constants.SFORCE_API_CALL_HEADERS,
           };
           void connection
             .query(params.query)
@@ -1248,7 +1270,12 @@ export class ApiUtils<T> {
       reportProgress();
 
       // Log a success message indicating the number of records processed
-      utils.logComponentMessage('success.querying-records', label, recordCount.toString());
+      utils.logComponentMessage(
+        'success.querying-records',
+        Constants.SFORCE_API_ENGINES.REST,
+        label,
+        recordCount.toString()
+      );
 
       // eslint-disable-next-line @typescript-eslint/no-unsafe-return
       return data;
@@ -1284,12 +1311,12 @@ export class ApiUtils<T> {
     await connection.sobject('Account').update([], {
       allOrNone: true,
       allowRecursive: true,
-      headers: Constants.DATA_MOVE_CONSTANTS.SFORCE_API_CALL_HEADERS,
+      headers: Constants.SFORCE_API_CALL_HEADERS,
     });
 
     try {
       // Log a message indicating the start of the query process
-      utils.logComponentMessage('progress.querying-records', label, params.query);
+      utils.logComponentMessage('progress.querying-records', Constants.SFORCE_API_ENGINES.REST, label, params.query);
 
       // Track the number of records processed
       let recordCount = 0;
@@ -1297,14 +1324,18 @@ export class ApiUtils<T> {
 
       const reportProgress = (): void => {
         if (params.progressCallback) {
-          params.progressCallback(recordCount, filteredRecordCount);
+          params.progressCallback({
+            recordCount,
+            filteredRecordCount,
+            engine: Constants.SFORCE_API_ENGINES.REST,
+          });
         }
       };
 
       const queryOptions = {
         autoFetch: true,
-        maxFetch: Constants.DATA_MOVE_CONSTANTS.MAX_FETCH_LIMIT,
-        headers: Constants.DATA_MOVE_CONSTANTS.SFORCE_API_CALL_HEADERS,
+        maxFetch: Constants.MAX_FETCH_LIMIT,
+        headers: Constants.SFORCE_API_CALL_HEADERS,
       };
 
       // Report initial progress
@@ -1329,7 +1360,12 @@ export class ApiUtils<T> {
       reportProgress();
 
       // Log a success message indicating the number of records processed
-      utils.logComponentMessage('success.querying-records', label, data.length.toString());
+      utils.logComponentMessage(
+        'success.querying-records',
+        Constants.SFORCE_API_ENGINES.REST,
+        label,
+        data.length.toString()
+      );
 
       // eslint-disable-next-line @typescript-eslint/no-unsafe-return
       return data;
@@ -1388,12 +1424,14 @@ export class ApiUtils<T> {
       : undefined;
 
     try {
+      // eslint-disable-next-line prefer-const
       let job: IngestJob;
 
       // Log a message indicating the start of the query process
       utils.logComponentMessage(
         'progress.updating-records-from-file',
         params.sobjectType,
+        Constants.SFORCE_API_ENGINES.BULK2,
         label,
         Utils.capitalizeFirstLetter(params.operation),
         Utils.shortenFilePath(params.filePath!)
@@ -1405,11 +1443,19 @@ export class ApiUtils<T> {
         numberRecordsFailed: 0,
         recordCount: -1,
         state: 'Initializing',
+        jobId: '',
+        engine: Constants.SFORCE_API_ENGINES.BULK2,
       };
 
       // Function to report progress
       const reportProgress = (jobInfo?: Partial<IngestJobInfo>): void => {
-        jobInfo = { ...lastJobInfo, ...jobInfo };
+        jobInfo = {
+          ...lastJobInfo,
+          ...jobInfo,
+          ...{
+            jobId: job?.id,
+          },
+        };
         const recordCount = jobInfo.numberRecordsProcessed! + jobInfo.numberRecordsFailed!;
         if (
           params.progressCallback &&
@@ -1583,6 +1629,7 @@ export class ApiUtils<T> {
       utils.logComponentMessage(
         'progress.updating-records-from-array',
         sobjectType,
+        Constants.SFORCE_API_ENGINES.REST,
         label,
         Utils.capitalizeFirstLetter(operation)
       );
@@ -1593,6 +1640,7 @@ export class ApiUtils<T> {
         numberRecordsFailed: 0,
         recordCount: records?.length,
         state: 'InProgress',
+        engine: Constants.SFORCE_API_ENGINES.REST,
       };
 
       // Report progress at the start
@@ -1721,6 +1769,7 @@ export class ApiUtils<T> {
       utils.logComponentMessage(
         'progress.updating-records-from-file',
         sobjectType,
+        Constants.SFORCE_API_ENGINES.REST,
         label,
         Utils.capitalizeFirstLetter(operation),
         Utils.shortenFilePath(resolvedFilePath!)

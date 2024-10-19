@@ -1,11 +1,12 @@
 import fs from 'node:fs';
+import path from 'node:path';
 import { CommandUtils } from '../command-utils.js';
 import { Constants } from '../constants.js';
-import { DataOriginType } from '../types.js';
+import { DataOriginType, QueryAsyncParameters } from '../types.js';
 import { SFtaskerCommand, SObjectDescribe, SObjectFieldDescribe } from '../models.js';
 import { Utils } from '../utils.js';
 import { ApiUtils } from '../api-utils.js';
-import { Script, ScriptObject, ScriptObjectSet } from './data-move-models.js';
+import { ObjectExtraData, ParsedQuery, Script, ScriptObject, ScriptObjectSet } from './data-move-models.js';
 import { DataMoveUtilsStatic } from './data-move-utils-static.js';
 import { OPERATION } from './data-move-types.js';
 
@@ -223,25 +224,54 @@ export class DataMoveUtils<T> {
   }
 
   /**
-   * Processes an object by parsing its query, describing it, and preparing its fields.
+   *  Sets up the object data for processing.
    *
    * @param object The object to process.
    * @param objectSet The object set containing the object.
    * @returns A promise that resolves when the object is processed.
    */
-  public async objectProcessAsync(object: ScriptObject, objectSet: ScriptObjectSet): Promise<void> {
+  public async prepareObjectDataAsync(object: ScriptObject, objectSet: ScriptObjectSet): Promise<void> {
     // Initialize command utilities
     const comUtils = new CommandUtils(this.command);
 
     // Create extraData object ****************************************************
     // Parse the object's query string into structured data
-    object.extraData = DataMoveUtilsStatic.parseQueryString(object.query);
+    object.extraData = DataMoveUtilsStatic.parseQueryString(object.query, ObjectExtraData);
+
+    // Parse the object's delete query string into structured data
+    if (object.deleteQuery) {
+      object.deleteParsedQuery = DataMoveUtilsStatic.parseQueryString(object.deleteQuery, ParsedQuery);
+    } else {
+      if (object.operation === OPERATION.Update && object.deleteOldData) {
+        comUtils.throwCommandError(
+          'error.delete-query-missing-delete-old-data-and-update-operation',
+          objectSet.index.toString(),
+          object.extraData.objectName
+        );
+      }
+      object.deleteParsedQuery = new ParsedQuery(Utils.deepClone(object.extraData));
+    }
+    object.deleteParsedQuery.fields = ['Id'];
+    if (object.extraData.objectName !== object.deleteParsedQuery.objectName) {
+      comUtils.throwCommandError(
+        'error.delete-query-object-mismatch',
+        objectSet.index.toString(),
+        object.extraData.objectName,
+        object.extraData.objectName,
+        object.deleteParsedQuery.objectName
+      );
+    }
 
     // Assign objectSet reference to the object ***********************************
     object.objectSet = objectSet;
 
     // Map the object name to its target counterpart ******************************
     object.extraData.targetObjectName = DataMoveUtilsStatic.mapObjectName(object.extraData.objectName, object);
+
+    // Adjust the delete query object name if it's different from the main object name
+    if (object.deleteParsedQuery) {
+      object.deleteParsedQuery.objectName = object.extraData.targetObjectName;
+    }
 
     // Describe the object to retrieve metadata ***********************************
     await this.describeObjectAsync(object);
@@ -348,6 +378,10 @@ export class DataMoveUtils<T> {
           object.extraData.lookupObjectNameMapping.get(field) || fieldDescribe.referenceTo?.[0];
         object.extraData.lookupObjectNameMapping.set(field, referencedObjectName as string);
 
+        if (referencedObjectName === fieldDescribe.referenceTo?.[0] && fieldDescribe.isMasterDetail) {
+          object.extraData.masterDetailObjectNameMapping.set(field, referencedObjectName as string);
+        }
+
         // Exclude the field if the referenced object is in the excluded objects list
         if (objectSet.excludedObjects.includes(referencedObjectName as string)) {
           comUtils.logCommandMessage(
@@ -420,7 +454,7 @@ export class DataMoveUtils<T> {
     objectSet.objects.push(object);
 
     // Process the newly created object
-    await this.objectProcessAsync(object, objectSet);
+    await this.prepareObjectDataAsync(object, objectSet);
 
     return object;
   }
@@ -430,7 +464,7 @@ export class DataMoveUtils<T> {
    *
    * @param object The object to post-process.
    */
-  public objectPostProcess(object: ScriptObject): void {
+  public finalizeObject(object: ScriptObject): void {
     // Initialize command utilities
     const comUtils = new CommandUtils(this.command);
 
@@ -463,14 +497,29 @@ export class DataMoveUtils<T> {
         const referencedObject = object.objectSet.objects.find(
           (obj) => obj.extraData.objectName === referencedObjectName
         ) as ScriptObject;
-        const _rField = `${DataMoveUtilsStatic.getRField(field)}.${referencedObject.externalId}`;
 
-        // Map the reference field to the original field
-        object.extraData.lookupObjectNameMapping.set(_rField, field);
+        // Check whether the referenced object has Delete operation
+        if (referencedObject.operation === OPERATION.Delete) {
+          comUtils.throwCommandError(
+            'error.lookup-field-referenced-object-delete-operation',
+            object.objectSet.index.toString(),
+            object.extraData.objectName,
+            field,
+            referencedObjectName as string
+          );
+        }
+
+        const _rField = `${DataMoveUtilsStatic.getRField(field)}.${referencedObject.externalId}`;
 
         // Set up bidirectional field mappings
         object.extraData.lookupFieldMapping.set(field, _rField);
         object.extraData.lookupFieldMapping.set(_rField, field);
+
+        // Map the reference field to its parent object name
+        object.extraData.lookupObjectNameMapping.set(_rField, referencedObjectName!);
+        if (fieldDescribe.isMasterDetail) {
+          object.extraData.masterDetailObjectNameMapping.set(_rField, referencedObjectName!);
+        }
 
         // Map the reference object
         object.extraData.lookupObjectMapping.set(field, referencedObject);
@@ -493,7 +542,7 @@ export class DataMoveUtils<T> {
 
     // Map each field to its target counterpart
     object.extraData.fields.forEach((field) => {
-      object.extraData.fieldMapping.set(field, DataMoveUtilsStatic.mapField(field, object));
+      object.extraData.sourceToTargetFieldMapping.set(field, DataMoveUtilsStatic.mapField(field, object));
     });
 
     // Determine the target external ID based on whether it's missing or not
@@ -508,7 +557,7 @@ export class DataMoveUtils<T> {
         Constants.DATA_MOVE_CONSTANTS.COMPLEX_EXTERNAL_ID_SEPARATOR
       );
       externalIdParts.forEach((part, index) => {
-        object.extraData.fieldMapping.set(part, targetExternalIdParts[index]);
+        object.extraData.sourceToTargetFieldMapping.set(part, targetExternalIdParts[index]);
       });
     }
 
@@ -516,8 +565,7 @@ export class DataMoveUtils<T> {
     object.extraData.targetWhere = DataMoveUtilsStatic.mapWhereClause(object.extraData.where, object);
   }
 
-  // Process methods -----------------------------------------------------------
-
+  // Process Helper methods -----------------------------------------------------------
   /**
    * Loads the script from the configuration file, sets up directories, and initializes object sets.
    *
@@ -568,9 +616,19 @@ export class DataMoveUtils<T> {
       // Remove any empty object sets
       this.script.objectSets = this.script.objectSets.filter((objectSet) => objectSet.objects.length > 0);
 
-      // Assign index numbers to each object set
+      // Assign index numbers to each object set and reference the script
       this.script.objectSets.forEach((objectSet, index) => {
+        // Set the object set index and script reference
         objectSet.index = index + 1;
+        objectSet.script = this.script;
+        // Create source directory for CSV files
+        objectSet.sourceSubDirectory = comUtils.createConfigDirectory(
+          path.join(Constants.DATA_MOVE_CONSTANTS.CSV_SOURCE_SUB_DIRECTORY, objectSet.getTemporarySubDirectory())
+        ) as string;
+        // Create target directory for CSV files
+        objectSet.targetSubDirectory = comUtils.createConfigDirectory(
+          path.join(Constants.DATA_MOVE_CONSTANTS.CSV_TARGET_SUB_DIRECTORY, objectSet.getTemporarySubDirectory())
+        ) as string;
       });
     } else {
       // Throw an error if the configuration file does not exist
@@ -579,12 +637,127 @@ export class DataMoveUtils<T> {
   }
 
   /**
-   *  Initializes the data move command by processing each object in each object set.
-   *  Prepares the objects for data movement operations.
+   *  Counts the total number of records for all objects in an object set.
+   * @param objectSet  The object set to count records for.
+   * @param useSourceConnection  Whether to use the source connection for counting records.
+   */
+  public async countTotalObjectSetRecordsAsync(
+    objectSet: ScriptObjectSet,
+    useSourceConnection: boolean
+  ): Promise<void> {
+    // Initialize command utilities
+    const comUtils = new CommandUtils(this.command);
+    const apiUtils = new ApiUtils(this.command, this.tempDir);
+
+    // Determine which connection label to use for logging
+    const label = useSourceConnection ? this.command.sourceConnectionLabel : this.command.targetConnectionLabel;
+
+    for (const object of objectSet.objects) {
+      let parsedQuery: ParsedQuery = object.extraData;
+
+      if (object.operation === OPERATION.Delete) {
+        // For delete operation we need to count the total records from the delete query as it will be used to delete the records
+        parsedQuery = object.deleteParsedQuery;
+      }
+
+      // Log the total number of records for each object
+      comUtils.logCommandMessage(
+        'process.counting-total-records',
+        objectSet.index.toString(),
+        object.extraData.objectName,
+        label
+      );
+
+      const query = DataMoveUtilsStatic.composeQueryString(
+        parsedQuery,
+        !useSourceConnection,
+        ['COUNT(Id) CNT'],
+        !object.master
+      );
+      const result = await apiUtils.queryRestToMemorySimpleAsync({
+        query,
+        useSourceConnection,
+      });
+
+      if (useSourceConnection) {
+        object.extraData.totalRecords = result?.[0]['CNT'] as number;
+      } else {
+        object.extraData.targetTotalRecords = result?.[0]['CNT'] as number;
+      }
+
+      comUtils.logCommandMessage(
+        'process.total-records-counted',
+        objectSet.index.toString(),
+        object.extraData.objectName,
+        label,
+        (useSourceConnection ? object.extraData.totalRecords : object.extraData.targetTotalRecords).toString()
+      );
+    }
+  }
+
+  /**
+   * Delete objects records from the target org.
+   * Applied to objects having `Delete` operation or `deleteOldData` property set to true.
+   * @param objectSet  The object set to delete records for.
+   */
+  public async deleteObjectSetRecordsAsync(objectSet: ScriptObjectSet): Promise<void> {
+    // Initialize command utilities
+    const comUtils = new CommandUtils(this.command);
+    const apiUtils = new ApiUtils(this.command, this.tempDir);
+
+    const isObjectToDeleteExists = objectSet.objects.some(
+      (obj) => obj.operation === OPERATION.Delete || obj.deleteOldData
+    );
+    if (!isObjectToDeleteExists) {
+      comUtils.logCommandMessage('process.no-objects-to-delete', objectSet.index.toString());
+      return;
+    }
+
+    comUtils.logCommandMessage('process.deleting-records', objectSet.index.toString());
+
+    for (const objectName of objectSet.deleteObjectsOrder) {
+      const object = objectSet.objects.find((obj) => obj.extraData.objectName === objectName) as ScriptObject;
+      if (object.operation === OPERATION.Delete || object.deleteOldData) {
+        // const deleteApiOperation: ApiOperation = object.hardDelete ? 'hardDelete' : 'delete';
+        // Query deleted records
+        const suggestedQueryEngine = ApiUtils.suggestQueryEngine(
+          object.extraData.targetTotalRecords,
+          object.extraData.targetTotalRecords,
+          1
+        );
+        const deleteSourceFilename = path.join(
+          objectSet.targetSubDirectory,
+          object.getWorkingCSVFileName(OPERATION.Delete, 'target')
+        );
+        const queryRequest = {
+          query: DataMoveUtilsStatic.composeQueryString(object.deleteParsedQuery),
+          useSourceConnection: false,
+          filePath: deleteSourceFilename,
+        } as QueryAsyncParameters;
+
+        const deleteQueryResult = suggestedQueryEngine.shouldUseBulkApi
+          ? await apiUtils.queryBulkToFileAsync(queryRequest)
+          : await apiUtils.queryRestToFileAsync(queryRequest);
+
+        this.command.info(`Deleted ${deleteQueryResult} records`);
+
+        // Mark the object as completed when it is a delete operation, so no further processing is required
+        if (object.operation === OPERATION.Delete) {
+          object.completed = true;
+        }
+      }
+    }
+  }
+
+  // ------------------------------------------------------------------------------------------
+  // Process methods --------------------------------------------------------------------------
+  // ------------------------------------------------------------------------------------------
+  /**
+   *  Prepares the data move command by processing each object in each object set.
    *
    * @returns  A promise that resolves when the command is initialized.
    */
-  public async initializeCommandAsync(): Promise<void> {
+  public async prepareCommandAsync(): Promise<void> {
     // Initialize command utilities
     const comUtils = new CommandUtils(this.command);
 
@@ -601,7 +774,7 @@ export class DataMoveUtils<T> {
     for (const objectSet of this.script.objectSets) {
       for (const object of objectSet.objects) {
         // Process the object asynchronously
-        await this.objectProcessAsync(object, objectSet);
+        await this.prepareObjectDataAsync(object, objectSet);
       }
     }
 
@@ -622,8 +795,51 @@ export class DataMoveUtils<T> {
     // Post-process each object in each object set ******************************************
     for (const objectSet of this.script.objectSets) {
       for (const object of objectSet.objects) {
-        this.objectPostProcess(object);
+        this.finalizeObject(object);
       }
+    }
+  }
+
+  /**
+   *  Creates the order of objects in which they should be processed.
+   */
+  public createProcessObjectOrder(): void {
+    // Initialize command utilities
+    const comUtils = new CommandUtils(this.command);
+
+    for (const objectSet of this.script.objectSets) {
+      objectSet.updateObjectsOrder = objectSet.getObjectOrder();
+      comUtils.logCommandMessage(
+        'process.object-order-for-update',
+        objectSet.index.toString(),
+        objectSet.updateObjectsOrder.join(', ')
+      );
+      objectSet.deleteObjectsOrder = [...objectSet.updateObjectsOrder].reverse();
+      comUtils.logCommandMessage(
+        'process.object-order-for-delete',
+        objectSet.index.toString(),
+        objectSet.deleteObjectsOrder.join(', ')
+      );
+    }
+  }
+
+  /**
+   * Counts the total number of records to be processed for each object in each object set.
+   */
+  public async countTotalRecordsAsync(): Promise<void> {
+    for (const objectSet of this.script.objectSets) {
+      await this.countTotalObjectSetRecordsAsync(objectSet, true);
+      await this.countTotalObjectSetRecordsAsync(objectSet, false);
+    }
+  }
+
+  /**
+   * Processes the data move command by moving data from the source to the target.
+   */
+  public async processCommandAsync(): Promise<void> {
+    // Process each object in each object set
+    for (const objectSet of this.script.objectSets) {
+      await this.deleteObjectSetRecordsAsync(objectSet);
     }
   }
 }

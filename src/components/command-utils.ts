@@ -62,6 +62,9 @@ export class CommandUtils<T> {
     this.command.componentsMessages = messages.componentsMessages;
     this.command.flags = flags;
 
+    // Log a message indicating the start of the command execution.
+    this.logCommandStartMessage();
+
     // Manage internal flags
     // Assign additional flags based on metadata name to flag mapping
     Object.assign(flags, Constants.PACKAGE_XML_METADATA_NAME_TO_FLAG_MAPPING[flags.type as AvailableMetadataTypes]);
@@ -75,7 +78,7 @@ export class CommandUtils<T> {
         }
         // Check if the source org connection is provided
         if (!flags['source-org'] && !flags['csv-source']) {
-          comUtils.throwCommandError('errors.source-org-or-csv-required');
+          this.command.sourceConnectionSameAsTarget = true;
         }
         // Ensure both CSV source and target are not provided simultaneously
         if (flags['csv-source'] && flags['csv-target']) {
@@ -100,8 +103,17 @@ export class CommandUtils<T> {
 
     // Source Connection
     // Assign the source org connection and org ID to the command object
-    this.command.sourceConnection = flags['source-org']?.getConnection(flags['api-version'] as string) as Connection;
-    this.command.sourceOrgId = flags['source-org']?.getOrgId() as string;
+    if (!this.command.sourceConnectionSameAsTarget) {
+      this.command.sourceConnection = flags['source-org']?.getConnection(flags['api-version'] as string) as Connection;
+      this.command.sourceOrgId = flags['source-org']?.getOrgId() as string;
+    } else {
+      this.command.sourceConnection = this.command.connection;
+      this.command.sourceOrgId = this.command.orgId;
+    }
+
+    if (this.command.orgId === this.command.sourceOrgId) {
+      this.command.sourceConnectionSameAsTarget = true;
+    }
 
     // Set the target connection label from components messages
     this.command.targetConnectionLabel = this.command.componentsMessages.getMessage('label.target-connection');
@@ -121,6 +133,10 @@ export class CommandUtils<T> {
       this.command.orgId = this.command.sourceOrgId;
       // Set the target data origin type to CSV file
       this.command.targetDataOriginType = DataOriginType.csvfile;
+    }
+
+    if (this.command.sourceDataOriginType) {
+      comUtils.logCommandMessage('command.source-and-target-org-is-same');
     }
   }
 

@@ -95,9 +95,6 @@ export default class SftaskerMergeMeta extends SFtaskerCommand<SftaskerMergeMeta
     // Set up the command instance with the necessary messages and flags.
     commandUtils.setupCommandInstance(messages, flags);
 
-    // Log a message indicating the start of the command execution.
-    commandUtils.logCommandStartMessage();
-
     // Create a temporary directory for the command execution.
     const tempPath = commandUtils.createTempDirectory();
 

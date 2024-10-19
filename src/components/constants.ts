@@ -52,6 +52,9 @@ export class Constants {
    */
   public static readonly API_JOB_INTERNAL_POLLING_INTERVAL = 5000;
 
+  /** The maximum number of characters allowed in a SOQL WHERE clause. */
+  public static readonly MAX_SOQL_WHERE_CLAUSE_CHARACTER_LENGTH = 3900;
+
   /** The default encoding used for reading and writing files. */
   public static readonly DEFAULT_ENCODING = 'utf8';
 
@@ -60,6 +63,21 @@ export class Constants {
 
   /** The default high water mark for read streams. */
   public static readonly DEFAULT_FILE_READ_STREAM_HIGH_WATER_MARK = 64 * 1024;
+
+  /** The maximum number of records to fetch in a single query. */
+  public static readonly MAX_FETCH_LIMIT = 100_000;
+
+  /** The http request headers for Salesforce API calls. */
+  public static readonly SFORCE_API_CALL_HEADERS = {
+    'Sforce-Call-Options': 'client=sftasker',
+  };
+
+  /** The supported Salesforce API engines. */
+  public static readonly SFORCE_API_ENGINES = {
+    REST: 'REST',
+    BULK: 'Bulk V1',
+    BULK2: 'Bulk V2',
+  };
 
   /** Maps metadata types to their corresponding section keys in the metadata file. */
   public static readonly METADATA_SECTION_KEY_MAPPING = {
@@ -260,9 +278,6 @@ export class Constants {
     encoding: Constants.DEFAULT_ENCODING, // Use the default encoding
   };
 
-  /** The maximum number of characters allowed in a SOQL WHERE clause. */
-  public static readonly MAX_SOQL_WHERE_CLAUSE_CHARACTER_LENGTH = 3900;
-
   /** Constants used specifically in the data-move command. */
   public static readonly DATA_MOVE_CONSTANTS = {
     /** The default relative path to the configuration file. */
@@ -279,6 +294,8 @@ export class Constants {
     POLYMORPHIC_FIELD_SEPARATOR: '$',
     /** SOQL keyword to select all fields. */
     ALL_FIELDS_KEYWORD: 'all',
+    /** The prefix for the object set sub-directory. */
+    OBJECT_SET_SUB_DIRECTORY_PREFIX: 'object-set-',
 
     /** Fields to exclude from the data move process per object. */
     EXCLUDED_FIELDS: new Map<string, string[]>([
@@ -295,13 +312,5 @@ export class Constants {
       ['User', 'Username'],
       ['RecordType', 'DeveloperName;NamespacePrefix;SobjectType'],
     ]),
-
-    /** The maximum number of records to fetch in a single query. */
-    MAX_FETCH_LIMIT: 100_000,
-
-    /** The http request headers for Salesforce API calls. */
-    SFORCE_API_CALL_HEADERS: {
-      'Sforce-Call-Options': 'client=sftasker',
-    },
   };
 }
