@@ -2,7 +2,13 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { CommandUtils } from '../command-utils.js';
 import { Constants } from '../constants.js';
-import { DataOriginType, QueryAsyncParameters } from '../types.js';
+import {
+  ApiOperation,
+  DataOriginType,
+  OperationReportLevel,
+  QueryAsyncParameters,
+  UpdateAsyncParameters,
+} from '../types.js';
 import { SFtaskerCommand, SObjectDescribe, SObjectFieldDescribe } from '../models.js';
 import { Utils } from '../utils.js';
 import { ApiUtils } from '../api-utils.js';
@@ -719,37 +725,66 @@ export class DataMoveUtils<T> {
       const object = objectSet.objects.find((obj) => obj.extraData.objectName === objectName) as ScriptObject;
 
       if (object.operation === OPERATION.Delete || object.deleteOldData) {
-        // const deleteApiOperation: ApiOperation = object.hardDelete ? 'hardDelete' : 'delete';
+        const deleteApiOperation: ApiOperation = object.hardDelete ? 'hardDelete' : 'delete';
 
-        // Query deleted records
+        // Create the name of the file to store the target records to delete while querying
+        const deleteTargetFilePath = path.join(
+          objectSet.targetSubDirectory,
+          object.getWorkingCSVFileName(OPERATION.Delete, 'target')
+        );
+        const deleteTargetStatusFilePath = path.join(
+          objectSet.targetSubDirectory,
+          object.getWorkingCSVFileName(OPERATION.Delete, 'target', true)
+        );
+
+        // Query records to delete +++++++
+        // Determine the suggested query engine based on the total records to delete
         const suggestedQueryEngine = ApiUtils.suggestQueryEngine(
           object.extraData.targetTotalRecords,
           object.extraData.targetTotalRecords,
           1
         );
 
+        // Skip the API call if the suggested query engine indicates to do so
         if (suggestedQueryEngine.skipApiCall) {
           continue;
         }
 
-        const deleteSourceFilename = path.join(
-          objectSet.targetSubDirectory,
-          object.getWorkingCSVFileName(OPERATION.Delete, 'target')
-        );
-        const queryRequest = {
+        // Make the query to delete the records
+        const deleteQueryParams = {
           query: DataMoveUtilsStatic.composeQueryString(object.deleteParsedQuery),
           useSourceConnection: false,
-          filePath: deleteSourceFilename,
+          filePath: deleteTargetFilePath,
           columns: object.deleteParsedQuery.fields,
+          progressCallback: apiUtils.getQueryProgressCallback(),
         } as QueryAsyncParameters;
 
         const deleteQueryResult = suggestedQueryEngine.shouldUseBulkApi
-          ? await apiUtils.queryBulkToFileAsync(queryRequest)
-          : await apiUtils.queryRestToFileAsync(queryRequest);
+          ? await apiUtils.queryBulkToFileAsync(deleteQueryParams)
+          : await apiUtils.queryRestToFileAsync(deleteQueryParams);
 
+        // Delete records +++++++
+        const deleteParams = {
+          operation: deleteApiOperation,
+          sobjectType: object.deleteParsedQuery.objectName,
+          filePath: deleteTargetFilePath,
+          reportLevel: OperationReportLevel.Errors,
+          statusFilePath: deleteTargetStatusFilePath,
+          useSourceConnection: false,
+          progressCallback: apiUtils.getUpdateProgressCallback(),
+        } as UpdateAsyncParameters;
+
+        const suggestedUpdateEngine = ApiUtils.suggestUpdateEngine(object.extraData.targetTotalRecords);
+        if (suggestedUpdateEngine.shouldUseBulkApi) {
+          await apiUtils.updateBulkFromFileAsync(deleteParams);
+        } else {
+          await apiUtils.updateRestFromFileAsync(deleteParams);
+        }
+
+        // Log the deletion of records +++++++
         this.command.info(`Deleted ${deleteQueryResult} records`);
 
-        // Mark the object as completed when it is a delete operation, so no further processing is required
+        // Mark the object as completed when it is a delete operation. +++++++
         if (object.operation === OPERATION.Delete) {
           object.completed = true;
         }

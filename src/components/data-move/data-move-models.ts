@@ -190,11 +190,15 @@ export class ScriptObject {
    * @param sourceOrTarget  Source or target object.
    * @returns
    */
-  public getWorkingCSVFileName(operation: OPERATION, sourceOrTarget: 'source' | 'target'): string {
+  public getWorkingCSVFileName(
+    operation: OPERATION,
+    sourceOrTarget: 'source' | 'target',
+    isStatusFile?: boolean
+  ): string {
     if (sourceOrTarget === 'source') {
-      return `${this.extraData.objectName}_${operation}_${sourceOrTarget}.csv`;
+      return `${this.extraData.objectName}_${operation}_${sourceOrTarget}${isStatusFile ? '_status' : ''}.csv`;
     }
-    return `${this.extraData.targetObjectName}_${operation}_${sourceOrTarget}.csv`;
+    return `${this.extraData.targetObjectName}_${operation}_${sourceOrTarget}${isStatusFile ? '_status' : ''}.csv`;
   }
 }
 

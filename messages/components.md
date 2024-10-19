@@ -117,3 +117,11 @@ No records provided for updating.
 # error.invalid-operation
 
 Invalid operation: %s.
+
+# progress.querying-records
+
+[%s] Querying records... Total records queried: %d. Total records written: %d
+
+# progress.updating-records
+
+[%s : %s : %s] Updating records... State: %s. Succeeded records: %d. Failed records: %d

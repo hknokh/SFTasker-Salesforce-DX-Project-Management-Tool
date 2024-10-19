@@ -217,6 +217,7 @@ export type IngestJobInfo = {
   errorMessage?: string;
   jobId?: string;
   engine?: string;
+  operation?: string;
 };
 
 /**

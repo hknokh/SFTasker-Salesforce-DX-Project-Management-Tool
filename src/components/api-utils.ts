@@ -29,6 +29,7 @@ import {
   UpdateAsyncParameters,
   EngineChoice,
   PollingChoice,
+  QueryJobInfo,
 } from './types.js';
 
 /**
@@ -1466,6 +1467,7 @@ export class ApiUtils<T> {
         state: 'Initializing',
         jobId: '',
         engine: Constants.SFORCE_API_ENGINES.BULK2,
+        operation: params.operation,
       };
 
       // Function to report progress
@@ -1662,6 +1664,7 @@ export class ApiUtils<T> {
         recordCount: records?.length,
         state: 'InProgress',
         engine: Constants.SFORCE_API_ENGINES.REST,
+        operation: params.operation,
       };
 
       // Report progress at the start
@@ -1680,7 +1683,10 @@ export class ApiUtils<T> {
           result = await connection.sobject(sobjectType).update(records!, { allowRecursive: true });
           break;
         case 'delete':
-          result = await connection.sobject(sobjectType).del(records!, { allowRecursive: true });
+          result = await connection.sobject(sobjectType).delete(
+            records!.map((record) => record['Id'] as string),
+            { allowRecursive: true }
+          );
           break;
         default:
           utils.throwError('error.invalid-operation', operation);
@@ -1827,5 +1833,40 @@ export class ApiUtils<T> {
       // Handle any errors that occur during the operation
       utils.throwWithErrorMessage(err as Error, 'error.updating-records', sobjectType, label);
     }
+  }
+
+  /**
+   *  Logs the query job information.
+   * @param info  The query job information to log.
+   */
+  public getQueryProgressCallback(): (info: QueryJobInfo) => void {
+    return (info: QueryJobInfo): void => {
+      const comUtils = new CommandUtils(this.command);
+      comUtils.logComponentMessage(
+        'progress.querying-records',
+        info.engine,
+        info.recordCount.toString(),
+        info.filteredRecordCount.toString()
+      );
+    };
+  }
+
+  /**
+   *  Logs the ingest job information.
+   * @param info  The ingest job information to log.
+   */
+  public getUpdateProgressCallback(): (info: IngestJobInfo) => void {
+    return (info: IngestJobInfo): void => {
+      const comUtils = new CommandUtils(this.command);
+      comUtils.logComponentMessage(
+        'progress.updating-records',
+        info.engine as any,
+        info.operation as any,
+        info.jobId as any,
+        info.state,
+        info.numberRecordsProcessed.toString(),
+        info.numberRecordsFailed.toString()
+      );
+    };
   }
 }
