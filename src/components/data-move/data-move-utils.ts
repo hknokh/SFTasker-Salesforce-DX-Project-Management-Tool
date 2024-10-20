@@ -5,8 +5,9 @@ import { Constants } from '../constants.js';
 import {
   ApiOperation,
   DataOriginType,
-  OperationReportLevel,
+  IngestJobInfo,
   QueryAsyncParameters,
+  QueryJobInfo,
   UpdateAsyncParameters,
 } from '../types.js';
 import { SFtaskerCommand, SObjectDescribe, SObjectFieldDescribe } from '../models.js';
@@ -246,7 +247,7 @@ export class DataMoveUtils<T> {
 
     // Parse the object's delete query string into structured data
     if (object.deleteQuery) {
-      object.deleteParsedQuery = DataMoveUtilsStatic.parseQueryString(object.deleteQuery, ParsedQuery);
+      object.extraData.deleteParsedQuery = DataMoveUtilsStatic.parseQueryString(object.deleteQuery, ParsedQuery);
     } else {
       if (object.operation === OPERATION.Update && object.deleteOldData) {
         comUtils.throwCommandError(
@@ -255,16 +256,16 @@ export class DataMoveUtils<T> {
           object.extraData.objectName
         );
       }
-      object.deleteParsedQuery = new ParsedQuery(Utils.deepClone(object.extraData));
+      object.extraData.deleteParsedQuery = new ParsedQuery(Utils.deepClone(object.extraData));
     }
-    object.deleteParsedQuery.fields = ['Id'];
-    if (object.extraData.objectName !== object.deleteParsedQuery.objectName) {
+    object.extraData.deleteParsedQuery.fields = ['Id'];
+    if (object.extraData.objectName !== object.extraData.deleteParsedQuery.objectName) {
       comUtils.throwCommandError(
         'error.delete-query-object-mismatch',
         objectSet.index.toString(),
         object.extraData.objectName,
         object.extraData.objectName,
-        object.deleteParsedQuery.objectName
+        object.extraData.deleteParsedQuery.objectName
       );
     }
 
@@ -275,8 +276,8 @@ export class DataMoveUtils<T> {
     object.extraData.targetObjectName = DataMoveUtilsStatic.mapObjectName(object.extraData.objectName, object);
 
     // Adjust the delete query object name if it's different from the main object name
-    if (object.deleteParsedQuery) {
-      object.deleteParsedQuery.objectName = object.extraData.targetObjectName;
+    if (object.extraData.deleteParsedQuery) {
+      object.extraData.deleteParsedQuery.objectName = object.extraData.targetObjectName;
     }
 
     // Describe the object to retrieve metadata ***********************************
@@ -571,6 +572,51 @@ export class DataMoveUtils<T> {
     object.extraData.targetWhere = DataMoveUtilsStatic.mapWhereClause(object.extraData.where, object);
   }
 
+  /**
+   *  Logs the query job information.
+   * @param info  The query job information to log.
+   */
+  public getQueryProgressCallback(object: ScriptObject, useSourceConnection?: boolean): (info: QueryJobInfo) => void {
+    return (info: QueryJobInfo): void => {
+      const comUtils = new CommandUtils(this.command);
+      const label = useSourceConnection ? this.command.sourceConnectionLabel : this.command.targetConnectionLabel;
+      const objectName = useSourceConnection ? object.extraData.objectName : object.extraData.targetObjectName;
+      comUtils.logCommandMessage(
+        'progress.querying-records-progress',
+        object.objectSet.index.toString(),
+        objectName,
+        label,
+        info.engine,
+        info.recordCount.toString(),
+        info.filteredRecordCount.toString()
+      );
+    };
+  }
+
+  /**
+   *  Logs the ingest job information.
+   * @param info  The ingest job information to log.
+   */
+  public getUpdateProgressCallback(object: ScriptObject, useSourceConnection?: boolean): (info: IngestJobInfo) => void {
+    return (info: IngestJobInfo): void => {
+      const comUtils = new CommandUtils(this.command);
+      const label = useSourceConnection ? this.command.sourceConnectionLabel : this.command.targetConnectionLabel;
+      const objectName = useSourceConnection ? object.extraData.objectName : object.extraData.targetObjectName;
+      comUtils.logCommandMessage(
+        'progress.updating-records-progress',
+        object.objectSet.index.toString(),
+        objectName,
+        label,
+        info.engine as any,
+        info.operation as any,
+        !info.jobId ? 'No bulk job' : info.jobId,
+        info.state,
+        info.numberRecordsProcessed.toString(),
+        info.numberRecordsFailed.toString()
+      );
+    };
+  }
+
   // Process Helper methods -----------------------------------------------------------
   /**
    * Loads the script from the configuration file, sets up directories, and initializes object sets.
@@ -647,7 +693,7 @@ export class DataMoveUtils<T> {
    * @param objectSet  The object set to count records for.
    * @param useSourceConnection  Whether to use the source connection for counting records.
    */
-  public async countTotalObjectSetRecordsAsync(
+  public async countObjectSetTotalRecordsAsync(
     objectSet: ScriptObjectSet,
     useSourceConnection: boolean
   ): Promise<void> {
@@ -659,11 +705,37 @@ export class DataMoveUtils<T> {
     const label = useSourceConnection ? this.command.sourceConnectionLabel : this.command.targetConnectionLabel;
 
     for (const object of objectSet.objects) {
-      let parsedQuery: ParsedQuery = object.extraData;
+      if (!useSourceConnection && (object.operation === OPERATION.Delete || object.deleteOldData)) {
+        comUtils.logCommandMessage(
+          'process.counting-total-records-for-delete',
+          objectSet.index.toString(),
+          object.extraData.deleteParsedQuery.objectName,
+          label
+        );
+        const query = DataMoveUtilsStatic.composeQueryString(
+          object.extraData.deleteParsedQuery,
+          false,
+          ['COUNT(Id) CNT'],
+          !object.master
+        );
+        const result = await apiUtils.queryRestToMemorySimpleAsync({
+          query,
+          useSourceConnection: false,
+        });
 
-      if (object.operation === OPERATION.Delete) {
-        // For delete operation we need to count the total records from the delete query as it will be used to delete the records
-        parsedQuery = object.deleteParsedQuery;
+        object.extraData.targetTotalRecordsToDelete = result?.[0]['CNT'] as number;
+
+        comUtils.logCommandMessage(
+          'process.total-records-delete-counted',
+          objectSet.index.toString(),
+          object.extraData.deleteParsedQuery.objectName,
+          label,
+          object.extraData.targetTotalRecordsToDelete.toString()
+        );
+
+        if (object.operation === OPERATION.Delete) {
+          continue;
+        }
       }
 
       // Log the total number of records for each object
@@ -675,11 +747,12 @@ export class DataMoveUtils<T> {
       );
 
       const query = DataMoveUtilsStatic.composeQueryString(
-        parsedQuery,
+        object.extraData,
         !useSourceConnection,
         ['COUNT(Id) CNT'],
         !object.master
       );
+
       const result = await apiUtils.queryRestToMemorySimpleAsync({
         query,
         useSourceConnection,
@@ -689,6 +762,9 @@ export class DataMoveUtils<T> {
         object.extraData.totalRecords = result?.[0]['CNT'] as number;
       } else {
         object.extraData.targetTotalRecords = result?.[0]['CNT'] as number;
+        if (object.deleteOldData) {
+          object.extraData.targetTotalRecords -= object.extraData.targetTotalRecordsToDelete;
+        }
       }
 
       comUtils.logCommandMessage(
@@ -711,10 +787,10 @@ export class DataMoveUtils<T> {
     const comUtils = new CommandUtils(this.command);
     const apiUtils = new ApiUtils(this.command, this.tempDir);
 
-    const isObjectToDeleteExists = objectSet.objects.some(
-      (obj) => obj.operation === OPERATION.Delete || obj.deleteOldData
+    const isDeleteActionRequired = objectSet.objects.some(
+      (obj) => (obj.operation === OPERATION.Delete || obj.deleteOldData) && obj.extraData.targetTotalRecordsToDelete > 0
     );
-    if (!isObjectToDeleteExists) {
+    if (!isDeleteActionRequired) {
       comUtils.logCommandMessage('process.no-objects-to-delete', objectSet.index.toString());
       return;
     }
@@ -727,12 +803,12 @@ export class DataMoveUtils<T> {
       if (object.operation === OPERATION.Delete || object.deleteOldData) {
         const deleteApiOperation: ApiOperation = object.hardDelete ? 'hardDelete' : 'delete';
 
-        // Create the name of the file to store the target records to delete while querying
-        const deleteTargetFilePath = path.join(
+        //  Create the name of the file to store the records to delete +++++++
+        const deletionRecordsFilePath = path.join(
           objectSet.targetSubDirectory,
           object.getWorkingCSVFileName(OPERATION.Delete, 'target')
         );
-        const deleteTargetStatusFilePath = path.join(
+        const deletionStatusFilePath = path.join(
           objectSet.targetSubDirectory,
           object.getWorkingCSVFileName(OPERATION.Delete, 'target', true)
         );
@@ -740,8 +816,8 @@ export class DataMoveUtils<T> {
         // Query records to delete +++++++
         // Determine the suggested query engine based on the total records to delete
         const suggestedQueryEngine = ApiUtils.suggestQueryEngine(
-          object.extraData.targetTotalRecords,
-          object.extraData.targetTotalRecords,
+          object.extraData.targetTotalRecordsToDelete,
+          object.extraData.targetTotalRecordsToDelete,
           1
         );
 
@@ -752,29 +828,30 @@ export class DataMoveUtils<T> {
 
         // Make the query to delete the records
         const deleteQueryParams = {
-          query: DataMoveUtilsStatic.composeQueryString(object.deleteParsedQuery),
           useSourceConnection: false,
-          filePath: deleteTargetFilePath,
-          columns: object.deleteParsedQuery.fields,
-          progressCallback: apiUtils.getQueryProgressCallback(),
+          query: DataMoveUtilsStatic.composeQueryString(object.extraData.deleteParsedQuery),
+          filePath: deletionRecordsFilePath,
+          columns: object.extraData.deleteParsedQuery.fields,
+          progressCallback: this.getQueryProgressCallback(object),
         } as QueryAsyncParameters;
 
-        const deleteQueryResult = suggestedQueryEngine.shouldUseBulkApi
-          ? await apiUtils.queryBulkToFileAsync(deleteQueryParams)
-          : await apiUtils.queryRestToFileAsync(deleteQueryParams);
+        if (suggestedQueryEngine.shouldUseBulkApi) {
+          await apiUtils.queryBulkToFileAsync(deleteQueryParams);
+        } else {
+          await apiUtils.queryRestToFileAsync(deleteQueryParams);
+        }
 
         // Delete records +++++++
         const deleteParams = {
           operation: deleteApiOperation,
-          sobjectType: object.deleteParsedQuery.objectName,
-          filePath: deleteTargetFilePath,
-          reportLevel: OperationReportLevel.Errors,
-          statusFilePath: deleteTargetStatusFilePath,
           useSourceConnection: false,
-          progressCallback: apiUtils.getUpdateProgressCallback(),
+          sobjectType: object.extraData.deleteParsedQuery.objectName,
+          filePath: deletionRecordsFilePath,
+          statusFilePath: deletionStatusFilePath,
+          progressCallback: this.getUpdateProgressCallback(object),
         } as UpdateAsyncParameters;
 
-        const suggestedUpdateEngine = ApiUtils.suggestUpdateEngine(object.extraData.targetTotalRecords);
+        const suggestedUpdateEngine = ApiUtils.suggestUpdateEngine(object.extraData.targetTotalRecordsToDelete);
         if (suggestedUpdateEngine.shouldUseBulkApi) {
           await apiUtils.updateBulkFromFileAsync(deleteParams);
         } else {
@@ -782,8 +859,6 @@ export class DataMoveUtils<T> {
         }
 
         // Log the deletion of records +++++++
-        this.command.info(`Deleted ${deleteQueryResult} records`);
-
         // Mark the object as completed when it is a delete operation. +++++++
         if (object.operation === OPERATION.Delete) {
           object.completed = true;
@@ -871,8 +946,8 @@ export class DataMoveUtils<T> {
    */
   public async countTotalRecordsAsync(): Promise<void> {
     for (const objectSet of this.script.objectSets) {
-      await this.countTotalObjectSetRecordsAsync(objectSet, true);
-      await this.countTotalObjectSetRecordsAsync(objectSet, false);
+      await this.countObjectSetTotalRecordsAsync(objectSet, true);
+      await this.countObjectSetTotalRecordsAsync(objectSet, false);
     }
   }
 

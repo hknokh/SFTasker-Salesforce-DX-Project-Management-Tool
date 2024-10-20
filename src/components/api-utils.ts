@@ -29,7 +29,6 @@ import {
   UpdateAsyncParameters,
   EngineChoice,
   PollingChoice,
-  QueryJobInfo,
 } from './types.js';
 
 /**
@@ -1415,7 +1414,7 @@ export class ApiUtils<T> {
     const connection: Connection = params.useSourceConnection ? this.command.sourceConnection : this.command.connection;
 
     // Set the default report level to 'Errors'
-    params.reportLevel = params.reportLevel || OperationReportLevel.None;
+    params.reportLevel = params.reportLevel || OperationReportLevel.Errors;
 
     // Calculate the polling settings for the bulk2 API
     const pollingSettings = ApiUtils.suggestPollingSettings(params.projectedCsvRecordsCount);
@@ -1627,7 +1626,7 @@ export class ApiUtils<T> {
     const records = params.records;
 
     // Set the default report level to 'None'
-    params.reportLevel = params.reportLevel || OperationReportLevel.None;
+    params.reportLevel = params.reportLevel || OperationReportLevel.Errors;
 
     // Resolve the status file path if provided
     const resolvedStatusFilePath =
@@ -1833,40 +1832,5 @@ export class ApiUtils<T> {
       // Handle any errors that occur during the operation
       utils.throwWithErrorMessage(err as Error, 'error.updating-records', sobjectType, label);
     }
-  }
-
-  /**
-   *  Logs the query job information.
-   * @param info  The query job information to log.
-   */
-  public getQueryProgressCallback(): (info: QueryJobInfo) => void {
-    return (info: QueryJobInfo): void => {
-      const comUtils = new CommandUtils(this.command);
-      comUtils.logComponentMessage(
-        'progress.querying-records',
-        info.engine,
-        info.recordCount.toString(),
-        info.filteredRecordCount.toString()
-      );
-    };
-  }
-
-  /**
-   *  Logs the ingest job information.
-   * @param info  The ingest job information to log.
-   */
-  public getUpdateProgressCallback(): (info: IngestJobInfo) => void {
-    return (info: IngestJobInfo): void => {
-      const comUtils = new CommandUtils(this.command);
-      comUtils.logComponentMessage(
-        'progress.updating-records',
-        info.engine as any,
-        info.operation as any,
-        info.jobId as any,
-        info.state,
-        info.numberRecordsProcessed.toString(),
-        info.numberRecordsFailed.toString()
-      );
-    };
   }
 }

@@ -97,13 +97,17 @@ Processing %s object set configurations...
 
 [Object-Set #%s : %s : %s] Counting total records...
 
-# process.counting-total-records
+# process.counting-total-records-for-delete
 
-[Object-Set #%s : %s : %s] Counting total records...
+[Object-Set #%s : %s : %s] Counting total records for delete...
 
 # process.total-records-counted
 
 [Object-Set #%s : %s : %s] Total records counted: %s
+
+# process.total-records-delete-counted
+
+[Object-Set #%s : %s : %s] Total records for delete counted: %s
 
 # error.lookup-field-referenced-object-delete-operation
 
@@ -116,3 +120,11 @@ Processing %s object set configurations...
 # process.deleting-records
 
 [Object-Set #%s] Deleting records...
+
+# progress.querying-records-progress
+
+[Object-Set #%s : %s : %s : %s] Querying records... Total records queried: %d
+
+# progress.updating-records-progress
+
+[Object-Set #%s : %s : %s : %s : %s : %s] Updating records... State: %s. Succeeded records: %d. Failed records: %d

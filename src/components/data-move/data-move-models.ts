@@ -62,6 +62,12 @@ export class ObjectExtraData extends ParsedQuery {
   /** The total number of records in the target object without filtering. */
   public targetTotalRecords = 0;
 
+  /** The total number of records to be deleted from the target object. */
+  public targetTotalRecordsToDelete = 0;
+
+  /** Parsed query to fetch the records to be deleted from the target object. */
+  public deleteParsedQuery!: ParsedQuery;
+
   /**
    * Constructs an instance of ObjectExtraData.
    *
@@ -162,9 +168,6 @@ export class ScriptObject {
 
   /** Extra data of the object. */
   public extraData!: ObjectExtraData;
-
-  /** Parsed query to fetch the records to be deleted from the target object. */
-  public deleteParsedQuery!: ParsedQuery;
 
   /** Object set this object belongs to. */
   public objectSet!: ScriptObjectSet;
