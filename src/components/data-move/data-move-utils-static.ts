@@ -75,19 +75,19 @@ export class DataMoveUtilsStatic {
    *
    * @typeparam T - The type of the parsed query object.
    * @param parsedQuery - The parsed query object to compose.
-   * @param useTarget - Whether to use target object names and fields.
+   * @param useSourceconnection - Whether to use the source connection object name and fields.
    * @param fields - The fields to use in the SELECT clause.
    * @param removeLimits - Whether to remove the LIMIT and OFFSET clauses.
    * @returns The composed query string.
    */
   public static composeQueryString<T extends ParsedQuery>(
     parsedQuery: T,
-    useTarget: boolean = false,
+    useSourceconnection?: boolean,
     fields?: string[],
     removeLimits?: boolean
   ): string {
     let queryString = '';
-
+    const useTarget = !useSourceconnection;
     if (parsedQuery instanceof ObjectExtraData) {
       const extraData: ObjectExtraData = parsedQuery as ObjectExtraData;
       const fieldMapping = extraData.sourceToTargetFieldMapping;

@@ -629,6 +629,26 @@ export class DataMoveUtils<T> {
     };
   }
 
+  // eslint-disable-next-line class-methods-use-this
+  public getQueryRecordCallback(object: ScriptObject, useSourceConnection?: boolean): (rawRecord: any) => any {
+    const externalIdFields = object.externalId.split(Constants.DATA_MOVE_CONSTANTS.COMPLEX_EXTERNAL_ID_SEPARATOR);
+    return (rawRecord: any): any => {
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-call
+      const externalId = externalIdFields
+        .reduce((acc, field) => {
+          acc.push(String(rawRecord[field] || 'NULL'));
+          return acc;
+        }, new Array<string>())
+        .join(Constants.DATA_MOVE_CONSTANTS.COMPLEX_EXTERNAL_ID_SEPARATOR);
+      if (useSourceConnection) {
+        object.extraData.sourceIdToExternalIdMapping.set(rawRecord.Id, externalId);
+      } else {
+        object.extraData.targetIdToExternalIdMapping.set(rawRecord.Id, externalId);
+      }
+      return rawRecord;
+    };
+  }
+
   // Process Helper methods -----------------------------------------------------------
   /**
    * Loads the script from the configuration file, sets up directories, and initializes object sets.
@@ -759,7 +779,7 @@ export class DataMoveUtils<T> {
 
       const query = DataMoveUtilsStatic.composeQueryString(
         object.extraData,
-        !useSourceConnection,
+        useSourceConnection,
         ['COUNT(Id) CNT'],
         !object.master
       );
@@ -894,8 +914,8 @@ export class DataMoveUtils<T> {
           filePath: path.join(objectSet.sourceSubDirectory, object.getWorkingCSVFileName(object.operation, 'source')),
           columns: object.extraData.fields,
           progressCallback: this.getQueryProgressCallback(object, true),
+          recordCallback: this.getQueryRecordCallback(object, true),
         } as QueryAsyncParameters;
-
         const suggestedQueryEngine = ApiUtils.suggestQueryEngine(
           object.extraData.totalRecords,
           object.extraData.totalRecords,
