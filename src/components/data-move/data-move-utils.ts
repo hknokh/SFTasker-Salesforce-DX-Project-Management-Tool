@@ -47,8 +47,10 @@ export class DataMoveUtils<T> {
   public targetSObjectDescribeMap: Map<string, SObjectDescribe> = new Map();
 
   // Private properties ---------------------------------------------------------
+  /** Utility class for API operations. */
   private appUtils!: ApiUtils<T>;
 
+  /** Utility class for command operations. */
   private comUtils!: CommandUtils<T>;
 
   // Constructor ----------------------------------------------------------------
@@ -59,6 +61,7 @@ export class DataMoveUtils<T> {
    * @param command The command to process.
    */
   public constructor(private command: SFtaskerCommand<T>) {
+    // Initialize utility classes
     this.appUtils = new ApiUtils(this.command);
     this.comUtils = new CommandUtils(this.command);
   }
