@@ -555,6 +555,16 @@ export class Utils {
     return Array.from(firstSet); // Convert the set back to an array
   }
 
+  /**
+   * Writes an empty CSV file with only the header row.
+   * @param filePath - The path to the CSV file to be written.
+   * @param columns - An array of strings representing the header columns.
+   */
+  public static writeEmptyCsvFile(filePath: string, columns: string[]): void {
+    const stream = Utils.createCsvWritableFileStream(filePath, columns);
+    stream.end();
+  }
+
   // --- Private methods ---
   /**
    * Merges two arrays of objects, combining elements with the same keys.

@@ -829,6 +829,8 @@ export class DataMoveUtils<T> {
 
         // Skip the API call if the suggested query engine indicates to do so
         if (suggestedQueryEngine.skipApiCall) {
+          // Create empty CSV file if no records to delete
+          Utils.writeEmptyCsvFile(deletionRecordsFilePath, object.extraData.deleteParsedQuery.fields);
           continue;
         }
 
@@ -895,6 +897,7 @@ export class DataMoveUtils<T> {
           1
         );
         if (suggestedQueryEngine.skipApiCall) {
+          Utils.writeEmptyCsvFile(queryParams.filePath!, queryParams.columns!);
           continue;
         }
 
