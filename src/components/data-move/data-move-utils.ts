@@ -827,7 +827,7 @@ export class DataMoveUtils<T> {
         }
 
         // Make the query to delete the records
-        const deleteQueryParams = {
+        const queryParams = {
           useSourceConnection: false,
           query: DataMoveUtilsStatic.composeQueryString(object.extraData.deleteParsedQuery),
           filePath: deletionRecordsFilePath,
@@ -836,9 +836,9 @@ export class DataMoveUtils<T> {
         } as QueryAsyncParameters;
 
         if (suggestedQueryEngine.shouldUseBulkApi) {
-          await apiUtils.queryBulkToFileAsync(deleteQueryParams);
+          await apiUtils.queryBulkToFileAsync(queryParams);
         } else {
-          await apiUtils.queryRestToFileAsync(deleteQueryParams);
+          await apiUtils.queryRestToFileAsync(queryParams);
         }
 
         // Delete records +++++++
