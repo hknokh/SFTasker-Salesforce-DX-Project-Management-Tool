@@ -192,6 +192,9 @@ export class SObjectFieldDescribe {
   /** The referenced object type, if applicable. */
   public referencedObjectType?: string;
 
+  /** Indicates if the field is custom. */
+  public custom?: boolean;
+
   /**
    * Creates an instance of SObjectFieldDescribe.
    * @param fieldDescribe The field describe properties.
@@ -223,6 +226,7 @@ export class SObjectFieldDescribe {
     this.isLookup = Array.isArray(fieldDescribe.referenceTo) && fieldDescribe.referenceTo.length > 0;
     this.cascadeDelete = fieldDescribe.cascadeDelete;
     this.referencedObjectType = fieldDescribe.referenceTo ? fieldDescribe.referenceTo[0] : undefined;
+    this.custom = fieldDescribe.custom;
   }
 
   /**

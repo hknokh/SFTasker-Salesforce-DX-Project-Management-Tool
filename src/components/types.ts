@@ -362,6 +362,9 @@ export type Field = {
 
   /** Indicates if the field supports cascade delete. */
   cascadeDelete?: boolean;
+
+  /** Indicates if the field is a custom field. */
+  custom: boolean | undefined;
 };
 
 /**
