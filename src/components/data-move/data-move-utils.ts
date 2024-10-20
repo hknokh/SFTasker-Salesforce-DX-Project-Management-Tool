@@ -876,6 +876,10 @@ export class DataMoveUtils<T> {
     }
   }
 
+  /**
+   *  Query master objects from the source org.
+   * @param objectSet  The object set to query master objects for.
+   */
   public async queryObjectSetSourceMasterObjectsAsync(objectSet: ScriptObjectSet): Promise<void> {
     for (const objectName of objectSet.updateObjectsOrder) {
       const object = objectSet.objects.find((obj) => obj.extraData.objectName === objectName) as ScriptObject;
