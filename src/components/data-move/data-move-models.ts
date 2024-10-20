@@ -138,7 +138,7 @@ export class ScriptObject {
   public excluded: boolean = false;
 
   /** Indicates if this object is a master object. Master objects transfer only child records related to this object based on the query. */
-  public master: boolean = true;
+  public master: boolean = false; // Breaking change from SFDMU implementation!
 
   /** Dedicated query string to perform a record deletion before the main data move operation. */
   public deleteQuery: string = '';

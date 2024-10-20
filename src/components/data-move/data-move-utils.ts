@@ -897,6 +897,7 @@ export class DataMoveUtils<T> {
           1
         );
         if (suggestedQueryEngine.skipApiCall) {
+          // Creeate empty CSV file if no records to query
           Utils.writeEmptyCsvFile(queryParams.filePath!, queryParams.columns!);
           continue;
         }
