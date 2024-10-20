@@ -212,6 +212,64 @@ export class ApiUtils<T> {
     }
   }
 
+  /**
+   * Expands a Salesforce record by flattening nested referenced fields and removing original nested properties.
+   *
+   * @param record - The original Salesforce record object.
+   * @returns A new object with expanded nested fields and without original nested reference properties.
+   */
+  public static expandSObjectRecord(record: Record<string, any>): Record<string, any> {
+    /**
+     * Recursively traverses the object to find and expand nested references.
+     *
+     * @param obj - The current object to traverse.
+     * @param parentPath - The accumulated path representing the nesting.
+     * @param parentObj - The immediate parent object of the current object.
+     * @param keyInParent - The key of the current object in its parent object.
+     */
+    const recurse = (
+      obj: Record<string, any>,
+      parentPath: string | null,
+      parentObj: Record<string, any> | null,
+      keyInParent: string | null
+    ): void => {
+      if (obj && typeof obj === 'object' && !Array.isArray(obj)) {
+        for (const key of Object.keys(obj)) {
+          const value = obj[key];
+
+          if (key === 'attributes') {
+            // Skip 'attributes' properties
+            continue;
+          }
+
+          // Build the new path
+          const newPath = parentPath ? `${parentPath}.${key}` : key;
+
+          if (value && typeof value === 'object' && !Array.isArray(value)) {
+            // Recurse into nested object
+            recurse(value, newPath, obj, key);
+          } else {
+            // Add the flattened property to the expanded object
+            record[newPath] = value;
+          }
+        }
+
+        // After processing, delete the original nested reference from its parent
+        if (parentObj && keyInParent) {
+          delete parentObj[keyInParent];
+        } else if (!parentObj && keyInParent) {
+          // If at the top level, delete from expanded
+          delete record[keyInParent];
+        }
+      }
+    };
+
+    // Start the recursion with the original record
+    recurse(record, null, null, null);
+
+    return record;
+  }
+
   // Private static methods ----------------------------------------------------------
 
   /**
@@ -1146,7 +1204,7 @@ export class ApiUtils<T> {
         .filter((record) => !!record)
         .map((record: any): any => {
           delete record.attributes;
-          return record;
+          return ApiUtils.expandSObjectRecord(record);
         });
 
       const csvString = await new Promise<string>((resolve, reject) => {
@@ -1284,7 +1342,7 @@ export class ApiUtils<T> {
         .filter((record) => !!record)
         .map((record: any): any => {
           delete record.attributes;
-          return record;
+          return ApiUtils.expandSObjectRecord(record);
         });
 
       // Final progress report
@@ -1367,6 +1425,7 @@ export class ApiUtils<T> {
         .map((record: any): any => {
           recordCount++;
           delete record.attributes;
+          record = ApiUtils.expandSObjectRecord(record);
           if (params.recordCallback) {
             filteredRecordCount++;
             return params.recordCallback(record);

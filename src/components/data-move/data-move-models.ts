@@ -186,6 +186,15 @@ export class ScriptObject {
     Object.assign(this, init);
   }
 
+  // Working Properties ----------------------------------------------------------------
+  /**
+   * Whether the external ID is a complex field containing multiple fields separated by ';'.
+   * @readonly
+   */
+  public get isComplexExternalId(): boolean {
+    return this.externalId?.includes(Constants.DATA_MOVE_CONSTANTS.COMPLEX_EXTERNAL_ID_SEPARATOR);
+  }
+
   // Working Methods ----------------------------------------------------------------
   /**
    *  Returns the working CSV file name for the object based on the operation and source or target.

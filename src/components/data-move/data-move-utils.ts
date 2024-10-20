@@ -521,7 +521,8 @@ export class DataMoveUtils<T> {
           );
         }
 
-        const _rField = `${DataMoveUtilsStatic.getRField(field)}.${referencedObject.externalId}`;
+        const rField = DataMoveUtilsStatic.getRField(field);
+        const _rField = `${rField}.${referencedObject.externalId}`;
 
         // Set up bidirectional field mappings
         object.extraData.lookupFieldMapping.set(field, _rField);
@@ -538,7 +539,15 @@ export class DataMoveUtils<T> {
         object.extraData.lookupObjectMapping.set(_rField, referencedObject);
 
         // Add the reference field to the fields list
-        object.extraData.fields.push(_rField);
+        if (referencedObject.isComplexExternalId) {
+          referencedObject.externalId
+            .split(Constants.DATA_MOVE_CONSTANTS.COMPLEX_EXTERNAL_ID_SEPARATOR)
+            .forEach((extField) => {
+              object.extraData.fields.push(`${rField}.${extField}`);
+            });
+        } else {
+          object.extraData.fields.push(_rField);
+        }
       }
     }
 
@@ -591,7 +600,6 @@ export class DataMoveUtils<T> {
         objectName,
         label,
         info.engine,
-        info.recordCount.toString(),
         info.filteredRecordCount.toString()
       );
     };
@@ -865,8 +873,39 @@ export class DataMoveUtils<T> {
     }
   }
 
-  // public async queryObjectSetMasterObjectsAsync(objectSet: ScriptObjectSet): Promise<void> {
-  // }
+  public async queryObjectSetSourceMasterObjectsAsync(objectSet: ScriptObjectSet): Promise<void> {
+    for (const objectName of objectSet.updateObjectsOrder) {
+      const object = objectSet.objects.find((obj) => obj.extraData.objectName === objectName) as ScriptObject;
+      if (object.completed) {
+        continue;
+      }
+      if (object.master) {
+        const query = DataMoveUtilsStatic.composeQueryString(object.extraData, true);
+        const queryParams = {
+          useSourceConnection: true,
+          query,
+          filePath: path.join(objectSet.sourceSubDirectory, object.getWorkingCSVFileName(object.operation, 'source')),
+          columns: object.extraData.fields,
+          progressCallback: this.getQueryProgressCallback(object, true),
+        } as QueryAsyncParameters;
+
+        const suggestedQueryEngine = ApiUtils.suggestQueryEngine(
+          object.extraData.totalRecords,
+          object.extraData.totalRecords,
+          1
+        );
+        if (suggestedQueryEngine.skipApiCall) {
+          continue;
+        }
+
+        //if (suggestedQueryEngine.shouldUseBulkApi) {
+        await this.appUtils.queryBulkToFileAsync(queryParams);
+        //} else {
+        //await this.appUtils.queryRestToFileAsync(queryParams);
+        //}
+      }
+    }
+  }
 
   // ------------------------------------------------------------------------------------------
   // Process methods --------------------------------------------------------------------------
@@ -953,6 +992,7 @@ export class DataMoveUtils<T> {
     // Process each object in each object set
     for (const objectSet of this.script.objectSets) {
       await this.deleteObjectSetRecordsAsync(objectSet);
+      await this.queryObjectSetSourceMasterObjectsAsync(objectSet);
     }
   }
 }
