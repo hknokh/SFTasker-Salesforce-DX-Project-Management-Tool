@@ -43,7 +43,7 @@ export class ApiUtils<T> {
    * @param command The command object used to retrieve metadata.
    * @param outputDir The output directory for the retrieved metadata.
    */
-  public constructor(private command: SFtaskerCommand<T>, private outputDir: string) {}
+  public constructor(private command: SFtaskerCommand<T>, private outputDir?: string) {}
 
   // Public static methods ----------------------------------------------------------
 
@@ -368,7 +368,7 @@ export class ApiUtils<T> {
       // Log the progress of the metadata retrieval
       utils.spinnerwithComponentMessage('start', 'progress.retrieving-metadata', metadataTypeName);
 
-      const tempOutputDir = fs.mkdtempSync(path.join(this.outputDir, `${metadataTypeName}-`));
+      const tempOutputDir = fs.mkdtempSync(path.join(this.outputDir!, `${metadataTypeName}-`));
       const zipStream = this.command.connection.metadata
         .retrieve({
           apiVersion: Number(Constants.DEFAULT_API_VERSION),
@@ -481,7 +481,7 @@ export class ApiUtils<T> {
       });
 
       // Create a temporary directory for the package
-      const tempOutputDir = fs.mkdtempSync(path.join(this.outputDir, 'Package-'));
+      const tempOutputDir = fs.mkdtempSync(path.join(this.outputDir!, 'Package-'));
 
       // Start the metadata retrieve operation
       const zipStream = this.command.connection.metadata

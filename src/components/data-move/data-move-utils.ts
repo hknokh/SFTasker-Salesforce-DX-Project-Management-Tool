@@ -46,6 +46,11 @@ export class DataMoveUtils<T> {
   /** Map of target object descriptions keyed by object name. */
   public targetSObjectDescribeMap: Map<string, SObjectDescribe> = new Map();
 
+  // Private properties ---------------------------------------------------------
+  private appUtils!: ApiUtils<T>;
+
+  private comUtils!: CommandUtils<T>;
+
   // Constructor ----------------------------------------------------------------
 
   /**
@@ -53,7 +58,10 @@ export class DataMoveUtils<T> {
    *
    * @param command The command to process.
    */
-  public constructor(private command: SFtaskerCommand<T>) {}
+  public constructor(private command: SFtaskerCommand<T>) {
+    this.appUtils = new ApiUtils(this.command);
+    this.comUtils = new CommandUtils(this.command);
+  }
 
   // Utility methods -----------------------------------------------------------
 
@@ -64,10 +72,6 @@ export class DataMoveUtils<T> {
    * @returns A promise that resolves when the object is described.
    */
   public async describeObjectAsync(object: ScriptObject): Promise<void> {
-    // Initialize metadata and command utilities
-    const apiUtils = new ApiUtils(this.command, this.tempDir);
-    const comUtils = new CommandUtils(this.command);
-
     // Describe the source object if the data origin is an org and not already described
     if (!this.sourceSObjectDescribeMap.has(object.extraData.objectName)) {
       if (
@@ -76,14 +80,14 @@ export class DataMoveUtils<T> {
       ) {
         try {
           // Fetch and store the source object metadata
-          const sourceDescribe = (await apiUtils.getSObjectMetadataAsync(
+          const sourceDescribe = (await this.appUtils.getSObjectMetadataAsync(
             object.extraData.objectName,
             this.command.sourceDataOriginType === DataOriginType.org
           )) as SObjectDescribe;
           this.sourceSObjectDescribeMap.set(object.extraData.objectName, sourceDescribe);
         } catch (error) {
           // Handle missing source object in metadata
-          comUtils.throwCommandError(
+          this.comUtils.throwCommandError(
             'error.missing-object-in-metadata',
             object.objectSet.index.toString(),
             this.command.sourceConnectionLabel,
@@ -111,7 +115,7 @@ export class DataMoveUtils<T> {
       ) {
         try {
           // Fetch and store the target object metadata
-          const targetDescribe = (await apiUtils.getSObjectMetadataAsync(
+          const targetDescribe = (await this.appUtils.getSObjectMetadataAsync(
             object.extraData.targetObjectName,
             !(this.command.targetDataOriginType === DataOriginType.org)
           )) as SObjectDescribe;
@@ -119,7 +123,7 @@ export class DataMoveUtils<T> {
         } catch (error) {
           if (this.command.targetDataOriginType === DataOriginType.org) {
             // Throw error if target object is missing in org metadata
-            comUtils.throwCommandError(
+            this.comUtils.throwCommandError(
               'error.missing-object-in-metadata',
               object.objectSet.index.toString(),
               this.command.targetConnectionLabel,
@@ -150,8 +154,6 @@ export class DataMoveUtils<T> {
    * @param object The object to add the multiselect fields to.
    */
   public includeMultiselectFields(object: ScriptObject): void {
-    const comUtils = new CommandUtils(this.command);
-
     // Check if the object has multiselect fields
     const hasMultiselectFields = object.extraData.fields.some(
       (field) =>
@@ -165,7 +167,7 @@ export class DataMoveUtils<T> {
     }
 
     // Log inclusion of multiselect fields
-    comUtils.logCommandMessage(
+    this.comUtils.logCommandMessage(
       'process.including-multiselect-fields',
       object.objectSet.index.toString(),
       object.extraData.objectName
@@ -243,9 +245,6 @@ export class DataMoveUtils<T> {
    * @returns A promise that resolves when the object is processed.
    */
   public async prepareObjectDataAsync(object: ScriptObject, objectSet: ScriptObjectSet): Promise<void> {
-    // Initialize command utilities
-    const comUtils = new CommandUtils(this.command);
-
     // Create extraData object ****************************************************
     // Parse the object's query string into structured data
     object.extraData = DataMoveUtilsStatic.parseQueryString(object.query, ObjectExtraData);
@@ -255,7 +254,7 @@ export class DataMoveUtils<T> {
       object.extraData.deleteParsedQuery = DataMoveUtilsStatic.parseQueryString(object.deleteQuery, ParsedQuery);
     } else {
       if (object.operation === OPERATION.Update && object.deleteOldData) {
-        comUtils.throwCommandError(
+        this.comUtils.throwCommandError(
           'error.delete-query-missing-delete-old-data-and-update-operation',
           objectSet.index.toString(),
           object.extraData.objectName
@@ -265,7 +264,7 @@ export class DataMoveUtils<T> {
     }
     object.extraData.deleteParsedQuery.fields = ['Id'];
     if (object.extraData.objectName !== object.extraData.deleteParsedQuery.objectName) {
-      comUtils.throwCommandError(
+      this.comUtils.throwCommandError(
         'error.delete-query-object-mismatch',
         objectSet.index.toString(),
         object.extraData.objectName,
@@ -315,7 +314,7 @@ export class DataMoveUtils<T> {
 
     if (!isExternalIdSet) {
       // Log setting of external ID
-      comUtils.logCommandMessage(
+      this.comUtils.logCommandMessage(
         'process.setting-external-id',
         objectSet.index.toString(),
         object.extraData.objectName,
@@ -337,7 +336,11 @@ export class DataMoveUtils<T> {
     this.includeMultiselectFields(object);
 
     // Exclude fields ****************************************************************
-    comUtils.logCommandMessage('process.excluding-fields', objectSet.index.toString(), object.extraData.objectName);
+    this.comUtils.logCommandMessage(
+      'process.excluding-fields',
+      objectSet.index.toString(),
+      object.extraData.objectName
+    );
     // Exclude any fields specified in the excludedFields list
     object.extraData.fields = object.extraData.fields.filter((field) => !object.excludedFields.includes(field));
 
@@ -357,7 +360,7 @@ export class DataMoveUtils<T> {
       if (!object.excludedFromUpdateFields.includes(field)) {
         // Exclude the field if it's readonly or not described in source metadata
         if (!fieldDescribe || fieldDescribe.readonly) {
-          comUtils.logCommandMessage(
+          this.comUtils.logCommandMessage(
             'process.field-not-found-in-metadata-or-readonly',
             objectSet.index.toString(),
             object.extraData.objectName,
@@ -372,7 +375,7 @@ export class DataMoveUtils<T> {
           (!fieldTargetDescribe || fieldTargetDescribe.readonly) &&
           this.command.targetDataOriginType === DataOriginType.org
         ) {
-          comUtils.logCommandMessage(
+          this.comUtils.logCommandMessage(
             'process.field-not-found-in-metadata-or-readonly',
             objectSet.index.toString(),
             object.extraData.targetObjectName,
@@ -396,7 +399,7 @@ export class DataMoveUtils<T> {
 
         // Exclude the field if the referenced object is in the excluded objects list
         if (objectSet.excludedObjects.includes(referencedObjectName as string)) {
-          comUtils.logCommandMessage(
+          this.comUtils.logCommandMessage(
             'process.skipping-lookup-field-referenced-object-excluded',
             objectSet.index.toString(),
             object.extraData.objectName,
@@ -418,7 +421,7 @@ export class DataMoveUtils<T> {
           }
           const externalIdFieldDescribe = objectDescribe.fieldsMap.get(externalIdCField) as SObjectFieldDescribe;
           if (!externalIdFieldDescribe) {
-            comUtils.throwCommandError(
+            this.comUtils.throwCommandError(
               'error.external-id-field-not-found-in-metadata',
               objectSet.index.toString(),
               object.extraData.objectName,
@@ -444,11 +447,8 @@ export class DataMoveUtils<T> {
     referencedObjectName: string,
     objectSet: ScriptObjectSet
   ): Promise<ScriptObject> {
-    // Initialize command utilities
-    const comUtils = new CommandUtils(this.command);
-
     // Log the creation of a new referenced object
-    comUtils.logCommandMessage(
+    this.comUtils.logCommandMessage(
       'process.added-new-referenced-object',
       objectSet.index.toString(),
       referencingObjectName,
@@ -477,9 +477,6 @@ export class DataMoveUtils<T> {
    * @param object The object to post-process.
    */
   public finalizeObject(object: ScriptObject): void {
-    // Initialize command utilities
-    const comUtils = new CommandUtils(this.command);
-
     // Retrieve the source object's description
     const objectDescribe = this.sourceSObjectDescribeMap.get(object.extraData.objectName) as SObjectDescribe;
 
@@ -488,7 +485,7 @@ export class DataMoveUtils<T> {
 
     // Processing and mapping object dependencies ************************************
     // Iterate over each field to handle reference mappings
-    comUtils.logCommandMessage(
+    this.comUtils.logCommandMessage(
       'process.processing-object-dependencies',
       object.objectSet.index.toString(),
       object.extraData.objectName
@@ -512,7 +509,7 @@ export class DataMoveUtils<T> {
 
         // Check whether the referenced object has Delete operation
         if (referencedObject.operation === OPERATION.Delete) {
-          comUtils.throwCommandError(
+          this.comUtils.throwCommandError(
             'error.lookup-field-referenced-object-delete-operation',
             object.objectSet.index.toString(),
             object.extraData.objectName,
@@ -546,7 +543,7 @@ export class DataMoveUtils<T> {
     object.extraData.fields = Utils.distinctStringArray(object.extraData.fields);
 
     // Map fields and query parts to their target counterparts ************************
-    comUtils.logCommandMessage(
+    this.comUtils.logCommandMessage(
       'process.mapping-object-fields',
       object.objectSet.index.toString(),
       object.extraData.objectName
@@ -583,10 +580,9 @@ export class DataMoveUtils<T> {
    */
   public getQueryProgressCallback(object: ScriptObject, useSourceConnection?: boolean): (info: QueryJobInfo) => void {
     return (info: QueryJobInfo): void => {
-      const comUtils = new CommandUtils(this.command);
       const label = useSourceConnection ? this.command.sourceConnectionLabel : this.command.targetConnectionLabel;
       const objectName = useSourceConnection ? object.extraData.objectName : object.extraData.targetObjectName;
-      comUtils.logCommandMessage(
+      this.comUtils.logCommandMessage(
         'progress.querying-records-progress',
         object.objectSet.index.toString(),
         objectName,
@@ -604,10 +600,9 @@ export class DataMoveUtils<T> {
    */
   public getUpdateProgressCallback(object: ScriptObject, useSourceConnection?: boolean): (info: IngestJobInfo) => void {
     return (info: IngestJobInfo): void => {
-      const comUtils = new CommandUtils(this.command);
       const label = useSourceConnection ? this.command.sourceConnectionLabel : this.command.targetConnectionLabel;
       const objectName = useSourceConnection ? object.extraData.objectName : object.extraData.targetObjectName;
-      comUtils.logCommandMessage(
+      this.comUtils.logCommandMessage(
         'progress.updating-records-progress',
         object.objectSet.index.toString(),
         objectName,
@@ -630,11 +625,10 @@ export class DataMoveUtils<T> {
    */
   public loadScript(): void {
     // Initialize command utilities
-    const comUtils = new CommandUtils(this.command);
-    const configPath = comUtils.getConfigFilePath();
+    const configPath = this.comUtils.getConfigFilePath();
 
     // Log the loading of the configuration file
-    comUtils.logCommandMessage('process.loading-configuration-file', configPath);
+    this.comUtils.logCommandMessage('process.loading-configuration-file', configPath);
 
     // Check if the configuration file exists
     if (fs.existsSync(configPath)) {
@@ -648,17 +642,21 @@ export class DataMoveUtils<T> {
       }
 
       // Create necessary directories for configuration, source, target, and temporary files
-      this.configDir = comUtils.createConfigDirectory() as string;
-      this.sourceDir = comUtils.createConfigDirectory(Constants.DATA_MOVE_CONSTANTS.CSV_SOURCE_SUB_DIRECTORY) as string;
-      this.targetDir = comUtils.createConfigDirectory(Constants.DATA_MOVE_CONSTANTS.CSV_TARGET_SUB_DIRECTORY) as string;
-      this.tempDir = comUtils.createConfigDirectory(Constants.DATA_MOVE_CONSTANTS.TEMP_DIRECTORY) as string;
+      this.configDir = this.comUtils.createConfigDirectory() as string;
+      this.sourceDir = this.comUtils.createConfigDirectory(
+        Constants.DATA_MOVE_CONSTANTS.CSV_SOURCE_SUB_DIRECTORY
+      ) as string;
+      this.targetDir = this.comUtils.createConfigDirectory(
+        Constants.DATA_MOVE_CONSTANTS.CSV_TARGET_SUB_DIRECTORY
+      ) as string;
+      this.tempDir = this.comUtils.createConfigDirectory(Constants.DATA_MOVE_CONSTANTS.TEMP_DIRECTORY) as string;
 
       // Filter out excluded objects from each object set
       this.script.objectSets.forEach((objectSet) => {
         objectSet.objects = objectSet.objects.filter((object) => {
           if (object.excluded) {
             // Log exclusion of the object
-            comUtils.logCommandMessage(
+            this.comUtils.logCommandMessage(
               'process.excluding-object',
               objectSet.index.toString(),
               object.extraData.objectName
@@ -679,17 +677,17 @@ export class DataMoveUtils<T> {
         objectSet.index = index + 1;
         objectSet.script = this.script;
         // Create source directory for CSV files
-        objectSet.sourceSubDirectory = comUtils.createConfigDirectory(
+        objectSet.sourceSubDirectory = this.comUtils.createConfigDirectory(
           path.join(Constants.DATA_MOVE_CONSTANTS.CSV_SOURCE_SUB_DIRECTORY, objectSet.getTemporarySubDirectory())
         ) as string;
         // Create target directory for CSV files
-        objectSet.targetSubDirectory = comUtils.createConfigDirectory(
+        objectSet.targetSubDirectory = this.comUtils.createConfigDirectory(
           path.join(Constants.DATA_MOVE_CONSTANTS.CSV_TARGET_SUB_DIRECTORY, objectSet.getTemporarySubDirectory())
         ) as string;
       });
     } else {
       // Throw an error if the configuration file does not exist
-      comUtils.throwError('error.config-file-not-found', configPath);
+      this.comUtils.throwError('error.config-file-not-found', configPath);
     }
   }
 
@@ -702,16 +700,12 @@ export class DataMoveUtils<T> {
     objectSet: ScriptObjectSet,
     useSourceConnection: boolean
   ): Promise<void> {
-    // Initialize command utilities
-    const comUtils = new CommandUtils(this.command);
-    const apiUtils = new ApiUtils(this.command, this.tempDir);
-
     // Determine which connection label to use for logging
     const label = useSourceConnection ? this.command.sourceConnectionLabel : this.command.targetConnectionLabel;
 
     for (const object of objectSet.objects) {
       if (!useSourceConnection && (object.operation === OPERATION.Delete || object.deleteOldData)) {
-        comUtils.logCommandMessage(
+        this.comUtils.logCommandMessage(
           'process.counting-total-records-for-delete',
           objectSet.index.toString(),
           object.extraData.deleteParsedQuery.objectName,
@@ -723,14 +717,14 @@ export class DataMoveUtils<T> {
           ['COUNT(Id) CNT'],
           !object.master
         );
-        const result = await apiUtils.queryRestToMemorySimpleAsync({
+        const result = await this.appUtils.queryRestToMemorySimpleAsync({
           query,
           useSourceConnection: false,
         });
 
         object.extraData.targetTotalRecordsToDelete = result?.[0]['CNT'] as number;
 
-        comUtils.logCommandMessage(
+        this.comUtils.logCommandMessage(
           'process.total-records-delete-counted',
           objectSet.index.toString(),
           object.extraData.deleteParsedQuery.objectName,
@@ -744,7 +738,7 @@ export class DataMoveUtils<T> {
       }
 
       // Log the total number of records for each object
-      comUtils.logCommandMessage(
+      this.comUtils.logCommandMessage(
         'process.counting-total-records',
         objectSet.index.toString(),
         object.extraData.objectName,
@@ -758,7 +752,7 @@ export class DataMoveUtils<T> {
         !object.master
       );
 
-      const result = await apiUtils.queryRestToMemorySimpleAsync({
+      const result = await this.appUtils.queryRestToMemorySimpleAsync({
         query,
         useSourceConnection,
       });
@@ -772,7 +766,7 @@ export class DataMoveUtils<T> {
         }
       }
 
-      comUtils.logCommandMessage(
+      this.comUtils.logCommandMessage(
         'process.total-records-counted',
         objectSet.index.toString(),
         object.extraData.objectName,
@@ -788,19 +782,15 @@ export class DataMoveUtils<T> {
    * @param objectSet  The object set to delete records for.
    */
   public async deleteObjectSetRecordsAsync(objectSet: ScriptObjectSet): Promise<void> {
-    // Initialize command utilities
-    const comUtils = new CommandUtils(this.command);
-    const apiUtils = new ApiUtils(this.command, this.tempDir);
-
     const isDeleteActionRequired = objectSet.objects.some(
       (obj) => (obj.operation === OPERATION.Delete || obj.deleteOldData) && obj.extraData.targetTotalRecordsToDelete > 0
     );
     if (!isDeleteActionRequired) {
-      comUtils.logCommandMessage('process.no-objects-to-delete', objectSet.index.toString());
+      this.comUtils.logCommandMessage('process.no-objects-to-delete', objectSet.index.toString());
       return;
     }
 
-    comUtils.logCommandMessage('process.deleting-records', objectSet.index.toString());
+    this.comUtils.logCommandMessage('process.deleting-records', objectSet.index.toString());
 
     for (const objectName of objectSet.deleteObjectsOrder) {
       const object = objectSet.objects.find((obj) => obj.extraData.objectName === objectName) as ScriptObject;
@@ -841,9 +831,9 @@ export class DataMoveUtils<T> {
         } as QueryAsyncParameters;
 
         if (suggestedQueryEngine.shouldUseBulkApi) {
-          await apiUtils.queryBulkToFileAsync(queryParams);
+          await this.appUtils.queryBulkToFileAsync(queryParams);
         } else {
-          await apiUtils.queryRestToFileAsync(queryParams);
+          await this.appUtils.queryRestToFileAsync(queryParams);
         }
 
         // Delete records +++++++
@@ -858,9 +848,9 @@ export class DataMoveUtils<T> {
 
         const suggestedUpdateEngine = ApiUtils.suggestUpdateEngine(object.extraData.targetTotalRecordsToDelete);
         if (suggestedUpdateEngine.shouldUseBulkApi) {
-          await apiUtils.updateBulkFromFileAsync(deleteParams);
+          await this.appUtils.updateBulkFromFileAsync(deleteParams);
         } else {
-          await apiUtils.updateRestFromFileAsync(deleteParams);
+          await this.appUtils.updateRestFromFileAsync(deleteParams);
         }
 
         // Log the deletion of records +++++++
@@ -872,6 +862,9 @@ export class DataMoveUtils<T> {
     }
   }
 
+  // public async queryObjectSetMasterObjectsAsync(objectSet: ScriptObjectSet): Promise<void> {
+  // }
+
   // ------------------------------------------------------------------------------------------
   // Process methods --------------------------------------------------------------------------
   // ------------------------------------------------------------------------------------------
@@ -881,14 +874,11 @@ export class DataMoveUtils<T> {
    * @returns  A promise that resolves when the command is initialized.
    */
   public async prepareCommandAsync(): Promise<void> {
-    // Initialize command utilities
-    const comUtils = new CommandUtils(this.command);
-
     // Load the script configurations ****************************************************
     this.loadScript();
 
     // Log the number of object sets being processed
-    comUtils.logCommandMessage(
+    this.comUtils.logCommandMessage(
       'process.processing-object-set-configurations',
       this.script.objectSets.length.toString()
     );
@@ -927,18 +917,15 @@ export class DataMoveUtils<T> {
    *  Creates the order of objects in which they should be processed.
    */
   public createProcessObjectOrder(): void {
-    // Initialize command utilities
-    const comUtils = new CommandUtils(this.command);
-
     for (const objectSet of this.script.objectSets) {
       objectSet.updateObjectsOrder = objectSet.getObjectOrder();
-      comUtils.logCommandMessage(
+      this.comUtils.logCommandMessage(
         'process.object-order-for-update',
         objectSet.index.toString(),
         objectSet.updateObjectsOrder.join(', ')
       );
       objectSet.deleteObjectsOrder = [...objectSet.updateObjectsOrder].reverse();
-      comUtils.logCommandMessage(
+      this.comUtils.logCommandMessage(
         'process.object-order-for-delete',
         objectSet.index.toString(),
         objectSet.deleteObjectsOrder.join(', ')
