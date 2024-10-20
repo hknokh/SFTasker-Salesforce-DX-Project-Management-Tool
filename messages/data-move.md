@@ -123,8 +123,8 @@ Processing %s object set configurations...
 
 # progress.querying-records-progress
 
-[Object-Set #%s : %s : %s : %s] Querying records... Total records queried: %d
+[Object-Set #%s : %s : %s : %s] Polling... Total records queried: %d
 
 # progress.updating-records-progress
 
-[Object-Set #%s : %s : %s : %s : %s : %s] Updating records... State: %s. Succeeded records: %d. Failed records: %d
+[Object-Set #%s : %s : %s : %s : %s : %s] Polling... State: %s. Succeeded records: %d. Failed records: %d
