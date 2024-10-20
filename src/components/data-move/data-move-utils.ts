@@ -898,11 +898,11 @@ export class DataMoveUtils<T> {
           continue;
         }
 
-        //if (suggestedQueryEngine.shouldUseBulkApi) {
-        await this.appUtils.queryBulkToFileAsync(queryParams);
-        //} else {
-        //await this.appUtils.queryRestToFileAsync(queryParams);
-        //}
+        if (suggestedQueryEngine.shouldUseBulkApi) {
+          await this.appUtils.queryBulkToFileAsync(queryParams);
+        } else {
+          await this.appUtils.queryRestToFileAsync(queryParams);
+        }
       }
     }
   }
