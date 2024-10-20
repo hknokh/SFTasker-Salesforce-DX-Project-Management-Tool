@@ -588,7 +588,7 @@ export class DataMoveUtils<T> {
   }
 
   /**
-   *  Logs the query job information.
+   *  Creates a callback function to log the query job information.
    * @param info  The query job information to log.
    */
   public getQueryProgressCallback(object: ScriptObject, useSourceConnection?: boolean): (info: QueryJobInfo) => void {
@@ -607,8 +607,8 @@ export class DataMoveUtils<T> {
   }
 
   /**
-   *  Logs the ingest job information.
-   * @param info  The ingest job information to log.
+   *  Creates a callback function to log the update job information.
+   * @param info  The update job information to log.
    */
   public getUpdateProgressCallback(object: ScriptObject, useSourceConnection?: boolean): (info: IngestJobInfo) => void {
     return (info: IngestJobInfo): void => {
@@ -629,6 +629,12 @@ export class DataMoveUtils<T> {
     };
   }
 
+  /**
+   * Creates a callback function to call on each record when querying records.
+   * @param object  The object to apply the callback to.
+   * @param useSourceConnection  Whether to use the source connection for mapping.
+   * @returns   A callback function to call on each record when querying records.
+   */
   // eslint-disable-next-line class-methods-use-this
   public getQueryRecordCallback(object: ScriptObject, useSourceConnection?: boolean): (rawRecord: any) => any {
     const externalIdFields = object.externalId.split(Constants.DATA_MOVE_CONSTANTS.COMPLEX_EXTERNAL_ID_SEPARATOR);
