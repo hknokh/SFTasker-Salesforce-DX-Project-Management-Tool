@@ -464,6 +464,7 @@ export class DataMoveUtils<T> {
       query,
       operation: OPERATION.Readonly,
       externalId: undefined,
+      master: false,
     });
     // Add the new object to the object set
     objectSet.objects.push(object);
