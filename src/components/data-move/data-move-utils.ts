@@ -175,25 +175,30 @@ export class DataMoveUtils<T> {
     const describe = this.sourceSObjectDescribeMap.get(object.extraData.objectName) as SObjectDescribe;
 
     // Map and flatten fields, handling multiselect and filter keywords
-    object.extraData.fields = object.extraData.fields
-      .map((field: string) => {
-        if (field === Constants.DATA_MOVE_CONSTANTS.ALL_FIELDS_KEYWORD) {
-          // Expand the 'all' keyword to include all fields from the description
-          return describe.fields.map((f) => f.name);
-        }
-        if (field.endsWith('_true') || field.endsWith('_false')) {
-          // Handle fields with '_true' or '_false' suffixes to filter based on field properties
-          const sObjectFieldKeyToEvaluate = field
-            .replace('_true', '')
-            .replace('_false', '') as keyof SObjectFieldDescribe;
-          return describe.fields
+    const multiselectFieldToFieldsMap = new Map<string, string[]>();
+    object.extraData.fields.forEach((field) => {
+      if (field === Constants.DATA_MOVE_CONSTANTS.ALL_FIELDS_KEYWORD) {
+        // Map the 'all' keyword to all fields from the description
+        multiselectFieldToFieldsMap.set(
+          field,
+          describe.fields.map((f) => f.name)
+        );
+      }
+      if (field.endsWith('_true') || field.endsWith('_false')) {
+        // Map fields with '_true' or '_false' suffixes to filter based on field properties
+        const sObjectFieldKeyToEvaluate = field
+          .replace('_true', '')
+          .replace('_false', '') as keyof SObjectFieldDescribe;
+        multiselectFieldToFieldsMap.set(
+          field,
+          describe.fields
             .filter((describeField) => describeField[sObjectFieldKeyToEvaluate] === field.endsWith('_true'))
-            .map((f) => f.name);
-        }
-        // Return the field as-is if no special handling is required
-        return field;
-      })
-      .flat();
+            .map((f) => f.name)
+        );
+      }
+    });
+
+    object.extraData.fields = Utils.getCommonFieldsInAllKeys(multiselectFieldToFieldsMap);
   }
 
   /**

@@ -535,6 +535,26 @@ export class Utils {
     return str.replace(/^\uFEFF/gm, '').replace(/^\u00BB\u00BF/gm, '');
   }
 
+  /**
+   *  Returns the common fields in all keys of a map.
+   * @param map  The map of keys to arrays of fields.
+   * @returns  The array of common fields in all keys.
+   */
+  public static getCommonFieldsInAllKeys(map: Map<string, string[]>): string[] {
+    const iterator = map.values();
+    const firstSet = new Set(iterator.next().value); // Start with the first set of fields
+
+    for (const fields of iterator) {
+      for (const field of firstSet) {
+        if (!fields.includes(field)) {
+          firstSet.delete(field); // Remove field if it is not present in the current set
+        }
+      }
+    }
+
+    return Array.from(firstSet); // Convert the set back to an array
+  }
+
   // --- Private methods ---
   /**
    * Merges two arrays of objects, combining elements with the same keys.
