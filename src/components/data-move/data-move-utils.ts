@@ -639,18 +639,23 @@ export class DataMoveUtils<T> {
   public getQueryRecordCallback(object: ScriptObject, useSourceConnection?: boolean): (rawRecord: any) => any {
     const externalIdFields = object.externalId.split(Constants.DATA_MOVE_CONSTANTS.COMPLEX_EXTERNAL_ID_SEPARATOR);
     return (rawRecord: any): any => {
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-call
+      // Map record Id to external Id +++++++++++++++++++++++++++++++++++++++++++++++
+      // Create a complex external Id by concatenating multiple fields
       const externalId = externalIdFields
         .reduce((acc, field) => {
           acc.push(String(rawRecord[field] || 'NULL'));
           return acc;
         }, new Array<string>())
         .join(Constants.DATA_MOVE_CONSTANTS.COMPLEX_EXTERNAL_ID_SEPARATOR);
+
+      // Store the mapping of the record Id to the external Id
       if (useSourceConnection) {
         object.extraData.sourceIdToExternalIdMapping.set(rawRecord.Id, externalId);
       } else {
         object.extraData.targetIdToExternalIdMapping.set(rawRecord.Id, externalId);
       }
+
+      // Returns the raw record as is
       return rawRecord;
     };
   }
