@@ -218,6 +218,10 @@ export class ScriptObject {
     }
     return `${this.extraData.targetObjectName}_${operation}_${sourceOrTarget}${isStatusFile ? '_status' : ''}.csv`;
   }
+
+  public geHasReferenceObjects(): boolean {
+    return this.extraData.masterDetailObjectNameMapping.size > 0;
+  }
 }
 
 /**

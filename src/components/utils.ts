@@ -569,6 +569,19 @@ export class Utils {
     stream.end();
   }
 
+  /**
+   * Truncates a string to the specified maximum length, appending "..." if truncated.
+   * @param str The string to truncate.
+   * @param maxLength The maximum allowed length.
+   * @returns The truncated string with "..." appended if truncation occurred.
+   */
+  public static truncate(str: string, maxLength: number): string {
+    if (str.length <= maxLength) {
+      return str.trim();
+    }
+    return str.substring(0, maxLength - 3).trim() + '...';
+  }
+
   // --- Private methods ---
   /**
    * Merges two arrays of objects, combining elements with the same keys.

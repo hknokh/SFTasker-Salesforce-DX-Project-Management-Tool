@@ -589,6 +589,99 @@ export class DataMoveUtils<T> {
 
     // Map the WHERE clause to its target counterpart
     object.extraData.targetWhere = DataMoveUtilsStatic.mapWhereClause(object.extraData.where, object);
+
+    /**
+     * Recursively checks if the object has any references to a master object.
+     * @param obj The object to check for references.
+     * @param visitedObjects The set of objects visited in the current traversal path to detect cycles.
+     * @param isFirstChildLevel A boolean indicating whether the current recursion is at the first child level.
+     * @returns A boolean indicating whether the object has any references to a master object.
+     */
+    const _hasReferenceMasterObjectRecursive = (
+      obj: ScriptObject,
+      visitedObjects: Set<string>,
+      isFirstChildLevel: boolean
+    ): boolean => {
+      const objectName = obj.extraData.objectName;
+
+      // If the object is already in the current path, a cycle is detected
+      if (visitedObjects.has(objectName)) {
+        return false; // Avoid infinite loops due to cycles
+      }
+
+      // Add the current object to the path
+      visitedObjects.add(objectName);
+
+      // Get the list of objects in the same object set
+      const allObjects = obj.objectSet.objects;
+
+      // First, check the parent objects that this object references
+      for (const parentObjectName of obj.extraData.lookupObjectNameMapping.values()) {
+        const parentObject = allObjects.find((o) => o.extraData.objectName === parentObjectName);
+        if (!parentObject) {
+          continue; // Parent object not found in the object set
+        }
+        if (parentObject.master === true) {
+          return true;
+        }
+        // Create a new visitedObjects set only once per path at the second level
+        const nextVisitedObjects = isFirstChildLevel ? new Set(visitedObjects) : visitedObjects;
+        if (_hasReferenceMasterObjectRecursive(parentObject, nextVisitedObjects, false)) {
+          return true;
+        }
+      }
+
+      // Now, check if any other objects reference this object
+      for (const otherObject of allObjects) {
+        const otherObjectName = otherObject.extraData.objectName;
+        if (otherObjectName === objectName) {
+          continue; // Skip self
+        }
+        // Check if otherObject references this object
+        const referencesThisObject = Array.from(otherObject.extraData.lookupObjectNameMapping.values()).includes(
+          objectName
+        );
+        if (referencesThisObject) {
+          if (otherObject.master === true) {
+            return true;
+          }
+          // Create a new visitedObjects set only once per path at the second level
+          const nextVisitedObjects = isFirstChildLevel ? new Set(visitedObjects) : visitedObjects;
+          if (_hasReferenceMasterObjectRecursive(otherObject, nextVisitedObjects, false)) {
+            return true;
+          }
+        }
+      }
+
+      // No master object found in the references
+      return false;
+    };
+
+    /**
+     * Checks if the object has any references to a master object.
+     * @param obj The object to check for references.
+     * @returns A boolean indicating whether the object has any references to a master object.
+     */
+    const hasReferenceMasterObject = (obj: ScriptObject): boolean => {
+      // If the object is master, we can return false
+      if (obj.master === true) {
+        return false;
+      }
+      // Start with an empty set for the current path and set isFirstChildLevel to true
+      return _hasReferenceMasterObjectRecursive(obj, new Set<string>(), true);
+    };
+
+    // Check if the object has any references
+    const isTrueChildObject = hasReferenceMasterObject(object);
+    if (!object.master && !isTrueChildObject) {
+      this.comUtils.logCommandMessage(
+        'process.object-set-to-master',
+        object.objectSet.index.toString(),
+        object.extraData.objectName,
+        object.extraData.objectName
+      );
+      object.master = true;
+    }
   }
 
   /**
@@ -1015,6 +1108,21 @@ export class DataMoveUtils<T> {
       }
     }
   }
+
+  // public async queryObjectSetSourceChildObjectsAsync(objectSet: ScriptObjectSet): Promise<void> {
+  //   for (const objectName of objectSet.updateObjectsOrder) {
+  //     const object = objectSet.objects.find((obj) => obj.extraData.objectName === objectName) as ScriptObject;
+  //     if (object.completed) {
+  //       continue;
+  //     }
+  //     if (!object.master) {
+
+  //     }
+  //   }
+  // }
+
+  // public async queryObjectSetTargetChildObjectsAsync(objectSet: ScriptObjectSet): Promise<void> {
+  // }
 
   // ------------------------------------------------------------------------------------------
   // Process methods --------------------------------------------------------------------------

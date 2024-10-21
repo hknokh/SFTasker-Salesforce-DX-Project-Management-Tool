@@ -495,4 +495,51 @@ export class DataMoveUtilsStatic {
       return 'NULL';
     }
   }
+
+  /**
+   * Extracts and truncates the SELECT fields and WHERE clause from a SOQL query.
+   * Other parts of the query remain unchanged.
+   * @param query The original SOQL query string.
+   * @param maxLength The maximum length for the fields list and WHERE conditions.
+   * @returns A truncated version of the query with SELECT fields and WHERE clause shortened independently.
+   */
+  public static getPrintableQueryString(query: string, maxLength = 50): string {
+    // Normalize whitespace and remove extra spaces for consistent parsing
+    const normalizedQuery = query.replace(/\s+/g, ' ').trim();
+
+    // Regular expressions to capture SELECT fields and WHERE clause
+    const selectRegex = /SELECT\s+([^FROM]+)\s+FROM\s+/i;
+    const whereRegex = /WHERE\s+([^ORDER BY LIMIT OFFSET]+)/i;
+
+    // Extract SELECT fields
+    const selectMatch = normalizedQuery.match(selectRegex);
+    let truncatedFields = '';
+    if (selectMatch?.[1]) {
+      const fields = selectMatch[1].trim();
+      truncatedFields = Utils.truncate(fields, maxLength);
+    }
+
+    // Extract WHERE clause
+    const whereMatch = normalizedQuery.match(whereRegex);
+    let truncatedWhere = '';
+    if (whereMatch?.[1]) {
+      const where = whereMatch[1].trim();
+      truncatedWhere = Utils.truncate(where, maxLength);
+    }
+
+    // Reconstruct the query
+    let truncatedQuery = normalizedQuery;
+
+    if (selectMatch?.[1]) {
+      // Replace the original SELECT fields with truncated fields
+      truncatedQuery = truncatedQuery.replace(selectMatch[1], truncatedFields);
+    }
+
+    if (whereMatch?.[1]) {
+      // Replace the original WHERE clause with truncated WHERE clause
+      truncatedQuery = truncatedQuery.replace(whereMatch[1], truncatedWhere);
+    }
+
+    return truncatedQuery;
+  }
 }

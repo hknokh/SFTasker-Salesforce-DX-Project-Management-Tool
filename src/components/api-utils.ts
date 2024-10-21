@@ -31,6 +31,7 @@ import {
   EngineChoice,
   PollingChoice,
 } from './types.js';
+import { DataMoveUtilsStatic } from './data-move/data-move-utils-static.js';
 
 /**
  *  Utility class for common API operations.
@@ -901,7 +902,12 @@ export class ApiUtils<T> {
 
     try {
       // Log a message indicating the start of the query process
-      utils.logComponentMessage('progress.querying-records', Constants.SFORCE_API_ENGINES.BULK, label, params.query);
+      utils.logComponentMessage(
+        'progress.querying-records',
+        Constants.SFORCE_API_ENGINES.BULK,
+        label,
+        DataMoveUtilsStatic.getPrintableQueryString(params.query)
+      );
 
       // Resolve the file path to an absolute path if it is not already
       const resolvedFilePath = path.isAbsolute(params.filePath!)
@@ -1128,7 +1134,12 @@ export class ApiUtils<T> {
 
     try {
       // Log a message indicating the start of the query process
-      utils.logComponentMessage('progress.querying-records', Constants.SFORCE_API_ENGINES.REST, label, params.query);
+      utils.logComponentMessage(
+        'progress.querying-records',
+        Constants.SFORCE_API_ENGINES.REST,
+        label,
+        DataMoveUtilsStatic.getPrintableQueryString(params.query)
+      );
 
       // Resolve the file path to an absolute path if it is not already
       const resolvedFilePath = path.isAbsolute(params.filePath!)
@@ -1282,7 +1293,12 @@ export class ApiUtils<T> {
 
     try {
       // Log a message indicating the start of the query process
-      utils.logComponentMessage('progress.querying-records', Constants.SFORCE_API_ENGINES.REST, label, params.query);
+      utils.logComponentMessage(
+        'progress.querying-records',
+        Constants.SFORCE_API_ENGINES.REST,
+        label,
+        DataMoveUtilsStatic.getPrintableQueryString(params.query)
+      );
 
       // Track the number of records processed
       let recordCount = 0;
@@ -1396,7 +1412,12 @@ export class ApiUtils<T> {
 
     try {
       // Log a message indicating the start of the query process
-      utils.logComponentMessage('progress.querying-records', Constants.SFORCE_API_ENGINES.REST, label, params.query);
+      utils.logComponentMessage(
+        'progress.querying-records',
+        Constants.SFORCE_API_ENGINES.REST,
+        label,
+        DataMoveUtilsStatic.getPrintableQueryString(params.query)
+      );
 
       // Track the number of records processed
       let recordCount = 0;

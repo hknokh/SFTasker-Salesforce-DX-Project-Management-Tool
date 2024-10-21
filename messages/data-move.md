@@ -128,3 +128,7 @@ Processing %s object set configurations...
 # progress.updating-records-progress
 
 [Object-Set #%s : %s : %s : %s : %s : %s] Polling... State: %s. Succeeded records: %d. Failed records: %d
+
+# process.object-set-to-master
+
+[Object-Set #%s : %s] Object `%s` has been set to `master` since it has no references and is not referenced by any other object in the object hierarchy...
