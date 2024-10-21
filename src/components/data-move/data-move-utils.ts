@@ -530,8 +530,8 @@ export class DataMoveUtils<T> {
         const _rField = `${rField}.${referencedObject.externalId}`;
 
         // Set up bidirectional field mappings
-        object.extraData.lookupFieldMapping.set(field, _rField);
-        object.extraData.lookupFieldMapping.set(_rField, field);
+        //object.extraData.lookupFieldMapping.set(field, _rField);
+        //object.extraData.lookupFieldMapping.set(_rField, field);
 
         // Map the reference field to its parent object name
         object.extraData.lookupObjectNameMapping.set(_rField, referencedObjectName!);
@@ -544,15 +544,15 @@ export class DataMoveUtils<T> {
         object.extraData.lookupObjectMapping.set(_rField, referencedObject);
 
         // Add the reference field to the fields list
-        if (referencedObject.isComplexExternalId) {
-          referencedObject.externalId
-            .split(Constants.DATA_MOVE_CONSTANTS.COMPLEX_EXTERNAL_ID_SEPARATOR)
-            .forEach((extField) => {
-              object.extraData.fields.push(`${rField}.${extField}`);
-            });
-        } else {
-          object.extraData.fields.push(_rField);
-        }
+        // if (referencedObject.isComplexExternalId) {
+        //   referencedObject.externalId
+        //     .split(Constants.DATA_MOVE_CONSTANTS.COMPLEX_EXTERNAL_ID_SEPARATOR)
+        //     .forEach((extField) => {
+        //       object.extraData.fields.push(`${rField}.${extField}`);
+        //     });
+        // } else {
+        //   object.extraData.fields.push(_rField);
+        // }
       }
     }
 
@@ -656,7 +656,7 @@ export class DataMoveUtils<T> {
       if (useSourceConnection) {
         object.extraData.sourceIdToExternalIdMapping.set(rawRecord.Id, externalId);
       } else {
-        object.extraData.targetIdToExternalIdMapping.set(rawRecord.Id, externalId);
+        object.extraData.targetExternalIdToIdMapping.set(externalId, rawRecord.Id);
       }
 
       // Returns the raw record as is

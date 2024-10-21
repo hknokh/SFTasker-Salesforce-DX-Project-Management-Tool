@@ -42,13 +42,13 @@ export class ObjectExtraData extends ParsedQuery {
   public sourceToTargetFieldMapping: Map<string, string> = new Map<string, string>();
 
   /** Mapping between the lookup fields and their full reference fields, containing the parent external ID. For example, Account__c => Account__r.Name. */
-  public lookupFieldMapping: Map<string, string> = new Map<string, string>();
+  //public lookupFieldMapping: Map<string, string> = new Map<string, string>();
 
   /** Mapping between the source record Id to the external Id. */
   public sourceIdToExternalIdMapping: Map<string, string> = new Map<string, string>();
 
   /** Mapping between the target record Id to the external Id. */
-  public targetIdToExternalIdMapping: Map<string, string> = new Map<string, string>();
+  public targetExternalIdToIdMapping: Map<string, string> = new Map<string, string>();
 
   /** API name of the target object according to the field mapping. */
   public targetObjectName!: string;
