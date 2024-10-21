@@ -286,6 +286,8 @@ export class Constants {
     CSV_SOURCE_SUB_DIRECTORY: 'source',
     /** The target directory for temporary CSV files. */
     CSV_TARGET_SUB_DIRECTORY: 'target',
+    /** The export sub-directory for temporary CSV files. */
+    CSV_EXPORT_SUB_DIRECTORY: 'export',
     /** The temporary directory for processing data. */
     TEMP_DIRECTORY: 'temp',
     /** Separator used for complex external IDs. */

@@ -397,9 +397,10 @@ export class Utils {
    *  Creates a readable stream for reading objects from a CSV file.
    *
    * @param filePath  The path to the CSV file.
+   * @param recordCallback  The optional callback function to process each record read from the CSV file.
    * @returns  The readable stream for reading objects from the CSV file.
    */
-  public static createCsvReadableFileStream(filePath: string): Readable {
+  public static createCsvReadableFileStream(filePath: string, recordCallback?: (rawRecord: any) => any): Readable {
     const inputStream = fs
       .createReadStream(filePath, {
         encoding: Constants.DEFAULT_ENCODING,
@@ -417,6 +418,9 @@ export class Utils {
       // eslint-disable-next-line @typescript-eslint/explicit-function-return-type
       read() {
         inputStream.on('data', (row: Record<string, string>) => {
+          if (recordCallback) {
+            row = recordCallback(row);
+          }
           let csvData = stringifySync([row], {
             ...Constants.CSV_STRINGIFY_OPTIONS,
             header: firstRow,

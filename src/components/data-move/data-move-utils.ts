@@ -1,5 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import { pipeline } from 'node:stream';
+import { promisify } from 'node:util';
 import { CommandUtils } from '../command-utils.js';
 import { Constants } from '../constants.js';
 import {
@@ -16,6 +18,8 @@ import { ApiUtils } from '../api-utils.js';
 import { ObjectExtraData, ParsedQuery, Script, ScriptObject, ScriptObjectSet } from './data-move-models.js';
 import { DataMoveUtilsStatic } from './data-move-utils-static.js';
 import { OPERATION } from './data-move-types.js';
+
+const pipelineAsync = promisify(pipeline);
 
 /**
  * Utility class for data-move command operations.
@@ -660,6 +664,46 @@ export class DataMoveUtils<T> {
     };
   }
 
+  /**
+   * Asynchronously creates export records by reading from a source CSV file,
+   * transforming the records, and writing them to an export CSV file.
+   *
+   * @param object - The ScriptObject containing configuration and file information.
+   * @param requiredOperation - The operation type for which records are being exported.
+   * @param transformRecordsCallback - A callback function to transform each raw record.
+   * @param useTargetFileAsSource - Optional flag to determine the source file (source vs. target).
+   * @returns A Promise that resolves when the export process is complete.
+   */
+  // eslint-disable-next-line class-methods-use-this
+  public async createExportRecordsAsync(
+    object: ScriptObject,
+    requiredOperation: OPERATION,
+    transformRecordsCallback: (rawRecord: any) => any,
+    useTargetFileAsSource?: boolean
+  ): Promise<void> {
+    // Determine the source file path based on the `useTargetFileAsSource` flag
+    const sourceRecordsFilePath = !useTargetFileAsSource
+      ? path.join(object.objectSet.sourceSubDirectory, object.getWorkingCSVFileName(object.operation, 'source'))
+      : path.join(object.objectSet.targetSubDirectory, object.getWorkingCSVFileName(object.operation, 'target'));
+
+    // Determine the export file path
+    const exportRecordsFilePath = path.join(
+      object.objectSet.exportSubDirectory,
+      object.getWorkingCSVFileName(requiredOperation, 'export')
+    );
+
+    // Create the readable and writable streams
+    const readStream = Utils.createCsvReadableFileStream(sourceRecordsFilePath, transformRecordsCallback);
+    const writeStream = fs.createWriteStream(exportRecordsFilePath, {
+      flags: 'w',
+      encoding: Constants.DEFAULT_ENCODING,
+      highWaterMark: Constants.DEFAULT_FILE_WRITE_STREAM_HIGH_WATER_MARK,
+    });
+
+    // Use pipeline to handle stream piping with proper error handling
+    await pipelineAsync(readStream, writeStream);
+  }
+
   // Process Helper methods -----------------------------------------------------------
   /**
    * Loads the script from the configuration file, sets up directories, and initializes object sets.
@@ -726,6 +770,10 @@ export class DataMoveUtils<T> {
         // Create target directory for CSV files
         objectSet.targetSubDirectory = this.comUtils.createConfigDirectory(
           path.join(Constants.DATA_MOVE_CONSTANTS.CSV_TARGET_SUB_DIRECTORY, objectSet.getTemporarySubDirectory())
+        ) as string;
+        // Create export directory for CSV files
+        objectSet.exportSubDirectory = this.comUtils.createConfigDirectory(
+          path.join(Constants.DATA_MOVE_CONSTANTS.CSV_EXPORT_SUB_DIRECTORY, objectSet.getTemporarySubDirectory())
         ) as string;
       });
     } else {
@@ -842,13 +890,17 @@ export class DataMoveUtils<T> {
         const deleteApiOperation: ApiOperation = object.hardDelete ? 'hardDelete' : 'delete';
 
         //  Create the name of the file to store the records to delete +++++++
-        const deletionRecordsFilePath = path.join(
+        const targetRecordsFilePath = path.join(
           objectSet.targetSubDirectory,
           object.getWorkingCSVFileName(OPERATION.Delete, 'target')
         );
-        const deletionStatusFilePath = path.join(
-          objectSet.targetSubDirectory,
-          object.getWorkingCSVFileName(OPERATION.Delete, 'target', true)
+        const exportRecordsFilePath = path.join(
+          objectSet.exportSubDirectory,
+          object.getWorkingCSVFileName(OPERATION.Delete, 'export')
+        );
+        const exportStatusFilePath = path.join(
+          objectSet.exportSubDirectory,
+          object.getWorkingCSVFileName(OPERATION.Delete, 'export', true)
         );
 
         // Query records to delete +++++++
@@ -862,15 +914,15 @@ export class DataMoveUtils<T> {
         // Skip the API call if the suggested query engine indicates to do so
         if (suggestedQueryEngine.skipApiCall) {
           // Create empty CSV file if no records to delete
-          Utils.writeEmptyCsvFile(deletionRecordsFilePath, object.extraData.deleteParsedQuery.fields);
+          Utils.writeEmptyCsvFile(targetRecordsFilePath, object.extraData.deleteParsedQuery.fields);
           continue;
         }
 
-        // Make the query to delete the records
+        // Make the query to target records to delete
         const queryParams = {
           useSourceConnection: false,
           query: DataMoveUtilsStatic.composeQueryString(object.extraData.deleteParsedQuery),
-          filePath: deletionRecordsFilePath,
+          filePath: targetRecordsFilePath,
           columns: object.extraData.deleteParsedQuery.fields,
           progressCallback: this.getQueryProgressCallback(object),
         } as QueryAsyncParameters;
@@ -881,13 +933,16 @@ export class DataMoveUtils<T> {
           await this.appUtils.queryRestToFileAsync(queryParams);
         }
 
+        // Transform records to delete +++++++
+        await this.createExportRecordsAsync(object, OPERATION.Delete, (rawRecord: any): any => rawRecord, true);
+
         // Delete records +++++++
         const deleteParams = {
           operation: deleteApiOperation,
           useSourceConnection: false,
           sobjectType: object.extraData.deleteParsedQuery.objectName,
-          filePath: deletionRecordsFilePath,
-          statusFilePath: deletionStatusFilePath,
+          filePath: exportRecordsFilePath,
+          statusFilePath: exportStatusFilePath,
           progressCallback: this.getUpdateProgressCallback(object),
         } as UpdateAsyncParameters;
 
@@ -911,7 +966,7 @@ export class DataMoveUtils<T> {
    *  Query master objects from the source org.
    * @param objectSet  The object set to query master objects for.
    */
-  public async queryObjectSetSourceMasterObjectsAsync(objectSet: ScriptObjectSet): Promise<void> {
+  public async queryObjectSetMasterObjectsAsync(objectSet: ScriptObjectSet): Promise<void> {
     for (const objectName of objectSet.updateObjectsOrder) {
       const object = objectSet.objects.find((obj) => obj.extraData.objectName === objectName) as ScriptObject;
       if (object.completed) {
@@ -1032,7 +1087,7 @@ export class DataMoveUtils<T> {
     // Process each object in each object set
     for (const objectSet of this.script.objectSets) {
       await this.deleteObjectSetRecordsAsync(objectSet);
-      await this.queryObjectSetSourceMasterObjectsAsync(objectSet);
+      await this.queryObjectSetMasterObjectsAsync(objectSet);
     }
   }
 }

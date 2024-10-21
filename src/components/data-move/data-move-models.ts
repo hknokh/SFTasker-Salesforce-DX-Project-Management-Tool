@@ -210,7 +210,7 @@ export class ScriptObject {
    */
   public getWorkingCSVFileName(
     operation: OPERATION,
-    sourceOrTarget: 'source' | 'target',
+    sourceOrTarget: 'source' | 'target' | 'export',
     isStatusFile?: boolean
   ): string {
     if (sourceOrTarget === 'source') {
@@ -245,11 +245,14 @@ export class ScriptObjectSet {
   /** Order of objects to delete records, dependent on the relationships between objects. */
   public deleteObjectsOrder: string[] = [];
 
-  /** Target subdirectory to store the CSV files. */
+  /** Subdirectory to store the csv files containing record retrieved from the source org. */
+  public sourceSubDirectory: string = '';
+
+  /** Subdirectory to store the csv files containing record retrieved from the target org. */
   public targetSubDirectory: string = '';
 
-  /** Source subdirectory to store the CSV files. */
-  public sourceSubDirectory: string = '';
+  /** Export subdirectory to store the final CSV files which will be used to update the target org. */
+  public exportSubDirectory: string = '';
 
   // Constructors ----------------------------------------------------------------
   /**
