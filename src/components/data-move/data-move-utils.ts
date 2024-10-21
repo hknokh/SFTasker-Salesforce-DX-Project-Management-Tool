@@ -1109,20 +1109,23 @@ export class DataMoveUtils<T> {
     }
   }
 
-  // public async queryObjectSetSourceChildObjectsAsync(objectSet: ScriptObjectSet): Promise<void> {
-  //   for (const objectName of objectSet.updateObjectsOrder) {
-  //     const object = objectSet.objects.find((obj) => obj.extraData.objectName === objectName) as ScriptObject;
-  //     if (object.completed) {
-  //       continue;
-  //     }
-  //     if (!object.master) {
+  // eslint-disable-next-line @typescript-eslint/require-await, class-methods-use-this
+  public async queryObjectSetSourceChildObjectsAsync(objectSet: ScriptObjectSet): Promise<void> {
+    for (const objectName of objectSet.updateObjectsOrder) {
+      const object = objectSet.objects.find((obj) => obj.extraData.objectName === objectName) as ScriptObject;
+      if (object.completed) {
+        continue;
+      }
+      if (!object.master) {
+        /* empty */
+      }
+    }
+  }
 
-  //     }
-  //   }
-  // }
-
-  // public async queryObjectSetTargetChildObjectsAsync(objectSet: ScriptObjectSet): Promise<void> {
-  // }
+  // eslint-disable-next-line @typescript-eslint/require-await, class-methods-use-this, @typescript-eslint/no-unused-vars
+  public async queryObjectSetTargetChildObjectsAsync(_objectSet: ScriptObjectSet): Promise<void> {
+    return;
+  }
 
   // ------------------------------------------------------------------------------------------
   // Process methods --------------------------------------------------------------------------
@@ -1206,11 +1209,18 @@ export class DataMoveUtils<T> {
    * Processes the data move command by moving data from the source to the target.
    */
   public async processCommandAsync(): Promise<void> {
+    // Number of query attempts to query child objects to ebsure that all hierarchy is queried
+    const MAX_QUERY_ATTEMPTS = 3;
+
     // Process each object in each object set
     for (const objectSet of this.script.objectSets) {
       await this.deleteObjectSetRecordsAsync(objectSet);
       await this.queryObjectSetMasterObjectsAsync(objectSet, true);
       await this.queryObjectSetMasterObjectsAsync(objectSet);
+      for (let queryAttempt = 0; queryAttempt < MAX_QUERY_ATTEMPTS; queryAttempt++) {
+        await this.queryObjectSetSourceChildObjectsAsync(objectSet);
+      }
+      await this.queryObjectSetTargetChildObjectsAsync(objectSet);
     }
   }
 }
