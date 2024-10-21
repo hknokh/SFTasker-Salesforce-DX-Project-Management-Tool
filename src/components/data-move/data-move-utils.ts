@@ -672,8 +672,8 @@ export class DataMoveUtils<T> {
     };
 
     // Check if the object has any references
-    const isTrueChildObject = hasReferenceMasterObject(object);
-    if (!object.master && !isTrueChildObject) {
+    const isReferencedToMaster = hasReferenceMasterObject(object);
+    if (!object.master && !isReferencedToMaster) {
       this.comUtils.logCommandMessage(
         'process.object-set-to-master',
         object.objectSet.index.toString(),
