@@ -731,12 +731,14 @@ export class DataMoveUtils<T> {
       // Create necessary directories for configuration, source, target, and temporary files
       this.configDir = this.comUtils.createConfigDirectory() as string;
       this.sourceDir = this.comUtils.createConfigDirectory(
-        Constants.DATA_MOVE_CONSTANTS.CSV_SOURCE_SUB_DIRECTORY
+        Constants.DATA_MOVE_CONSTANTS.CSV_SOURCE_SUB_DIRECTORY,
+        true
       ) as string;
       this.targetDir = this.comUtils.createConfigDirectory(
-        Constants.DATA_MOVE_CONSTANTS.CSV_TARGET_SUB_DIRECTORY
+        Constants.DATA_MOVE_CONSTANTS.CSV_TARGET_SUB_DIRECTORY,
+        true
       ) as string;
-      this.tempDir = this.comUtils.createConfigDirectory(Constants.DATA_MOVE_CONSTANTS.TEMP_DIRECTORY) as string;
+      this.tempDir = this.comUtils.createConfigDirectory(Constants.DATA_MOVE_CONSTANTS.TEMP_DIRECTORY, true) as string;
 
       // Filter out excluded objects from each object set
       this.script.objectSets.forEach((objectSet) => {
@@ -966,27 +968,39 @@ export class DataMoveUtils<T> {
    *  Query master objects from the source org.
    * @param objectSet  The object set to query master objects for.
    */
-  public async queryObjectSetMasterObjectsAsync(objectSet: ScriptObjectSet): Promise<void> {
+  public async queryObjectSetMasterObjectsAsync(
+    objectSet: ScriptObjectSet,
+    useSourceConnection?: boolean
+  ): Promise<void> {
     for (const objectName of objectSet.updateObjectsOrder) {
       const object = objectSet.objects.find((obj) => obj.extraData.objectName === objectName) as ScriptObject;
       if (object.completed) {
         continue;
       }
       if (object.master) {
-        const query = DataMoveUtilsStatic.composeQueryString(object.extraData, true);
+        const query = DataMoveUtilsStatic.composeQueryString(object.extraData, useSourceConnection);
+        const filePath = useSourceConnection
+          ? path.join(objectSet.sourceSubDirectory, object.getWorkingCSVFileName(object.operation, 'source'))
+          : path.join(objectSet.targetSubDirectory, object.getWorkingCSVFileName(object.operation, 'target'));
+        const columns = useSourceConnection
+          ? object.extraData.fields
+          : object.extraData.fields.map((field) => object.extraData.sourceToTargetFieldMapping.get(field));
+
         const queryParams = {
-          useSourceConnection: true,
+          useSourceConnection,
           query,
-          filePath: path.join(objectSet.sourceSubDirectory, object.getWorkingCSVFileName(object.operation, 'source')),
-          columns: object.extraData.fields,
-          progressCallback: this.getQueryProgressCallback(object, true),
-          recordCallback: this.getQueryRecordCallback(object, true),
+          filePath,
+          columns,
+          progressCallback: this.getQueryProgressCallback(object, useSourceConnection),
+          recordCallback: this.getQueryRecordCallback(object, useSourceConnection),
         } as QueryAsyncParameters;
+
         const suggestedQueryEngine = ApiUtils.suggestQueryEngine(
-          object.extraData.totalRecords,
-          object.extraData.totalRecords,
+          useSourceConnection ? object.extraData.totalRecords : object.extraData.targetTotalRecords,
+          useSourceConnection ? object.extraData.totalRecords : object.extraData.targetTotalRecords,
           1
         );
+
         if (suggestedQueryEngine.skipApiCall) {
           // Creeate empty CSV file if no records to query
           Utils.writeEmptyCsvFile(queryParams.filePath!, queryParams.columns!);
@@ -1087,6 +1101,7 @@ export class DataMoveUtils<T> {
     // Process each object in each object set
     for (const objectSet of this.script.objectSets) {
       await this.deleteObjectSetRecordsAsync(objectSet);
+      await this.queryObjectSetMasterObjectsAsync(objectSet, true);
       await this.queryObjectSetMasterObjectsAsync(objectSet);
     }
   }

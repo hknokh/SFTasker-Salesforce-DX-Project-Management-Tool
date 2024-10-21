@@ -178,9 +178,10 @@ export class CommandUtils<T> {
    * Gets or creates a subdirectory in the configuration directory.
    *
    * @param subdir An optional subdirectory path. If not provided, the configuration directory is returned.
+   * @param clearIfExists A flag to clear the directory if it exists. Defaults to false.
    * @returns The path of the created directory.
    */
-  public createConfigDirectory(subdir?: string): string | undefined {
+  public createConfigDirectory(subdir?: string, clearIfExists?: boolean): string | undefined {
     // Get the configuration file path
     const configFilePath = this.getConfigFilePath();
     // Construct the full path to the subdirectory
@@ -188,6 +189,10 @@ export class CommandUtils<T> {
 
     // Create the directory if it does not exist
     if (!fs.existsSync(configPath)) {
+      fs.mkdirSync(configPath, { recursive: true });
+    } else if (clearIfExists) {
+      // Clear the directory if it exists and the flag is set
+      fs.rmSync(configPath, { recursive: true, force: true });
       fs.mkdirSync(configPath, { recursive: true });
     }
 
