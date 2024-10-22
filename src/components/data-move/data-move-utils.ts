@@ -1203,13 +1203,13 @@ export class DataMoveUtils<T> {
         }
 
         // Query objects that reference this object ++++++++++++++++++++++++++++++++++++
-        for (const referencedObject of objectSet.objects) {
-          for (const field of referencedObject.extraData.lookupObjectMapping.keys()) {
-            const thisObject = referencedObject.extraData.lookupObjectMapping.get(field) as ScriptObject;
+        for (const referencingObject of objectSet.objects) {
+          for (const field of referencingObject.extraData.lookupObjectMapping.keys()) {
+            const thisObject = referencingObject.extraData.lookupObjectMapping.get(field) as ScriptObject;
             if (thisObject.extraData.objectName !== object.extraData.objectName) {
               continue;
             }
-            const ids = Array.from(referencedObject.extraData.lookupFieldToRecordIdSetMapping.get(field) || []);
+            const ids = Array.from(referencingObject.extraData.lookupFieldToRecordIdSetMapping.get(field) || []);
             if (ids.length === 0) {
               continue;
             }
@@ -1233,8 +1233,8 @@ export class DataMoveUtils<T> {
                 query: finalQuery,
                 filePath,
                 columns,
-                progressCallback: this.getQueryProgressCallback(referencedObject, true),
-                recordCallback: this.getQueryRecordCallback(referencedObject, true),
+                progressCallback: this.getQueryProgressCallback(referencingObject, true),
+                recordCallback: this.getQueryRecordCallback(referencingObject, true),
               } as QueryAsyncParameters;
               if (suggestedQueryEngine.shouldUseBulkApi) {
                 await this.appUtils.queryBulkToFileAsync(queryParams);
