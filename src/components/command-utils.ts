@@ -253,7 +253,7 @@ export class CommandUtils<T> {
    * @throws Always throws an error with a custom message.
    */
   public throwError(messageKey: string, ...messageArgs: string[]): never {
-    throw new Error(this.command.componentsMessages.getMessage(messageKey, messageArgs));
+    throw new Error(this.command.componentsMessages.getMessage(messageKey, messageArgs).replace(/\\n/g, '\n'));
   }
 
   /**
@@ -263,7 +263,7 @@ export class CommandUtils<T> {
    * @returns  The error with the custom message.
    */
   public getError(messageKey: string, ...messageArgs: string[]): Error {
-    return new Error(this.command.componentsMessages.getMessage(messageKey, messageArgs));
+    return new Error(this.command.componentsMessages.getMessage(messageKey, messageArgs).replace(/\\n/g, '\n'));
   }
 
   /**
@@ -274,7 +274,7 @@ export class CommandUtils<T> {
    * @throws Always throws an error with a custom message.
    */
   public throwCommandError(messageKey: string, ...messageArgs: string[]): never {
-    throw new Error(this.command.messages.getMessage(messageKey, messageArgs));
+    throw new Error(this.command.messages.getMessage(messageKey, messageArgs).replace(/\\n/g, '\n'));
   }
 
   /**
@@ -284,7 +284,7 @@ export class CommandUtils<T> {
    * @returns  The error with the custom message.
    */
   public getCommandError(messageKey: string, ...messageArgs: string[]): Error {
-    return new Error(this.command.messages.getMessage(messageKey, messageArgs));
+    return new Error(this.command.messages.getMessage(messageKey, messageArgs).replace(/\\n/g, '\n'));
   }
 
   /**
@@ -295,7 +295,9 @@ export class CommandUtils<T> {
    */
   public logComponentMessage(messageKey: string, ...messageArgs: string[]): void {
     // Log the component message with a specific prefix
-    this.command.log('[COMPONENT INFO] ' + this.command.componentsMessages.getMessage(messageKey, messageArgs));
+    this.command.log(
+      '[COMPONENT INFO] ' + this.command.componentsMessages.getMessage(messageKey, messageArgs).replace(/\\n/g, '\n')
+    );
   }
 
   /**
@@ -306,7 +308,9 @@ export class CommandUtils<T> {
    */
   public logCommandMessage(messageKey: string, ...messageArgs: string[]): void {
     // Log the command message with a specific prefix
-    this.command.log('[COMMAND INFO] ' + this.command.messages.getMessage(messageKey, messageArgs));
+    this.command.log(
+      '[COMMAND INFO] ' + this.command.messages.getMessage(messageKey, messageArgs).replace(/\\n/g, '\n')
+    );
   }
 
   /**
@@ -341,18 +345,21 @@ export class CommandUtils<T> {
       case 'start':
         // Start the spinner with a custom message
         this.command.spinner.start(
-          '[PROGRESS INFO] ' + this.command.componentsMessages.getMessage(messageKey as string, messageArgs)
+          '[PROGRESS INFO] ' +
+            this.command.componentsMessages.getMessage(messageKey as string, messageArgs).replace(/\\n/g, '\n')
         );
         break;
       case 'status':
         // Update the spinner status with a custom message
         this.command.spinner.status =
-          '[PROGRESS INFO] ' + this.command.componentsMessages.getMessage(messageKey as string, messageArgs);
+          '[PROGRESS INFO] ' +
+          this.command.componentsMessages.getMessage(messageKey as string, messageArgs).replace(/\\n/g, '\n');
         break;
       case 'stop':
         // Stop the spinner with a custom message
         this.command.spinner.stop(
-          '\n[PROGRESS INFO] ' + this.command.componentsMessages.getMessage(messageKey as string, messageArgs)
+          '\n[PROGRESS INFO] ' +
+            this.command.componentsMessages.getMessage(messageKey as string, messageArgs).replace(/\\n/g, '\n')
         );
         break;
     }

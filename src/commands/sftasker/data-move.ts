@@ -80,15 +80,6 @@ export default class SftaskerDataMove extends SFtaskerCommand<SftaskerDataMoveRe
     // Initialize DataMoveUtils with the current command instance to handle data movement operations.
     const dataMoveUtils = new DataMoveUtils(this);
 
-    // Initialize and process the data move command asynchronously.
-    await dataMoveUtils.prepareCommandAsync();
-
-    // Create the order which the objects should be processed per the object set.
-    dataMoveUtils.createProcessObjectOrder();
-
-    // Count the total number of records to be processed.
-    await dataMoveUtils.countTotalRecordsAsync();
-
     // Process the command asynchronously.
     await dataMoveUtils.processCommandAsync();
 

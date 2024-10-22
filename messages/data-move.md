@@ -132,3 +132,35 @@ Processing %s object set configurations...
 # process.object-set-to-master
 
 [Object-Set #%s : %s] [NOTE] Object `%s` has been set to `master`...
+
+# process.prepare-command-stage
+
+\n\n=== Script: Preparing command... ===\n
+
+# process.create-object-order-stage
+
+\n\n=== Object Set #%s: Creating object order... ===\n
+
+# process.count-total-records-stage
+
+\n\n=== Object Set #%s: Counting total records... ===\n
+
+# process.delete-records-stage
+
+\n\n=== Object Set #%s: Deleting records... ===\n
+
+# process.query-master-objects-stage
+
+\n\n=== Object Set #%s: Querying master objects from the %s... ===\n
+
+# process.query-source-child-objects-stage
+
+\n\n=== Object Set #%s: Querying source child objects... ===\n
+
+# process.query-target-child-objects-stage
+
+\n\n=== Object Set #%s: Querying target child objects... ===\n
+
+# process.query-source-child-objects-attempt
+
+\n--- Object Set #%s : Attempt #%s: Querying source child objects... --- \n

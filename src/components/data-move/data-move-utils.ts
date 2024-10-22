@@ -1305,31 +1305,31 @@ export class DataMoveUtils<T> {
   /**
    *  Creates the order of objects in which they should be processed.
    */
-  public createProcessObjectOrder(): void {
-    for (const objectSet of this.script.objectSets) {
-      objectSet.updateObjectsOrder = objectSet.getObjectOrder();
-      this.comUtils.logCommandMessage(
-        'process.object-order-for-update',
-        objectSet.index.toString(),
-        objectSet.updateObjectsOrder.join(', ')
-      );
-      objectSet.deleteObjectsOrder = [...objectSet.updateObjectsOrder].reverse();
-      this.comUtils.logCommandMessage(
-        'process.object-order-for-delete',
-        objectSet.index.toString(),
-        objectSet.deleteObjectsOrder.join(', ')
-      );
-    }
+  public createProcessObjectOrder(objectSet: ScriptObjectSet): void {
+    //for (const objectSet of this.script.objectSets) {
+    objectSet.updateObjectsOrder = objectSet.getObjectOrder();
+    this.comUtils.logCommandMessage(
+      'process.object-order-for-update',
+      objectSet.index.toString(),
+      objectSet.updateObjectsOrder.join(', ')
+    );
+    objectSet.deleteObjectsOrder = [...objectSet.updateObjectsOrder].reverse();
+    this.comUtils.logCommandMessage(
+      'process.object-order-for-delete',
+      objectSet.index.toString(),
+      objectSet.deleteObjectsOrder.join(', ')
+    );
+    //}
   }
 
   /**
    * Counts the total number of records to be processed for each object in each object set.
    */
-  public async countTotalRecordsAsync(): Promise<void> {
-    for (const objectSet of this.script.objectSets) {
-      await this.countObjectSetTotalRecordsAsync(objectSet, true);
-      await this.countObjectSetTotalRecordsAsync(objectSet, false);
-    }
+  public async countTotalRecordsAsync(objectSet: ScriptObjectSet): Promise<void> {
+    //for (const objectSet of this.script.objectSets) {
+    await this.countObjectSetTotalRecordsAsync(objectSet, true);
+    await this.countObjectSetTotalRecordsAsync(objectSet, false);
+    //}
   }
 
   /**
@@ -1337,17 +1337,56 @@ export class DataMoveUtils<T> {
    */
   public async processCommandAsync(): Promise<void> {
     // Number of query attempts to query child objects to ebsure that all hierarchy is queried
-    const MAX_QUERY_ATTEMPTS = 3;
+    const MAX_CHILD_OBJECTS_QUERY_ATTEMPTS = 3;
+
+    // Initialize and process the data move command asynchronously.
+    this.comUtils.logCommandMessage('process.prepare-command-stage');
+    await this.prepareCommandAsync();
 
     // Process each object in each object set
     for (const objectSet of this.script.objectSets) {
+      // Create the order which the objects should be processed per the object set.
+      this.comUtils.logCommandMessage('process.create-object-order-stage', objectSet.index.toString());
+      this.createProcessObjectOrder(objectSet);
+
+      // Count the total number of records to be processed.
+      this.comUtils.logCommandMessage('process.count-total-records-stage', objectSet.index.toString());
+      await this.countTotalRecordsAsync(objectSet);
+
+      // Delete records from the target org.
+      this.comUtils.logCommandMessage('process.delete-records-stage', objectSet.index.toString());
       await this.deleteObjectSetRecordsAsync(objectSet);
+
+      // Query master objects from the source org.
+      this.comUtils.logCommandMessage(
+        'process.query-master-objects-stage',
+        objectSet.index.toString(),
+        this.command.sourceConnectionLabel
+      );
       await this.queryObjectSetMasterObjectsAsync(objectSet, true);
+
+      // Query master objects from the target org.
+      this.comUtils.logCommandMessage(
+        'process.query-master-objects-stage',
+        objectSet.index.toString(),
+        this.command.targetConnectionLabel
+      );
       await this.queryObjectSetMasterObjectsAsync(objectSet);
+
+      // Query child objects from the source org.
+      this.comUtils.logCommandMessage('process.query-source-child-objects-stage', objectSet.index.toString());
       const isNewFile = new Map<string, boolean>();
-      for (let queryAttempt = 0; queryAttempt < MAX_QUERY_ATTEMPTS; queryAttempt++) {
+      for (let queryAttempt = 0; queryAttempt < MAX_CHILD_OBJECTS_QUERY_ATTEMPTS; queryAttempt++) {
+        this.comUtils.logCommandMessage(
+          'process.query-source-child-objects-attempt',
+          objectSet.index.toString(),
+          (queryAttempt + 1).toString()
+        );
         await this.queryObjectSetSourceChildObjectsAsync(objectSet, isNewFile);
       }
+
+      // Query child objects from the target org.
+      this.comUtils.logCommandMessage('process.query-target-child-objects-stage', objectSet.index.toString());
       await this.queryObjectSetTargetChildObjectsAsync(objectSet);
     }
   }
