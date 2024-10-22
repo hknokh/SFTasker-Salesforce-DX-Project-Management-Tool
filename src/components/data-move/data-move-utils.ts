@@ -1173,7 +1173,6 @@ export class DataMoveUtils<T> {
         }
 
         // Query by objects referenced by this object (child records): +++++++++++++++++++++++++++++++++++++
-        // @example: if this object is Account, then [SELECT Id, Case__c FROM Account WHERE Case__c IN (SELECT Id FROM Case])
         for (const field of object.extraData.lookupObjectMapping.keys()) {
           const referencedObject = object.extraData.lookupObjectMapping.get(field) as ScriptObject;
           const ids = Array.from(referencedObject.extraData.sourceIdToExternalIdMapping.keys());
@@ -1213,7 +1212,6 @@ export class DataMoveUtils<T> {
         }
 
         // Query this object by objects that reference this object (parent records): ++++++++++++++++++++++++++++++++++++
-        // @example:  if this object is Account, then [SELECT Id FROM Account WHERE Id IN (SELECT AccountId FROM Case] )
         for (const referencingObject of objectSet.objects) {
           for (const field of referencingObject.extraData.lookupObjectMapping.keys()) {
             const thisObject = referencingObject.extraData.lookupObjectMapping.get(field) as ScriptObject;
