@@ -1335,11 +1335,12 @@ export class DataMoveUtils<T> {
     // Number of query attempts to query child objects to ebsure that all hierarchy is queried
     const MAX_CHILD_OBJECTS_QUERY_ATTEMPTS = 3;
 
+    // ========================= Script scope: Common operations for all object sets ===========
     // Initialize and process the data move command asynchronously. +++++++++++++++++++++++++
     this.comUtils.logCommandMessage('process.prepare-command-stage');
     await this.prepareCommandAsync();
 
-    // Process each object in each object set
+    // ========================= Object set scope: Operations for each object set ===============
     for (const objectSet of this.script.objectSets) {
       // Create the order which the objects should be processed per the object set. +++++++++
       this.comUtils.logCommandMessage('process.create-object-order-stage', objectSet.index.toString());
