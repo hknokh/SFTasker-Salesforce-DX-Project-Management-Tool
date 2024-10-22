@@ -1163,7 +1163,8 @@ export class DataMoveUtils<T> {
           isNewFile.set(filePath, true);
         }
 
-        // Query objects referenced by this object +++++++++++++++++++++++++++++++++++++
+        // Query by objects referenced by this object (child records): +++++++++++++++++++++++++++++++++++++
+        // @example: if this object is Account, then [SELECT Id, Case__c FROM Account WHERE Case__c IN (SELECT Id FROM Case])
         for (const field of object.extraData.lookupObjectMapping.keys()) {
           const referencedObject = object.extraData.lookupObjectMapping.get(field) as ScriptObject;
           const ids = Array.from(referencedObject.extraData.sourceIdToExternalIdMapping.keys());
@@ -1202,7 +1203,8 @@ export class DataMoveUtils<T> {
           }
         }
 
-        // Query objects that reference this object ++++++++++++++++++++++++++++++++++++
+        // Query this object by objects that reference this object (parent records): ++++++++++++++++++++++++++++++++++++
+        // @example:  if this object is Account, then [SELECT Id FROM Account WHERE Id IN (SELECT AccountId FROM Case] )
         for (const referencingObject of objectSet.objects) {
           for (const field of referencingObject.extraData.lookupObjectMapping.keys()) {
             const thisObject = referencingObject.extraData.lookupObjectMapping.get(field) as ScriptObject;
@@ -1250,10 +1252,12 @@ export class DataMoveUtils<T> {
   }
 
   /**
-   *  Query child objects from the target org.
+   * Query child objects from the target org.
+   * @example
+   * If the object is Account, and external Id is Name, then:
+   * [SELECT Id, Name FROM Account:Target WHERE Name IN (SELECT Name FROM Account:Source)]
    * @param objectSet  The object set to query child objects for.
    */
-  // eslint-disable-next-line @typescript-eslint/require-await, class-methods-use-this
   public async queryObjectSetTargetChildObjectsAsync(objectSet: ScriptObjectSet): Promise<void> {
     for (const objectName of objectSet.updateObjectsOrder) {
       const object = objectSet.objects.find((obj) => obj.extraData.objectName === objectName) as ScriptObject;
@@ -1263,9 +1267,6 @@ export class DataMoveUtils<T> {
       }
 
       if (!object.master) {
-        if (object.extraData.objectName === 'RecordType') {
-          this.command.info('User object is not supported for child object query.');
-        }
         const whereClauses = new Array<string>();
         const sourceExternalIdParts = object.externalId.split(
           Constants.DATA_MOVE_CONSTANTS.COMPLEX_EXTERNAL_ID_SEPARATOR

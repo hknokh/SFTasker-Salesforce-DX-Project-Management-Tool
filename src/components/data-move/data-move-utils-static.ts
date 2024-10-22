@@ -528,7 +528,7 @@ export class DataMoveUtilsStatic {
    * @param maxLength The maximum length for the fields list and WHERE conditions.
    * @returns A truncated version of the query with SELECT fields and WHERE clause shortened independently.
    */
-  public static getPrintableQueryString(query: string, maxLength = 50): string {
+  public static getPrintableQueryString(query: string, maxLength = 100): string {
     // Normalize whitespace and remove extra spaces for consistent parsing
     const normalizedQuery = query.replace(/\s+/g, ' ').trim();
 
