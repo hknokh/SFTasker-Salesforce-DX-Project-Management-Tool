@@ -1335,25 +1335,25 @@ export class DataMoveUtils<T> {
     // Number of query attempts to query child objects to ebsure that all hierarchy is queried
     const MAX_CHILD_OBJECTS_QUERY_ATTEMPTS = 3;
 
-    // Initialize and process the data move command asynchronously.
+    // Initialize and process the data move command asynchronously. +++++++++++++++++++++++++
     this.comUtils.logCommandMessage('process.prepare-command-stage');
     await this.prepareCommandAsync();
 
     // Process each object in each object set
     for (const objectSet of this.script.objectSets) {
-      // Create the order which the objects should be processed per the object set.
+      // Create the order which the objects should be processed per the object set. +++++++++
       this.comUtils.logCommandMessage('process.create-object-order-stage', objectSet.index.toString());
       this.createProcessObjectOrder(objectSet);
 
-      // Count the total number of records to be processed.
+      // Count the total number of records to be processed. ++++++++++++++++++++++++++++++++++
       this.comUtils.logCommandMessage('process.count-total-records-stage', objectSet.index.toString());
       await this.countTotalRecordsAsync(objectSet);
 
-      // Delete records from the target org.
+      // Delete records from the target org. +++++++++++++++++++++++++++++++++++++++++++++++++
       this.comUtils.logCommandMessage('process.delete-records-stage', objectSet.index.toString());
       await this.deleteObjectSetRecordsAsync(objectSet);
 
-      // Query master objects from the source org.
+      // Query master objects from the source org. ++++++++++++++++++++++++++++++++++++++++++++
       this.comUtils.logCommandMessage(
         'process.query-master-objects-stage',
         objectSet.index.toString(),
@@ -1361,7 +1361,7 @@ export class DataMoveUtils<T> {
       );
       await this.queryObjectSetMasterObjectsAsync(objectSet, true);
 
-      // Query master objects from the target org.
+      // Query master objects from the target org. +++++++++++++++++++++++++++++++++++++++++++++
       this.comUtils.logCommandMessage(
         'process.query-master-objects-stage',
         objectSet.index.toString(),
@@ -1369,7 +1369,7 @@ export class DataMoveUtils<T> {
       );
       await this.queryObjectSetMasterObjectsAsync(objectSet);
 
-      // Query child objects from the source org.
+      // Query child objects from the source org. +++++++++++++++++++++++++++++++++++++++++++++++
       this.comUtils.logCommandMessage('process.query-source-child-objects-stage', objectSet.index.toString());
       const isNewFile = new Map<string, boolean>();
       for (let queryAttempt = 0; queryAttempt < MAX_CHILD_OBJECTS_QUERY_ATTEMPTS; queryAttempt++) {
@@ -1381,7 +1381,7 @@ export class DataMoveUtils<T> {
         await this.queryObjectSetSourceChildObjectsAsync(objectSet, isNewFile);
       }
 
-      // Query child objects from the target org.
+      // Query child objects from the target org. +++++++++++++++++++++++++++++++++++++++++++++++++
       this.comUtils.logCommandMessage('process.query-target-child-objects-stage', objectSet.index.toString());
       await this.queryObjectSetTargetChildObjectsAsync(objectSet);
     }
