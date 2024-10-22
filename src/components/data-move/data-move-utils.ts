@@ -1082,8 +1082,10 @@ export class DataMoveUtils<T> {
   }
 
   /**
-   *  Query master objects from the source org.
+   * Query master objects from the source org.
+   *
    * @param objectSet  The object set to query master objects for.
+   * @param useSourceConnection  Whether to use the source connection for querying master objects.
    */
   public async queryObjectSetMasterObjectsAsync(
     objectSet: ScriptObjectSet,
@@ -1135,9 +1137,16 @@ export class DataMoveUtils<T> {
 
   /**
    *  Query child objects from the source org.
-   * @param objectSet  The object set to query child objects for.
-   * @param isNewFile  A map of file paths to a boolean indicating whether the file is new
-   *                  or new queried rows should be appended to the existing file.
+   * @param objectSet The object set to query child objects for.
+   * @param isNewFile A map of file paths to a boolean indicating whether the file is new or new queried rows should be appended to the existing file.
+   *
+   * @example
+   * - Retrieves object records by other objects referenced by this object (child records selection).
+   *    For example, if this object is Account, then the query tempalte will be:
+   *    `SELECT Id, Case__c FROM Account WHERE Case__c IN (SELECT Id FROM Case)`
+   * - Retrieves object records by objects that reference this object (parent records selection).
+   *    For example, if this object is Account, then the query tempalte will be:
+   *    `SELECT Id FROM Account WHERE Id IN (SELECT AccountId FROM Case)`
    */
   public async queryObjectSetSourceChildObjectsAsync(
     objectSet: ScriptObjectSet,
@@ -1254,8 +1263,8 @@ export class DataMoveUtils<T> {
   /**
    * Query child objects from the target org.
    * @example
-   * If the object is Account, and external Id is Name, then:
-   * [SELECT Id, Name FROM Account:Target WHERE Name IN (SELECT Name FROM Account:Source)]
+   * If the object is  `Account`, and external Id is `Name`, then the query template is:
+   * `SELECT Id, Name FROM Account:Target WHERE Name IN (SELECT Name FROM Account:Source)`
    * @param objectSet  The object set to query child objects for.
    */
   public async queryObjectSetTargetChildObjectsAsync(objectSet: ScriptObjectSet): Promise<void> {
