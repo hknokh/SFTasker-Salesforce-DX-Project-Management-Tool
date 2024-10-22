@@ -8,10 +8,42 @@ The `data-move` command enables importing and exporting data between Salesforce 
 
 # examples
 
-- <%= config.bin %> <%= command.id %> --source-org mySourceOrg
-- <%= config.bin %> <%= command.id %> --csv-source --target-org myTargetOrg --config-path path/to/export.json
-- <%= config.bin %> <%= command.id %> --source-org mySourceOrg --csv-target --config-path path/to/export.json
-- <%= config.bin %> <%= command.id %> --source-org mySourceOrg --target-org myTargetOrg --config-path path/to/export.json
+- `<%= config.bin %> <%= command.id %> --source-org mySourceOrg`
+- `<%= config.bin %> <%= command.id %> --csv-source --target-org myTargetOrg --config-path path/to/export.json`
+- `<%= config.bin %> <%= command.id %> --source-org mySourceOrg --csv-target --config-path path/to/export.json`
+- `<%= config.bin %> <%= command.id %> --source-org mySourceOrg --target-org myTargetOrg --config-path path/to/export.json`
+
+# process.prepare-command-stage
+
+\n\n=== Script: Preparing command... ===\n
+
+# process.create-object-order-stage
+
+\n\n=== Object Set #%s: Creating object order... ===\n
+
+# process.count-total-records-stage
+
+\n\n=== Object Set #%s: Counting total records... ===\n
+
+# process.delete-records-stage
+
+\n\n=== Object Set #%s: Deleting records... ===\n
+
+# process.query-master-objects-stage
+
+\n\n=== Object Set #%s: Querying master objects from the %s... ===\n
+
+# process.query-source-child-objects-stage
+
+\n\n=== Object Set #%s: Querying source child objects... ===\n
+
+# process.query-target-child-objects-stage
+
+\n\n=== Object Set #%s: Querying target child objects... ===\n
+
+# process.query-source-child-objects-attempt
+
+\n--- Object Set #%s : Attempt #%s: Querying source child objects... --- \n
 
 # process.loading-configuration-file
 
@@ -49,18 +81,6 @@ Loading script file %s...
 
 [Object-Set #%s : %s] Processing object dependencies...
 
-# error.external-id-field-not-found-in-metadata
-
-[Object-Set #%s : %s] External ID field '%s' not found in metadata...
-
-# error.delete-query-object-mismatch
-
-[Object-Set #%s : %s] Delete query object mismatch. Expected '%s', found '%s'...
-
-# error.delete-query-missing-delete-old-data-and-update-operation
-
-[Object-Set #%s : %s] Delete query should be specified when operation is `Update` and `deleteOldData` is `true`...
-
 # process.processing-object-set-configurations
 
 Processing %s object set configurations...
@@ -76,10 +96,6 @@ Processing %s object set configurations...
 # process.mapping-object-fields
 
 [Object-Set #%s : %s] Mapping object fields...
-
-# error.missing-object-in-metadata
-
-[Object-Set #%s : %s] Object '%s' not found in metadata...
 
 # process.creating-object-process-order
 
@@ -109,10 +125,6 @@ Processing %s object set configurations...
 
 [Object-Set #%s : %s : %s] Total records for delete counted: %s
 
-# error.lookup-field-referenced-object-delete-operation
-
-[Object-Set #%s : %s] Lookup field '%s' references an object that has a delete operation: '%s'.
-
 # process.no-objects-to-delete
 
 [Object-Set #%s] No objects to delete...
@@ -121,6 +133,30 @@ Processing %s object set configurations...
 
 [Object-Set #%s] Deleting records...
 
+# process.object-set-to-master
+
+[Object-Set #%s : %s] [NOTE] Object `%s` has been set to `master`...
+
+# error.external-id-field-not-found-in-metadata
+
+[Object-Set #%s : %s] External ID field '%s' not found in metadata...
+
+# error.delete-query-object-mismatch
+
+[Object-Set #%s : %s] Delete query object mismatch. Expected '%s', found '%s'...
+
+# error.delete-query-missing-delete-old-data-and-update-operation
+
+[Object-Set #%s : %s] Delete query should be specified when operation is `Update` and `deleteOldData` is `true`...
+
+# error.missing-object-in-metadata
+
+[Object-Set #%s : %s] Object '%s' not found in metadata...
+
+# error.lookup-field-referenced-object-delete-operation
+
+[Object-Set #%s : %s] Lookup field '%s' references an object that has a delete operation: '%s'.
+
 # progress.querying-records-progress
 
 [Object-Set #%s : %s : %s : %s] Polling... Total records queried: %d
@@ -128,39 +164,3 @@ Processing %s object set configurations...
 # progress.updating-records-progress
 
 [Object-Set #%s : %s : %s : %s : %s : %s] Polling... State: %s. Succeeded records: %d. Failed records: %d
-
-# process.object-set-to-master
-
-[Object-Set #%s : %s] [NOTE] Object `%s` has been set to `master`...
-
-# process.prepare-command-stage
-
-\n\n=== Script: Preparing command... ===\n
-
-# process.create-object-order-stage
-
-\n\n=== Object Set #%s: Creating object order... ===\n
-
-# process.count-total-records-stage
-
-\n\n=== Object Set #%s: Counting total records... ===\n
-
-# process.delete-records-stage
-
-\n\n=== Object Set #%s: Deleting records... ===\n
-
-# process.query-master-objects-stage
-
-\n\n=== Object Set #%s: Querying master objects from the %s... ===\n
-
-# process.query-source-child-objects-stage
-
-\n\n=== Object Set #%s: Querying source child objects... ===\n
-
-# process.query-target-child-objects-stage
-
-\n\n=== Object Set #%s: Querying target child objects... ===\n
-
-# process.query-source-child-objects-attempt
-
-\n--- Object Set #%s : Attempt #%s: Querying source child objects... --- \n
