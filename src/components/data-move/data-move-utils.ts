@@ -1306,7 +1306,6 @@ export class DataMoveUtils<T> {
    *  Creates the order of objects in which they should be processed.
    */
   public createProcessObjectOrder(objectSet: ScriptObjectSet): void {
-    //for (const objectSet of this.script.objectSets) {
     objectSet.updateObjectsOrder = objectSet.getObjectOrder();
     this.comUtils.logCommandMessage(
       'process.object-order-for-update',
@@ -1319,17 +1318,14 @@ export class DataMoveUtils<T> {
       objectSet.index.toString(),
       objectSet.deleteObjectsOrder.join(', ')
     );
-    //}
   }
 
   /**
    * Counts the total number of records to be processed for each object in each object set.
    */
   public async countTotalRecordsAsync(objectSet: ScriptObjectSet): Promise<void> {
-    //for (const objectSet of this.script.objectSets) {
     await this.countObjectSetTotalRecordsAsync(objectSet, true);
     await this.countObjectSetTotalRecordsAsync(objectSet, false);
-    //}
   }
 
   /**
