@@ -1354,6 +1354,13 @@ export class DataMoveUtils<T> {
       this.comUtils.logCommandMessage('process.delete-records-stage', objectSet.index.toString());
       await this.deleteObjectSetRecordsAsync(objectSet);
 
+      // Check whether there are any incomplete objects +++++++++++++++++++++++++++++++++++++
+      const hasIncompleteObjects = objectSet.objects.some((obj) => !obj.completed);
+      if (!hasIncompleteObjects) {
+        // There are no incomplete objects, so skip the rest of the process...
+        continue;
+      }
+
       // Query master objects from the source org. ++++++++++++++++++++++++++++++++++++++++++++
       this.comUtils.logCommandMessage(
         'process.query-master-objects-stage',
