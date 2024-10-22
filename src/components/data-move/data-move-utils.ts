@@ -734,12 +734,18 @@ export class DataMoveUtils<T> {
    */
   // eslint-disable-next-line class-methods-use-this
   public getQueryRecordCallback(object: ScriptObject, useSourceConnection?: boolean): (rawRecord: any) => any {
-    const externalIdFields = object.externalId.split(Constants.DATA_MOVE_CONSTANTS.COMPLEX_EXTERNAL_ID_SEPARATOR);
+    const externalIdFields = useSourceConnection
+      ? object.externalId.split(Constants.DATA_MOVE_CONSTANTS.COMPLEX_EXTERNAL_ID_SEPARATOR)
+      : object.extraData.targetExternalId.split(Constants.DATA_MOVE_CONSTANTS.COMPLEX_EXTERNAL_ID_SEPARATOR);
     const lookupFields = Array.from(object.extraData.lookupObjectNameMapping.keys());
     return (rawRecord: any): any => {
       // Map record Id to external Id +++++++++++++++++++++++++++++++++++++++++++++++
       // Create a complex external Id by concatenating multiple fields
       // Check if this id is already in the mapping
+      // TEST:
+      if (rawRecord['TEST__c'] === 'ACC_10000') {
+        this.command.info('ACC_10000');
+      }
       const externalId = externalIdFields
         .reduce((acc, field) => {
           acc.push(String(rawRecord[field] || 'NULL'));
@@ -765,7 +771,10 @@ export class DataMoveUtils<T> {
       }
 
       // Map lookup fields to parent record ids +++++++++++++++++++++++++++++++++++
-      for (const field of lookupFields) {
+      for (let field of lookupFields) {
+        if (!useSourceConnection) {
+          field = object.extraData.sourceToTargetFieldMapping.get(field) as string;
+        }
         const parentIdValue = rawRecord[field];
         if (!parentIdValue) {
           continue;

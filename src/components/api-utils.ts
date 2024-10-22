@@ -231,9 +231,9 @@ export class ApiUtils<T> {
      */
     const recurse = (
       obj: Record<string, any>,
-      parentPath: string | null,
-      parentObj: Record<string, any> | null,
-      keyInParent: string | null
+      parentPath: string | null
+      //parentObj: Record<string, any> | null,
+      //keyInParent: string | null
     ): void => {
       if (obj && typeof obj === 'object' && !Array.isArray(obj)) {
         for (const key of Object.keys(obj)) {
@@ -249,25 +249,30 @@ export class ApiUtils<T> {
 
           if (value && typeof value === 'object' && !Array.isArray(value)) {
             // Recurse into nested object
-            recurse(value, newPath, obj, key);
+            //recurse(value, newPath, obj, key);
+            recurse(value, newPath);
+            delete obj[key];
           } else {
             // Add the flattened property to the expanded object
             record[newPath] = value;
           }
         }
 
-        // After processing, delete the original nested reference from its parent
-        if (parentObj && keyInParent) {
-          delete parentObj[keyInParent];
-        } else if (!parentObj && keyInParent) {
-          // If at the top level, delete from expanded
-          delete record[keyInParent];
-        }
+        delete obj['attributes'];
+
+        // // After processing, delete the original nested reference from its parent
+        // if (parentObj && keyInParent) {
+        //   delete parentObj[keyInParent];
+        // } else if (!parentObj && keyInParent) {
+        //   // If at the top level, delete from expanded
+        //   delete record[keyInParent];
+        // }
       }
     };
 
     // Start the recursion with the original record
-    recurse(record, null, null, null);
+    //recurse(record, null, null, null);
+    recurse(record, null);
 
     return record;
   }
@@ -1193,6 +1198,12 @@ export class ApiUtils<T> {
             .query(params.query)
             .on('record', (record) => {
               recordCount++;
+              //delete record.attributes;
+              // TEST:
+              if (record['TEST__c'] === 'ACC_10000') {
+                this.command.info('ACC_10000');
+              }
+              record = ApiUtils.expandSObjectRecord(record);
               if (params.recordCallback) {
                 const processedRecord = params.recordCallback(record);
                 if (processedRecord) {
@@ -1212,12 +1223,7 @@ export class ApiUtils<T> {
             })
             .run(queryOptions);
         })
-      )
-        .filter((record) => !!record)
-        .map((record: any): any => {
-          delete record.attributes;
-          return ApiUtils.expandSObjectRecord(record);
-        });
+      ).filter((record) => !!record);
 
       const csvString = await new Promise<string>((resolve, reject) => {
         stringify(
@@ -1225,6 +1231,7 @@ export class ApiUtils<T> {
           {
             ...Constants.CSV_STRINGIFY_OPTIONS,
             header: writeHeaders,
+            columns: params.columns,
             bom: writeHeaders,
           },
           (err, output) => {
@@ -1336,6 +1343,8 @@ export class ApiUtils<T> {
             .query(params.query)
             .on('record', (record) => {
               recordCount++;
+              //delete record.attributes;
+              record = ApiUtils.expandSObjectRecord(record);
               if (params.recordCallback) {
                 const processedRecord = params.recordCallback(record);
                 if (processedRecord) {
@@ -1355,12 +1364,7 @@ export class ApiUtils<T> {
             })
             .run(queryOptions);
         })
-      )
-        .filter((record) => !!record)
-        .map((record: any): any => {
-          delete record.attributes;
-          return ApiUtils.expandSObjectRecord(record);
-        });
+      ).filter((record) => !!record);
 
       // Final progress report
       reportProgress();
@@ -1446,7 +1450,7 @@ export class ApiUtils<T> {
       const data = res.records
         .map((record: any): any => {
           recordCount++;
-          delete record.attributes;
+          //delete record.attributes;
           record = ApiUtils.expandSObjectRecord(record);
           if (params.recordCallback) {
             filteredRecordCount++;
