@@ -55,6 +55,9 @@ export class Constants {
   /** The maximum number of characters allowed in a SOQL WHERE clause. */
   public static readonly MAX_SOQL_WHERE_CLAUSE_CHARACTER_LENGTH = 3900;
 
+  /** The maximum number of characters allowed in a SOQL query. */
+  public static readonly MAX_SOQL_QUERY_CHARACTER_LENGTH = 10_000;
+
   /** The default encoding used for reading and writing files. */
   public static readonly DEFAULT_ENCODING = 'utf8';
 

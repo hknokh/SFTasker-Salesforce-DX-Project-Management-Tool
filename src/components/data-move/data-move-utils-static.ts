@@ -379,9 +379,10 @@ export class DataMoveUtilsStatic {
    * @param field  Field to use in WHERE IN clause
    * @param inValues  Values to use in WHERE IN clause
    * @param where  Existing WHERE clause to append to the WHERE IN clause
+   * @param extraQueryLength  Extra length to add to the query length for overhead
    * @returns  Array of splitted WHERE IN clauses
    */
-  public static constructWhereInClause(field: string, inValues: any[], where: string): string[] {
+  public static constructWhereInClause(field: string, inValues: any[], where: string, extraQueryLength = 0): string[] {
     const whereClauses: string[] = [];
     const overheadLength = (where ? where.length : 0) + field.length + 15;
 
@@ -393,10 +394,16 @@ export class DataMoveUtilsStatic {
       const separatorLength = currentValues.length > 0 ? 1 : 0; // ',' is 1 characters
       const valueLength = valueString.length + separatorLength;
 
-      if (currentLength + valueLength > Constants.MAX_SOQL_WHERE_CLAUSE_CHARACTER_LENGTH) {
+      const nextClauseLength = currentLength + valueLength;
+      const nextTotalQueryLength = nextClauseLength + extraQueryLength;
+
+      if (
+        nextClauseLength > Constants.MAX_SOQL_WHERE_CLAUSE_CHARACTER_LENGTH ||
+        nextTotalQueryLength > Constants.MAX_SOQL_QUERY_CHARACTER_LENGTH
+      ) {
         // Construct the where clause with currentValues
         const inClause = currentValues.join(',');
-        const whereClause = `(${where}) AND (${field} IN (${inClause}))`;
+        const whereClause = where ? `(${where}) AND (${field} IN (${inClause}))` : `${field} IN (${inClause})`;
         whereClauses.push(whereClause);
 
         // Reset currentValues and currentLength
@@ -412,7 +419,7 @@ export class DataMoveUtilsStatic {
     // After the loop, if currentValues is not empty, construct the final clause
     if (currentValues.length > 0) {
       const inClause = currentValues.join(',');
-      const whereClause = `(${where}) AND (${field} IN (${inClause}))`;
+      const whereClause = where ? `(${where}) AND (${field} IN (${inClause}))` : `${field} IN (${inClause})`;
       whereClauses.push(whereClause);
     }
 
@@ -426,7 +433,12 @@ export class DataMoveUtilsStatic {
    * @param where  Existing WHERE clause to append to the WHERE clauses
    * @returns  Array of splitted WHERE OR/AND clauses
    */
-  public static constructWhereOrAndClause(operand: 'OR' | 'AND', wheres: string[], where: string): string[] {
+  public static constructWhereOrAndClause(
+    operand: 'OR' | 'AND',
+    wheres: string[],
+    where: string,
+    extraQueryLength = 0
+  ): string[] {
     const whereClauses: string[] = [];
 
     const initialPart = where ? `(${where}) AND (` : '';
@@ -442,7 +454,13 @@ export class DataMoveUtilsStatic {
         2; // '(' and ')' are 1 character each
       const clauseLength = whereClause.length + separatorLength;
 
-      if (currentLength + clauseLength > Constants.MAX_SOQL_WHERE_CLAUSE_CHARACTER_LENGTH) {
+      const nextClauseLength = currentLength + clauseLength;
+      const nextTotalQueryLength = nextClauseLength + extraQueryLength;
+
+      if (
+        nextClauseLength > Constants.MAX_SOQL_WHERE_CLAUSE_CHARACTER_LENGTH ||
+        nextTotalQueryLength > Constants.MAX_SOQL_QUERY_CHARACTER_LENGTH
+      ) {
         // Construct the where clause with currentWheres
         const combinedWheres = currentWheres.join(` ${operand} `);
         const finalClause = `${initialPart}${combinedWheres}${closingPart}`;
@@ -508,38 +526,103 @@ export class DataMoveUtilsStatic {
     const normalizedQuery = query.replace(/\s+/g, ' ').trim();
 
     // Regular expressions to capture SELECT fields and WHERE clause
-    const selectRegex = /SELECT\s+([^FROM]+)\s+FROM\s+/i;
-    const whereRegex = /WHERE\s+([^ORDER BY LIMIT OFFSET]+)/i;
+    const selectRegex = /SELECT\s+(.*?)\s+FROM\s+/i;
+    const whereRegex = /WHERE\s+([\s\S]*?)(?=\s+(ORDER BY|LIMIT|OFFSET|GROUP BY)\b|$)/i;
 
     // Extract SELECT fields
     const selectMatch = normalizedQuery.match(selectRegex);
     let truncatedFields = '';
+    let selectStart = -1;
+    let selectEnd = -1;
     if (selectMatch?.[1]) {
       const fields = selectMatch[1].trim();
       truncatedFields = Utils.truncate(fields, maxLength);
+
+      selectStart = selectMatch.index! + selectMatch[0].indexOf(selectMatch[1]);
+      selectEnd = selectStart + selectMatch[1].length;
     }
 
     // Extract WHERE clause
     const whereMatch = normalizedQuery.match(whereRegex);
     let truncatedWhere = '';
+    let whereStart = -1;
+    let whereEnd = -1;
     if (whereMatch?.[1]) {
       const where = whereMatch[1].trim();
       truncatedWhere = Utils.truncate(where, maxLength);
+
+      whereStart = whereMatch.index! + whereMatch[0].indexOf(whereMatch[1]);
+      whereEnd = whereStart + whereMatch[1].length;
     }
 
-    // Reconstruct the query
+    // Reconstruct the query using substring replacements based on indices
     let truncatedQuery = normalizedQuery;
+    const replacements: Array<{ start: number; end: number; text: string }> = [];
 
-    if (selectMatch?.[1]) {
-      // Replace the original SELECT fields with truncated fields
-      truncatedQuery = truncatedQuery.replace(selectMatch[1], truncatedFields);
+    if (selectStart >= 0) {
+      replacements.push({ start: selectStart, end: selectEnd, text: truncatedFields });
     }
 
-    if (whereMatch?.[1]) {
-      // Replace the original WHERE clause with truncated WHERE clause
-      truncatedQuery = truncatedQuery.replace(whereMatch[1], truncatedWhere);
+    if (whereStart >= 0) {
+      replacements.push({ start: whereStart, end: whereEnd, text: truncatedWhere });
+    }
+
+    // Sort replacements in reverse order to avoid index shifting
+    replacements.sort((a, b) => b.start - a.start);
+
+    for (const rep of replacements) {
+      truncatedQuery = truncatedQuery.slice(0, rep.start) + rep.text + truncatedQuery.slice(rep.end);
     }
 
     return truncatedQuery;
+  }
+
+  /**
+   *  Get length of the SOQL query without the WHERE clause.
+   * @param query The SOQL query string.
+   * @returns The base length of the query without the WHERE clause
+   * (i.e., the length of the query string up to the WHERE keyword and after the conditions).
+   * @example 
+   *    input: "SELECT Id, Name FROM Account WHERE Name LIKE 'A%' LIMIT 10 OFFSET 500",
+        expectedBase: "SELECT Id, Name FROM Account WHERE LIMIT 10 OFFSET 500",
+   */
+  public static getSOQLStringLengthWOWhereClause(query: string): number {
+    const regex = /WHERE\s+.*?(?=\s+(LIMIT|OFFSET|ORDER BY|GROUP BY|HAVING)\b|$)/i;
+    const modifiedQuery = query.replace(regex, 'WHERE');
+    return modifiedQuery.length;
+  }
+
+  /**
+   * Splits a SOQL query into parts before and after the WHERE clause.
+   * @param query The SOQL query string.
+   * @returns An object containing 'beforeWhere' and 'afterWhere' strings.
+   */
+  public static splitSOQLStringWOWhereCluase(query: string): { beforeWhere: string; afterWhere: string } {
+    // Regular expression to match the WHERE clause and its condition
+    const regex = /\bWHERE\b\s+([^]*)?(?=\b(LIMIT|OFFSET|ORDER BY|GROUP BY|HAVING)\b|$)/i;
+
+    const match = regex.exec(query);
+
+    if (match) {
+      const whereStartIndex = match.index;
+      const whereEndIndex = whereStartIndex + match[0].length;
+
+      // Extract beforeWhere: from start to before 'WHERE'
+      const beforeWhere = query.substring(0, whereStartIndex).trim();
+
+      // Extract afterWhere: from end of 'WHERE' clause's condition to end
+      const afterWhere = query.substring(whereEndIndex).trim();
+
+      return {
+        beforeWhere,
+        afterWhere,
+      };
+    } else {
+      // If WHERE clause is not present, beforeWhere is the whole query, afterWhere is empty
+      return {
+        beforeWhere: query.trim(),
+        afterWhere: '',
+      };
+    }
   }
 }

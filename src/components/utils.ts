@@ -582,6 +582,23 @@ export class Utils {
     return str.substring(0, maxLength - 3).trim() + '...';
   }
 
+  /**
+   * Gets the length of a string or an array of strings.
+   * @param str The string or array of strings to get the length of.
+   * @param separator The separator to use when joining an array of strings.
+   * @returns The total length of the string or strings in the array.
+   */
+  public static getStringLength(str: string | string[], separator = ','): number {
+    if (Array.isArray(str)) {
+      if (str.length === 0) {
+        return 0;
+      }
+      return str.reduce((acc, val) => acc + val.length + separator.length, 0) - separator.length;
+    } else {
+      return str.length;
+    }
+  }
+
   // --- Private methods ---
   /**
    * Merges two arrays of objects, combining elements with the same keys.

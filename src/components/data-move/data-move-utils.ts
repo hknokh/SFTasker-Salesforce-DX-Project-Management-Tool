@@ -526,22 +526,22 @@ export class DataMoveUtils<T> {
           );
         }
 
-        const rField = DataMoveUtilsStatic.getRField(field);
-        const _rField = `${rField}.${referencedObject.externalId}`;
+        //const rField = DataMoveUtilsStatic.getRField(field);
+        //const _rField = `${rField}.${referencedObject.externalId}`;
 
         // Set up bidirectional field mappings
         //object.extraData.lookupFieldMapping.set(field, _rField);
         //object.extraData.lookupFieldMapping.set(_rField, field);
 
         // Map the reference field to its parent object name
-        object.extraData.lookupObjectNameMapping.set(_rField, referencedObjectName!);
-        if (fieldDescribe.isMasterDetail) {
-          object.extraData.masterDetailObjectNameMapping.set(_rField, referencedObjectName!);
-        }
+        // object.extraData.lookupObjectNameMapping.set(_rField, referencedObjectName!);
+        // if (fieldDescribe.isMasterDetail) {
+        //   object.extraData.masterDetailObjectNameMapping.set(_rField, referencedObjectName!);
+        // }
 
         // Map the reference object
         object.extraData.lookupObjectMapping.set(field, referencedObject);
-        object.extraData.lookupObjectMapping.set(_rField, referencedObject);
+        //object.extraData.lookupObjectMapping.set(_rField, referencedObject);
 
         // Add the reference field to the fields list
         // if (referencedObject.isComplexExternalId) {
@@ -735,9 +735,11 @@ export class DataMoveUtils<T> {
   // eslint-disable-next-line class-methods-use-this
   public getQueryRecordCallback(object: ScriptObject, useSourceConnection?: boolean): (rawRecord: any) => any {
     const externalIdFields = object.externalId.split(Constants.DATA_MOVE_CONSTANTS.COMPLEX_EXTERNAL_ID_SEPARATOR);
+    const lookupFields = Array.from(object.extraData.lookupObjectNameMapping.keys());
     return (rawRecord: any): any => {
       // Map record Id to external Id +++++++++++++++++++++++++++++++++++++++++++++++
       // Create a complex external Id by concatenating multiple fields
+      // Check if this id is already in the mapping
       const externalId = externalIdFields
         .reduce((acc, field) => {
           acc.push(String(rawRecord[field] || 'NULL'));
@@ -747,9 +749,31 @@ export class DataMoveUtils<T> {
 
       // Store the mapping of the record Id to the external Id
       if (useSourceConnection) {
+        const isInMapping = object.extraData.sourceIdToExternalIdMapping.has(rawRecord.Id);
+        if (isInMapping) {
+          // Skip the record from writing in file if it's already in the mapping
+          return null;
+        }
         object.extraData.sourceIdToExternalIdMapping.set(rawRecord.Id, externalId);
       } else {
+        const isInMapping = object.extraData.targetExternalIdToIdMapping.has(externalId);
+        if (isInMapping) {
+          // Skip the record from writing in file if it's already in the mapping
+          return null;
+        }
         object.extraData.targetExternalIdToIdMapping.set(externalId, rawRecord.Id);
+      }
+
+      // Map lookup fields to parent record ids +++++++++++++++++++++++++++++++++++
+      for (const field of lookupFields) {
+        const parentIdValue = rawRecord[field];
+        if (!parentIdValue) {
+          continue;
+        }
+        if (!object.extraData.lookupFieldToRecordIdSetMapping.has(field)) {
+          object.extraData.lookupFieldToRecordIdSetMapping.set(field, new Set<string>());
+        }
+        object.extraData.lookupFieldToRecordIdSetMapping.get(field)?.add(parentIdValue);
       }
 
       // Returns the raw record as is
@@ -1109,15 +1133,118 @@ export class DataMoveUtils<T> {
     }
   }
 
-  // eslint-disable-next-line @typescript-eslint/require-await, class-methods-use-this
-  public async queryObjectSetSourceChildObjectsAsync(objectSet: ScriptObjectSet): Promise<void> {
+  /**
+   *  Query child objects from the source org.
+   * @param objectSet  The object set to query child objects for.
+   * @param isNewFile  A map of file paths to a boolean indicating whether the file is new
+   *                  or new queried rows should be appended to the existing file.
+   */
+  public async queryObjectSetSourceChildObjectsAsync(
+    objectSet: ScriptObjectSet,
+    isNewFile: Map<string, boolean>
+  ): Promise<void> {
     for (const objectName of objectSet.updateObjectsOrder) {
       const object = objectSet.objects.find((obj) => obj.extraData.objectName === objectName) as ScriptObject;
+
       if (object.completed) {
         continue;
       }
+
       if (!object.master) {
-        /* empty */
+        const queryAllString = DataMoveUtilsStatic.composeQueryString(object.extraData, true);
+        const baseQueryStringLength = DataMoveUtilsStatic.getSOQLStringLengthWOWhereClause(queryAllString);
+        const queryParts = DataMoveUtilsStatic.splitSOQLStringWOWhereCluase(queryAllString);
+        const columns = object.extraData.fields;
+        const filePath = path.join(
+          objectSet.sourceSubDirectory,
+          object.getWorkingCSVFileName(object.operation, 'source')
+        );
+        if (isNewFile.get(filePath) === undefined) {
+          isNewFile.set(filePath, true);
+        }
+
+        // Query objects referenced by this object +++++++++++++++++++++++++++++++++++++
+        for (const field of object.extraData.lookupObjectMapping.keys()) {
+          const referencedObject = object.extraData.lookupObjectMapping.get(field) as ScriptObject;
+          const ids = Array.from(referencedObject.extraData.sourceIdToExternalIdMapping.keys());
+          if (ids.length === 0) {
+            continue;
+          }
+          const queries = DataMoveUtilsStatic.constructWhereInClause(
+            field,
+            ids,
+            object.extraData.where,
+            baseQueryStringLength
+          );
+          const suggestedQueryEngine = ApiUtils.suggestQueryEngine(
+            object.extraData.totalRecords,
+            ids.length,
+            queries.length
+          );
+
+          for (const query of queries) {
+            const finalQuery = (queryParts.beforeWhere + ' WHERE ' + query + ' ' + queryParts.afterWhere).trim();
+            const queryParams = {
+              useSourceConnection: true,
+              appendToExistingFile: !isNewFile.get(filePath),
+              query: finalQuery,
+              filePath,
+              columns,
+              progressCallback: this.getQueryProgressCallback(referencedObject, true),
+              recordCallback: this.getQueryRecordCallback(referencedObject, true),
+            } as QueryAsyncParameters;
+            if (suggestedQueryEngine.shouldUseBulkApi) {
+              await this.appUtils.queryBulkToFileAsync(queryParams);
+            } else {
+              await this.appUtils.queryRestToFileAsync(queryParams);
+            }
+            isNewFile.set(filePath, false);
+          }
+        }
+
+        // Query objects that reference this object ++++++++++++++++++++++++++++++++++++
+        for (const referencedObject of objectSet.objects) {
+          for (const field of referencedObject.extraData.lookupObjectMapping.keys()) {
+            const thisObject = referencedObject.extraData.lookupObjectMapping.get(field) as ScriptObject;
+            if (thisObject.extraData.objectName !== object.extraData.objectName) {
+              continue;
+            }
+            const ids = Array.from(referencedObject.extraData.lookupFieldToRecordIdSetMapping.get(field) || []);
+            if (ids.length === 0) {
+              continue;
+            }
+            const queries = DataMoveUtilsStatic.constructWhereInClause(
+              'Id',
+              ids,
+              object.extraData.where,
+              baseQueryStringLength
+            );
+            const suggestedQueryEngine = ApiUtils.suggestQueryEngine(
+              object.extraData.totalRecords,
+              ids.length,
+              queries.length
+            );
+
+            for (const query of queries) {
+              const finalQuery = (queryParts.beforeWhere + ' WHERE ' + query + ' ' + queryParts.afterWhere).trim();
+              const queryParams = {
+                useSourceConnection: true,
+                appendToExistingFile: !isNewFile.get(filePath),
+                query: finalQuery,
+                filePath,
+                columns,
+                progressCallback: this.getQueryProgressCallback(referencedObject, true),
+                recordCallback: this.getQueryRecordCallback(referencedObject, true),
+              } as QueryAsyncParameters;
+              if (suggestedQueryEngine.shouldUseBulkApi) {
+                await this.appUtils.queryBulkToFileAsync(queryParams);
+              } else {
+                await this.appUtils.queryRestToFileAsync(queryParams);
+              }
+              isNewFile.set(filePath, false);
+            }
+          }
+        }
       }
     }
   }
@@ -1217,8 +1344,9 @@ export class DataMoveUtils<T> {
       await this.deleteObjectSetRecordsAsync(objectSet);
       await this.queryObjectSetMasterObjectsAsync(objectSet, true);
       await this.queryObjectSetMasterObjectsAsync(objectSet);
+      const isNewFile = new Map<string, boolean>();
       for (let queryAttempt = 0; queryAttempt < MAX_QUERY_ATTEMPTS; queryAttempt++) {
-        await this.queryObjectSetSourceChildObjectsAsync(objectSet);
+        await this.queryObjectSetSourceChildObjectsAsync(objectSet, isNewFile);
       }
       await this.queryObjectSetTargetChildObjectsAsync(objectSet);
     }

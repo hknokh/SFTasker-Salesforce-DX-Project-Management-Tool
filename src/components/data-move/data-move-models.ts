@@ -47,6 +47,9 @@ export class ObjectExtraData extends ParsedQuery {
   /** Mapping between the source record Id to the external Id. */
   public sourceIdToExternalIdMapping: Map<string, string> = new Map<string, string>();
 
+  /** Mapping between the child lookup field name to the set of parent record Ids. */
+  public lookupFieldToRecordIdSetMapping: Map<string, Set<string>> = new Map<string, Set<string>>();
+
   /** Mapping between the target record Id to the external Id. */
   public targetExternalIdToIdMapping: Map<string, string> = new Map<string, string>();
 
