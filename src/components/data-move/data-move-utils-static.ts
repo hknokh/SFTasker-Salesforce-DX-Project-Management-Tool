@@ -597,7 +597,12 @@ export class DataMoveUtilsStatic {
    * @param query The SOQL query string.
    * @returns An object containing 'beforeWhere' and 'afterWhere' strings.
    */
-  public static splitSOQLStringWOWhereCluase(query: string): { beforeWhere: string; afterWhere: string } {
+  public static splitSOQLStringWOWhereClause(query: string): {
+    /** The part of the query before the WHERE clause */
+    beforeWhere: string;
+    /** The part of the query after the WHERE clause */
+    afterWhere: string;
+  } {
     // Regular expression to match the WHERE clause and its condition
     const regex = /\bWHERE\b\s+([^]*)?(?=\b(LIMIT|OFFSET|ORDER BY|GROUP BY|HAVING)\b|$)/i;
 

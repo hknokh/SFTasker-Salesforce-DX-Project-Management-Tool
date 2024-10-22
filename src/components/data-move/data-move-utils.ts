@@ -1153,7 +1153,7 @@ export class DataMoveUtils<T> {
       if (!object.master) {
         const queryAllString = DataMoveUtilsStatic.composeQueryString(object.extraData, true);
         const baseQueryStringLength = DataMoveUtilsStatic.getSOQLStringLengthWOWhereClause(queryAllString);
-        const queryParts = DataMoveUtilsStatic.splitSOQLStringWOWhereCluase(queryAllString);
+        const queryParts = DataMoveUtilsStatic.splitSOQLStringWOWhereClause(queryAllString);
         const columns = object.extraData.fields;
         const filePath = path.join(
           objectSet.sourceSubDirectory,
