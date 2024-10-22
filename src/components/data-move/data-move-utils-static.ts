@@ -492,7 +492,13 @@ export class DataMoveUtilsStatic {
    * @returns  SOQL-compatible string representation of the value
    */
   public static valueToSOQL(value: any): string {
-    if (typeof value === 'string') {
+    if (value === 'true' || value === 'false') {
+      // Convert boolean values to uppercase for SOQL
+      return value === 'true' ? 'TRUE' : 'FALSE';
+    } else if (value === 'NULL' || value === null) {
+      // Convert NULL string to uppercase for SOQL
+      return 'NULL';
+    } else if (typeof value === 'string') {
       // Escape single quotes by replacing ' with \'
       const escapedValue = value.replace(/'/g, "\\'");
       return `'${escapedValue}'`;
@@ -507,7 +513,8 @@ export class DataMoveUtilsStatic {
       // For other types, convert to string and wrap in single quotes
       // eslint-disable-next-line @typescript-eslint/no-unsafe-call
       const stringValue = value.toString();
-      return `'${stringValue}'`;
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-call
+      return `'${stringValue.replace(/'/g, "\\'")}'`;
     } else {
       // For null or undefined values, return NULL without quotes
       return 'NULL';

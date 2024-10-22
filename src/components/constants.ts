@@ -295,6 +295,8 @@ export class Constants {
     TEMP_DIRECTORY: 'temp',
     /** Separator used for complex external IDs. */
     COMPLEX_EXTERNAL_ID_SEPARATOR: ';',
+    /** Separator used for complex external ID values. */
+    COMPLEX_EXTERNAL_ID_VALUE_SEPARATOR: '$;$;$;$',
     /** Separator used for polymorphic fields. */
     POLYMORPHIC_FIELD_SEPARATOR: '$',
     /** SOQL keyword to select all fields. */

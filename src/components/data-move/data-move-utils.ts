@@ -745,7 +745,7 @@ export class DataMoveUtils<T> {
           acc.push(String(rawRecord[field] || 'NULL'));
           return acc;
         }, new Array<string>())
-        .join(Constants.DATA_MOVE_CONSTANTS.COMPLEX_EXTERNAL_ID_SEPARATOR);
+        .join(Constants.DATA_MOVE_CONSTANTS.COMPLEX_EXTERNAL_ID_VALUE_SEPARATOR);
 
       // Store the mapping of the record Id to the external Id
       if (useSourceConnection) {
@@ -1190,8 +1190,8 @@ export class DataMoveUtils<T> {
               query: finalQuery,
               filePath,
               columns,
-              progressCallback: this.getQueryProgressCallback(referencedObject, true),
-              recordCallback: this.getQueryRecordCallback(referencedObject, true),
+              progressCallback: this.getQueryProgressCallback(object, true),
+              recordCallback: this.getQueryRecordCallback(object, true),
             } as QueryAsyncParameters;
             if (suggestedQueryEngine.shouldUseBulkApi) {
               await this.appUtils.queryBulkToFileAsync(queryParams);
@@ -1233,8 +1233,8 @@ export class DataMoveUtils<T> {
                 query: finalQuery,
                 filePath,
                 columns,
-                progressCallback: this.getQueryProgressCallback(referencingObject, true),
-                recordCallback: this.getQueryRecordCallback(referencingObject, true),
+                progressCallback: this.getQueryProgressCallback(object, true),
+                recordCallback: this.getQueryRecordCallback(object, true),
               } as QueryAsyncParameters;
               if (suggestedQueryEngine.shouldUseBulkApi) {
                 await this.appUtils.queryBulkToFileAsync(queryParams);
@@ -1249,9 +1249,109 @@ export class DataMoveUtils<T> {
     }
   }
 
-  // eslint-disable-next-line @typescript-eslint/require-await, class-methods-use-this, @typescript-eslint/no-unused-vars
-  public async queryObjectSetTargetChildObjectsAsync(_objectSet: ScriptObjectSet): Promise<void> {
-    return;
+  /**
+   *  Query child objects from the target org.
+   * @param objectSet  The object set to query child objects for.
+   */
+  // eslint-disable-next-line @typescript-eslint/require-await, class-methods-use-this
+  public async queryObjectSetTargetChildObjectsAsync(objectSet: ScriptObjectSet): Promise<void> {
+    for (const objectName of objectSet.updateObjectsOrder) {
+      const object = objectSet.objects.find((obj) => obj.extraData.objectName === objectName) as ScriptObject;
+
+      if (object.completed) {
+        continue;
+      }
+
+      if (!object.master) {
+        if (object.extraData.objectName === 'RecordType') {
+          this.command.info('User object is not supported for child object query.');
+        }
+        const whereClauses = new Array<string>();
+        const sourceExternalIdParts = object.externalId.split(
+          Constants.DATA_MOVE_CONSTANTS.COMPLEX_EXTERNAL_ID_SEPARATOR
+        );
+        const targetExternalIdParts = object.extraData.targetExternalId.split(
+          Constants.DATA_MOVE_CONSTANTS.COMPLEX_EXTERNAL_ID_SEPARATOR
+        );
+        const queryAllString = DataMoveUtilsStatic.composeQueryString(object.extraData);
+        const baseQueryStringLength = DataMoveUtilsStatic.getSOQLStringLengthWOWhereClause(queryAllString);
+        const queryParts = DataMoveUtilsStatic.splitSOQLStringWOWhereClause(queryAllString);
+        const columns = object.extraData.fields.map((field) =>
+          object.extraData.sourceToTargetFieldMapping.get(field)
+        ) as string[];
+        const filePath = path.join(
+          objectSet.targetSubDirectory,
+          object.getWorkingCSVFileName(object.operation, 'target')
+        );
+        const recordIdKeys = [...object.extraData.sourceIdToExternalIdMapping.keys()];
+        for (const recordId of recordIdKeys) {
+          const externalIdUsedSet = new Set<string>();
+          const externalId = object.extraData.sourceIdToExternalIdMapping.get(recordId);
+          if (!externalId || externalIdUsedSet.has(externalId)) {
+            continue;
+          }
+          externalIdUsedSet.add(externalId);
+          const externalIdValueParts = externalId.split(
+            Constants.DATA_MOVE_CONSTANTS.COMPLEX_EXTERNAL_ID_VALUE_SEPARATOR
+          );
+          const whereClause = sourceExternalIdParts
+            .map((part: any, index: number) => {
+              let externalIdValue = externalIdValueParts[index];
+              externalIdValue = DataMoveUtilsStatic.valueToSOQL(externalIdValue);
+              return `${targetExternalIdParts[index]} = ${externalIdValue}`;
+            })
+            .filter((clause) => clause !== null)
+            .join(' AND ');
+          whereClauses.push(whereClause);
+        }
+
+        const queries = DataMoveUtilsStatic.constructWhereOrAndClause(
+          'OR',
+          whereClauses,
+          object.extraData.targetWhere,
+          baseQueryStringLength
+        );
+        const suggestedQueryEngine = ApiUtils.suggestQueryEngine(
+          object.extraData.targetTotalRecords,
+          recordIdKeys.length,
+          queries.length
+        );
+
+        if (suggestedQueryEngine.shouldQueryAllRecords) {
+          const queryParams = {
+            useSourceConnection: false,
+            query: queryAllString,
+            filePath,
+            columns,
+            progressCallback: this.getQueryProgressCallback(object),
+            recordCallback: this.getQueryRecordCallback(object),
+          } as QueryAsyncParameters;
+          if (suggestedQueryEngine.shouldUseBulkApi) {
+            await this.appUtils.queryBulkToFileAsync(queryParams);
+          } else {
+            await this.appUtils.queryRestToFileAsync(queryParams);
+          }
+          continue;
+        }
+
+        for (const query of queries) {
+          const finalQuery = (queryParts.beforeWhere + ' WHERE ' + query + ' ' + queryParts.afterWhere).trim();
+          const queryParams = {
+            useSourceConnection: false,
+            query: finalQuery,
+            filePath,
+            columns,
+            progressCallback: this.getQueryProgressCallback(object),
+            recordCallback: this.getQueryRecordCallback(object),
+          } as QueryAsyncParameters;
+          if (suggestedQueryEngine.shouldUseBulkApi) {
+            await this.appUtils.queryBulkToFileAsync(queryParams);
+          } else {
+            await this.appUtils.queryRestToFileAsync(queryParams);
+          }
+        }
+      }
+    }
   }
 
   // ------------------------------------------------------------------------------------------
