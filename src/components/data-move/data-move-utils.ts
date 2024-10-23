@@ -50,6 +50,9 @@ export class DataMoveUtils<T> {
   /** Map of target object descriptions keyed by object name. */
   public targetSObjectDescribeMap: Map<string, SObjectDescribe> = new Map();
 
+  /** Map of parsed object queries keyed by object name per object set. */
+  public scriptSetParsedObjectQueryMap = new Map<ScriptObjectSet, Map<ScriptObject, ParsedQuery>>();
+
   // Private properties ---------------------------------------------------------
   /** Utility class for API operations. */
   private appUtils!: ApiUtils<T>;
@@ -526,33 +529,8 @@ export class DataMoveUtils<T> {
           );
         }
 
-        //const rField = DataMoveUtilsStatic.getRField(field);
-        //const _rField = `${rField}.${referencedObject.externalId}`;
-
-        // Set up bidirectional field mappings
-        //object.extraData.lookupFieldMapping.set(field, _rField);
-        //object.extraData.lookupFieldMapping.set(_rField, field);
-
-        // Map the reference field to its parent object name
-        // object.extraData.lookupObjectNameMapping.set(_rField, referencedObjectName!);
-        // if (fieldDescribe.isMasterDetail) {
-        //   object.extraData.masterDetailObjectNameMapping.set(_rField, referencedObjectName!);
-        // }
-
         // Map the reference object
         object.extraData.lookupObjectMapping.set(field, referencedObject);
-        //object.extraData.lookupObjectMapping.set(_rField, referencedObject);
-
-        // Add the reference field to the fields list
-        // if (referencedObject.isComplexExternalId) {
-        //   referencedObject.externalId
-        //     .split(Constants.DATA_MOVE_CONSTANTS.COMPLEX_EXTERNAL_ID_SEPARATOR)
-        //     .forEach((extField) => {
-        //       object.extraData.fields.push(`${rField}.${extField}`);
-        //     });
-        // } else {
-        //   object.extraData.fields.push(_rField);
-        // }
       }
     }
 
@@ -742,10 +720,6 @@ export class DataMoveUtils<T> {
       // Map record Id to external Id +++++++++++++++++++++++++++++++++++++++++++++++
       // Create a complex external Id by concatenating multiple fields
       // Check if this id is already in the mapping
-      // TEST:
-      if (rawRecord['TEST__c'] === 'ACC_10000') {
-        this.command.info('ACC_10000');
-      }
       const externalId = externalIdFields
         .reduce((acc, field) => {
           acc.push(String(rawRecord[field] || 'NULL'));
@@ -868,17 +842,45 @@ export class DataMoveUtils<T> {
 
       // Filter out excluded objects from each object set
       this.script.objectSets.forEach((objectSet) => {
+        if (!this.scriptSetParsedObjectQueryMap.has(objectSet)) {
+          this.scriptSetParsedObjectQueryMap.set(objectSet, new Map<ScriptObject, ParsedQuery>());
+        }
+        const thisObjectSetNameMapping = this.scriptSetParsedObjectQueryMap.get(objectSet) as Map<
+          ScriptObject,
+          ParsedQuery
+        >;
+        objectSet.objects.forEach((object) => {
+          thisObjectSetNameMapping.set(object, DataMoveUtilsStatic.parseQueryString(object.query, ParsedQuery));
+        });
         objectSet.objects = objectSet.objects.filter((object) => {
+          // Filter excluded objects
           if (object.excluded) {
             // Log exclusion of the object
             this.comUtils.logCommandMessage(
               'process.excluding-object',
               objectSet.index.toString(),
-              object.extraData.objectName
+              thisObjectSetNameMapping.get(object)!.objectName
             );
             objectSet.excludedObjects.push(object.extraData.objectName);
             return false;
           }
+
+          // Filter objects with duplicate object names
+          if (
+            objectSet.objects.some(
+              (obj) =>
+                obj !== object &&
+                thisObjectSetNameMapping.get(obj)?.objectName === thisObjectSetNameMapping.get(object)?.objectName
+            )
+          ) {
+            this.comUtils.logCommandMessage(
+              'process.excluding-object-duplicate-object-name',
+              objectSet.index.toString(),
+              object.extraData.objectName
+            );
+            return false;
+          }
+
           return true;
         });
       });
@@ -1333,6 +1335,10 @@ export class DataMoveUtils<T> {
           recordIdKeys.length,
           queries.length
         );
+        // TEST:
+        if (object.extraData.targetObjectName === 'TestObject4__c') {
+          this.command.info('TestObject4__c');
+        }
 
         if (suggestedQueryEngine.shouldQueryAllRecords) {
           const queryParams = {
@@ -1401,11 +1407,26 @@ export class DataMoveUtils<T> {
     // Create any referenced objects that are not already present in the object sets
     for (const objectSet of this.script.objectSets) {
       for (const object of objectSet.objects) {
-        const referencedObjects = object.extraData.lookupObjectNameMapping.values();
-        for (const referencedObjectName of referencedObjects) {
+        const lookupFields = object.extraData.lookupObjectNameMapping.keys();
+        for (const field of lookupFields) {
+          const referencedObjectName = object.extraData.lookupObjectNameMapping.get(field) as string;
           if (!objectSet.objects.find((obj) => obj.extraData.objectName === referencedObjectName)) {
             // Create and process the referenced object asynchronously
-            await this.createObjectAsync(object.extraData.objectName, referencedObjectName, objectSet);
+            const duplicate = objectSet.objects.find((obj) => obj.extraData?.targetObjectName === referencedObjectName);
+            if (duplicate) {
+              this.comUtils.logCommandMessage(
+                'process.skipping-lookup-field-referencing-mapped-object-not-in-object-set',
+                objectSet.index.toString(),
+                object.extraData.objectName,
+                field,
+                referencedObjectName,
+                duplicate.extraData.objectName
+              );
+              // Remove the field from the lookup fields
+              DataMoveUtilsStatic.removeFieldFromExtraData(object.extraData, field);
+            } else {
+              await this.createObjectAsync(object.extraData.objectName, referencedObjectName, objectSet);
+            }
           }
         }
       }

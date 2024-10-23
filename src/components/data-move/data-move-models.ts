@@ -41,9 +41,6 @@ export class ObjectExtraData extends ParsedQuery {
   /** Mapping between the field names in the source org and their representation in the target org. */
   public sourceToTargetFieldMapping: Map<string, string> = new Map<string, string>();
 
-  /** Mapping between the lookup fields and their full reference fields, containing the parent external ID. For example, Account__c => Account__r.Name. */
-  //public lookupFieldMapping: Map<string, string> = new Map<string, string>();
-
   /** Mapping between the source record Id to the external Id. */
   public sourceIdToExternalIdMapping: Map<string, string> = new Map<string, string>();
 

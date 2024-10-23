@@ -1199,10 +1199,6 @@ export class ApiUtils<T> {
             .on('record', (record) => {
               recordCount++;
               //delete record.attributes;
-              // TEST:
-              if (record['TEST__c'] === 'ACC_10000') {
-                this.command.info('ACC_10000');
-              }
               record = ApiUtils.expandSObjectRecord(record);
               if (params.recordCallback) {
                 const processedRecord = params.recordCallback(record);

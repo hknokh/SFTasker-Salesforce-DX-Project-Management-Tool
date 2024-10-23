@@ -637,4 +637,16 @@ export class DataMoveUtilsStatic {
       };
     }
   }
+
+  /**
+   *  Removes a field from the extra data object.
+   * @param extraData  Extra data object to remove the field from
+   * @param field  Field to remove
+   */
+  public static removeFieldFromExtraData(extraData: ObjectExtraData, field: string): void {
+    extraData.fields = extraData.fields.filter((f) => f !== field);
+    extraData.lookupObjectNameMapping.delete(field);
+    extraData.lookupObjectMapping.delete(field);
+    extraData.sourceToTargetFieldMapping.delete(field);
+  }
 }
