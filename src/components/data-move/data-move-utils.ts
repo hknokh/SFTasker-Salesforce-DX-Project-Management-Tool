@@ -488,11 +488,11 @@ export class DataMoveUtils<T> {
    * @param field  Field to remove
    */
   // eslint-disable-next-line class-methods-use-this
-  public removeField(extraData: ObjectExtraData, field: string): void {
-    extraData.fields = extraData.fields.filter((f) => f !== field);
-    extraData.lookupObjectNameMapping.delete(field);
-    extraData.lookupObjectMapping.delete(field);
-    extraData.sourceToTargetFieldMapping.delete(field);
+  public removeFieldFromObject(object: ScriptObject, field: string): void {
+    object.extraData.fields = object.extraData.fields.filter((f) => f !== field);
+    object.extraData.lookupObjectNameMapping.delete(field);
+    object.extraData.lookupObjectMapping.delete(field);
+    object.extraData.sourceToTargetFieldMapping.delete(field);
   }
 
   /**
@@ -1436,7 +1436,7 @@ export class DataMoveUtils<T> {
                 duplicate.extraData.objectName
               );
               // Remove the field from the lookup fields
-              this.removeField(object.extraData, field);
+              this.removeFieldFromObject(object, field);
             } else {
               await this.createObjectAsync(object.extraData.objectName, referencedObjectName, objectSet);
             }
