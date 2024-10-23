@@ -483,6 +483,19 @@ export class DataMoveUtils<T> {
   }
 
   /**
+   *  Removes a field from the extra data object.
+   * @param extraData  Extra data object to remove the field from
+   * @param field  Field to remove
+   */
+  // eslint-disable-next-line class-methods-use-this
+  public removeFieldFromExtraData(extraData: ObjectExtraData, field: string): void {
+    extraData.fields = extraData.fields.filter((f) => f !== field);
+    extraData.lookupObjectNameMapping.delete(field);
+    extraData.lookupObjectMapping.delete(field);
+    extraData.sourceToTargetFieldMapping.delete(field);
+  }
+
+  /**
    * Post-processes an object after initial processing.
    *
    * @param object The object to post-process.
@@ -1423,7 +1436,7 @@ export class DataMoveUtils<T> {
                 duplicate.extraData.objectName
               );
               // Remove the field from the lookup fields
-              DataMoveUtilsStatic.removeFieldFromExtraData(object.extraData, field);
+              this.removeFieldFromExtraData(object.extraData, field);
             } else {
               await this.createObjectAsync(object.extraData.objectName, referencedObjectName, objectSet);
             }
