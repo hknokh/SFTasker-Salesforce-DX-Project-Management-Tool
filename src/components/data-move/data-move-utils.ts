@@ -559,7 +559,10 @@ export class DataMoveUtils<T> {
 
     // Map each field to its target counterpart
     object.extraData.fields.forEach((field) => {
-      object.extraData.sourceToTargetFieldMapping.set(field, DataMoveUtilsStatic.mapField(field, object));
+      object.extraData.sourceToTargetFieldMapping.set(
+        field !== 'Id' ? field : Constants.DATA_MOVE_CONSTANTS.FIELD_MAPPING_ID_FIELD,
+        DataMoveUtilsStatic.mapField(field, object)
+      );
     });
 
     // Determine the target external ID based on whether it's missing or not
@@ -729,7 +732,19 @@ export class DataMoveUtils<T> {
       ? object.externalId.split(Constants.DATA_MOVE_CONSTANTS.COMPLEX_EXTERNAL_ID_SEPARATOR)
       : object.extraData.targetExternalId.split(Constants.DATA_MOVE_CONSTANTS.COMPLEX_EXTERNAL_ID_SEPARATOR);
     const lookupFields = Array.from(object.extraData.lookupObjectNameMapping.keys());
+    const polymorphicQueryFields = Array.from(object.extraData.polymorphicQueryFieldsMapping.keys());
+
     return (rawRecord: any): any => {
+      // Map the polymorphic field to the correct field name if it exists +++++++++++++
+      // i.e. 'What.Id' -> 'WhatId' for Task
+      for (const polymorphicQueryField of polymorphicQueryFields) {
+        if (Object.prototype.hasOwnProperty.call(rawRecord, polymorphicQueryField)) {
+          const field = object.extraData.polymorphicQueryFieldsMapping.get(polymorphicQueryField) as string;
+          rawRecord[field] = rawRecord[polymorphicQueryField];
+          delete rawRecord[polymorphicQueryField];
+        }
+      }
+
       // Map record Id to external Id +++++++++++++++++++++++++++++++++++++++++++++++
       // Create a complex external Id by concatenating multiple fields
       // Check if this id is already in the mapping
@@ -1482,7 +1497,7 @@ export class DataMoveUtils<T> {
   /**
    * Processes the data move command by moving data from the source to the target.
    */
-  public async processCommandAsync(): Promise<void> {
+  public async executeCommandAsync(): Promise<void> {
     // Number of query attempts to query child objects to ebsure that all hierarchy is queried
     const MAX_CHILD_OBJECTS_QUERY_ATTEMPTS = 3;
 

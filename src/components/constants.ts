@@ -303,6 +303,11 @@ export class Constants {
     ALL_FIELDS_KEYWORD: 'all',
     /** The prefix for the object set sub-directory. */
     OBJECT_SET_SUB_DIRECTORY_PREFIX: 'object-set-',
+    /**
+     * The special name of record Id field to add to the field mapping.
+     * Since record Id can't be mapped to another field, we replace it with this special name.
+     */
+    FIELD_MAPPING_ID_FIELD: '__Id',
 
     /** Fields to exclude from the data move process per object. */
     EXCLUDED_FIELDS: new Map<string, string[]>([

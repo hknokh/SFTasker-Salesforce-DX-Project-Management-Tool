@@ -16,6 +16,7 @@ export class DataMoveUtilsStatic {
   public static parseQueryString<T extends ParsedQuery>(queryString: string, ctor: new (...args: any[]) => T): T {
     // Initialize a map for object name mappings
     const lookupObjectNameMapping = new Map<string, string>();
+    const POLYMORPHIC_FIELD_NAME = 'Id';
 
     // Initialize variables to hold query components
     let fields: string[] = [];
@@ -23,6 +24,8 @@ export class DataMoveUtilsStatic {
     let where = '';
     let limit = 0;
     let offset = 0;
+    const polymorphicFieldsMapping = new Map<string, string>();
+    const polymorphicQueryFieldsMapping = new Map<string, string>();
 
     // Extract fields and object name from the SELECT and FROM clauses
     const selectFromMatch = queryString.match(/SELECT\s+(.*?)\s+FROM\s+([^\s]+)(?:\s+|$)/i);
@@ -33,7 +36,14 @@ export class DataMoveUtilsStatic {
         if (field.includes(Constants.DATA_MOVE_CONSTANTS.POLYMORPHIC_FIELD_SEPARATOR)) {
           const fieldParts = field.split(Constants.DATA_MOVE_CONSTANTS.POLYMORPHIC_FIELD_SEPARATOR);
           lookupObjectNameMapping.set(fieldParts[0], fieldParts[1]);
+          // Original field name, i.e. WhatId
           field = fieldParts[0];
+          // Referenced field name, i.e. What
+          const _rField = DataMoveUtilsStatic.getRField(field);
+          // Mapping from original to query field i.e. WhatId -> What.Id
+          polymorphicFieldsMapping.set(field, `${_rField}.${POLYMORPHIC_FIELD_NAME}`);
+          // Maping from query to original field i.e. What.Id -> WhatId
+          polymorphicQueryFieldsMapping.set(`${_rField}.${POLYMORPHIC_FIELD_NAME}`, field);
         }
         return field;
       });
@@ -67,7 +77,9 @@ export class DataMoveUtilsStatic {
       limit,
       offset,
       lookupObjectNameMapping,
-    });
+      polymorphicFieldsMapping,
+      polymorphicQueryFieldsMapping,
+    } as T);
   }
 
   /**
@@ -95,10 +107,31 @@ export class DataMoveUtilsStatic {
       // Add SELECT clause with fields or default to 'Id' if no fields are provided
       const fieldsToUse = fields ?? extraData.fields;
       if (fieldsToUse && fieldsToUse.length > 0) {
-        const fieldsString = !useTarget
-          ? fieldsToUse.join(', ')
-          : fieldsToUse.map((field) => fieldMapping.get(field) ?? field).join(', ');
-        queryString += `SELECT ${fieldsString}`;
+        // Handle plolymorphic fields
+        const queryFields = fieldsToUse.map((field) => {
+          let finalField = !useTarget ? field : fieldMapping.get(field) ?? field;
+          // `field` is not a polymorphic field
+          if (!extraData.polymorphicFieldsMapping.has(field)) {
+            return finalField;
+          }
+          // `field` is a polymorphic field, i.e. `WhatId`
+          const referencedObject = extraData.lookupObjectMapping.get(field);
+          if (!referencedObject) {
+            return finalField;
+          }
+          // Query field i.e. `What.Id`
+          const queryField = extraData.polymorphicFieldsMapping.get(field);
+          // Referenced object i.e. `Account`
+          const _rFinalFieldReferencedObjectName = !useTarget
+            ? referencedObject.extraData.objectName
+            : referencedObject.extraData.targetObjectName;
+          // Special query i.e. `TYPEOF What WHEN Account THEN Id END`
+          finalField = `TYPEOF ${queryField?.split('.')?.[0]} WHEN ${_rFinalFieldReferencedObjectName} THEN ${
+            queryField?.split('.')?.[1]
+          } END`;
+          return finalField;
+        });
+        queryString += `SELECT ${queryFields.join(', ')}`;
       } else {
         queryString += 'SELECT Id'; // Default field
       }

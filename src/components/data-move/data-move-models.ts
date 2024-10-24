@@ -18,7 +18,17 @@ export class ParsedQuery {
   public offset: number = 0;
   /** Mapping between lookup field names (including master-detail lookup fields) and their corresponding parent object names. */
   public lookupObjectNameMapping: Map<string, string> = new Map<string, string>();
+  /**
+   * Mapping between polymorphic field names and their corresponding query fields:
+   * @example `WhatId` -> `What.Id`
+   */
+  public polymorphicFieldsMapping = new Map<string, string>();
 
+  /**
+   * Mapping between polymorphic query field names and their corresponding original field names:
+   * @example `What.Id` -> `WhatId`
+   */
+  public polymorphicQueryFieldsMapping = new Map<string, string>();
   /**
    *  Constructs an instance of ParsedQuery.
    * @param init  Partial initialization object.
