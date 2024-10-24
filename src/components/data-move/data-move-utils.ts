@@ -1369,11 +1369,6 @@ export class DataMoveUtils<T> {
           recordIdKeys.length,
           queries.length
         );
-        // TEST:
-        if (object.extraData.targetObjectName === 'TestObject4__c') {
-          this.command.info('TestObject4__c');
-        }
-
         if (suggestedQueryEngine.shouldQueryAllRecords) {
           const queryParams = {
             useSourceConnection: false,
