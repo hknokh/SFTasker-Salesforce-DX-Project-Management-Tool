@@ -809,7 +809,7 @@ export class DataMoveUtils<T> {
    * @returns  A promise that resolves when the export is complete.
    */
   // eslint-disable-next-line class-methods-use-this
-  public async createExportRecordsCsvAsync(
+  public async copyToExportCsvFileAsync(
     object: ScriptObject,
     requiredOperation: OPERATION,
     transformRecordsCallback: (rawRecord: any) => any,
@@ -1098,7 +1098,7 @@ export class DataMoveUtils<T> {
         }
 
         // Transform records to delete +++++++
-        await this.createExportRecordsCsvAsync(object, OPERATION.Delete, (rawRecord: any): any => rawRecord, true);
+        await this.copyToExportCsvFileAsync(object, OPERATION.Delete, (rawRecord: any): any => rawRecord, true);
 
         // Delete records +++++++
         const deleteParams = {
