@@ -799,17 +799,17 @@ export class DataMoveUtils<T> {
   }
 
   /**
-   * Asynchronously creates export records by reading from a source CSV file,
-   * transforming the records, and writing them to an export CSV file.
+   * Copies csv files from source or target directory to the export directory.
+   * Applies callback function to transform each record while copying.
    *
-   * @param object - The ScriptObject containing configuration and file information.
-   * @param requiredOperation - The operation type for which records are being exported.
-   * @param transformRecordsCallback - A callback function to transform each raw record.
-   * @param useTargetFileAsSource - Optional flag to determine the source file (source vs. target).
-   * @returns A Promise that resolves when the export process is complete.
+   * @param object          - The object to process.
+   * @param requiredOperation - The required operation for the export.
+   * @param transformRecordsCallback  - The callback function to transform each record.
+   * @param useTargetFileAsSource  - Whether to use the target file as the source file.
+   * @returns  A promise that resolves when the export is complete.
    */
   // eslint-disable-next-line class-methods-use-this
-  public async createExportRecordsAsync(
+  public async createExportRecordsCsvAsync(
     object: ScriptObject,
     requiredOperation: OPERATION,
     transformRecordsCallback: (rawRecord: any) => any,
@@ -1098,7 +1098,7 @@ export class DataMoveUtils<T> {
         }
 
         // Transform records to delete +++++++
-        await this.createExportRecordsAsync(object, OPERATION.Delete, (rawRecord: any): any => rawRecord, true);
+        await this.createExportRecordsCsvAsync(object, OPERATION.Delete, (rawRecord: any): any => rawRecord, true);
 
         // Delete records +++++++
         const deleteParams = {
