@@ -560,7 +560,8 @@ export class DataMoveUtils<T> {
     // Map each field to its target counterpart
     object.extraData.fields.forEach((field) => {
       object.extraData.sourceToTargetFieldMapping.set(
-        // Id field should be mapped specially
+        // Id field should be mapped specially.
+        // This mapping will be used only while updating the records.
         field !== 'Id' ? field : Constants.DATA_MOVE_CONSTANTS.FIELD_MAPPING_ID_FIELD,
         DataMoveUtilsStatic.mapField(field, object)
       );
